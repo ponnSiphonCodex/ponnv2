@@ -1,10 +1,13 @@
 import Google from "next-auth/providers/google";
+import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { SignJWT, jwtVerify } from "jose";
+import { eq } from "drizzle-orm";
 import type { NextAuthConfig } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import * as schema from "@/db";
 import type { DbClient } from "@/db";
+import { verifyPassword } from "./password";
 
 const MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
@@ -22,7 +25,30 @@ export function getAuthConfig(
       usersTable: schema.users, accountsTable: schema.accounts,
       sessionsTable: schema.sessions, verificationTokensTable: schema.verificationTokens,
     }),
-    providers: [Google({ clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET })],
+    providers: [
+      Google({ clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }),
+      Credentials({
+        name: "credentials",
+        credentials: {
+          email: { label: "Email", type: "email" },
+          password: { label: "Password", type: "password" },
+        },
+        async authorize(credentials) {
+          const email = credentials?.email as string | undefined;
+          const password = credentials?.password as string | undefined;
+          if (!email || !password) return null;
+
+          const [user] = await db.select().from(schema.users).where(eq(schema.users.email, email));
+          // ไม่มี user นี้ หรือ user นี้ login ผ่าน Google อย่างเดียว (ไม่เคยตั้ง local password)
+          if (!user || !user.passwordHash) return null;
+
+          const valid = await verifyPassword(password, user.passwordHash);
+          if (!valid) return null;
+
+          return { id: user.id, email: user.email, name: user.name };
+        },
+      }),
+    ],
     session: { strategy: "jwt", maxAge: MAX_AGE_SECONDS },
     secret: env.AUTH_SECRET,
     trustHost: true,
