@@ -3,8 +3,8 @@
  * Drizzle ORM schema — Cloudflare D1 (SQLite) — sqlite-core only (ไม่ใช้ Prisma)
  *
  * หมายเหตุสำคัญ: ไฟล์นี้ถูก "ก็อปปี้" ไว้ทั้งใน apps/api/src/db/ และ apps/web/src/db/
- * แบบเหมือนกันเป๊ะ (ไม่ใช้ npm workspace เชื่อมกันแล้ว) เหตุผล: Cloudflare Workers Builds
- * ที่ตั้ง "Root Directory" แยกต่อ Worker ไม่ resolve pnpm/bun workspace package ข้ามโฟลเดอร์ได้
+ * แบบเหมือนกันเป๊ะ (ไม่ใช้ npm workspace เชื่อมกัน) เหตุผล: Cloudflare Workers Builds
+ * ที่ตั้ง "Root Directory" แยกต่อ Worker ไม่ resolve workspace package ข้ามโฟลเดอร์ได้
  * เชื่อถือได้ยากเวลา deploy ผ่านหน้าเว็บ (ไม่มี lockfile ที่ root) — การก็อปปี้ไฟล์เดียวกันไว้ทั้งสองที่
  * ทำให้แต่ละ Worker install ได้เองอิสระ ไม่มี dependency ข้ามโฟลเดอร์เลย
  *
