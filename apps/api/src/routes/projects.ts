@@ -1,0 +1,80 @@
+/**
+ * apps/api/src/routes/projects.ts
+ * CRUD พื้นฐานของ Project + endpoint สรุป (progress / auto-dates) แยกจาก /board
+ * เผื่อหน้า List/Dashboard ที่ไม่ต้องการ payload หนักเท่า Kanban board เต็มรูปแบบ
+ */
+import { Hono } from "hono";
+import { eq } from "drizzle-orm";
+import { projects, themes } from "@pm-platform/db";
+import { createDb } from "@pm-platform/db";
+import type { AppEnv } from "../types";
+import { computeProjectAutoDates, computeProjectProgress } from "../lib/progress";
+
+export const projectRoutes = new Hono<AppEnv>();
+
+/** GET /api/projects — list พร้อม progress % (ใช้ในหน้า Portfolio Overview) */
+projectRoutes.get("/", async (c) => {
+  const db = createDb(c.env.DB);
+
+  const rows = await db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      status: projects.status,
+      themeId: projects.themeId,
+      themeName: themes.name,
+    })
+    .from(projects)
+    .leftJoin(themes, eq(projects.themeId, themes.id));
+
+  const result = await Promise.all(
+    rows.map(async (p) => ({
+      ...p,
+      progress: await computeProjectProgress(db, p.id),
+      autoDates: await computeProjectAutoDates(db, p.id),
+    }))
+  );
+
+  return c.json({ projects: result });
+});
+
+/** POST /api/projects — สร้าง Project ใหม่ */
+projectRoutes.post("/", async (c) => {
+  const db = createDb(c.env.DB);
+  const body = await c.req.json<{ name: string; status?: string; themeId?: number }>();
+  const user = c.get("user");
+
+  if (!body.name?.trim()) {
+    return c.json({ error: "name ห้ามว่าง" }, 400);
+  }
+
+  const [created] = await db
+    .insert(projects)
+    .values({
+      name: body.name.trim(),
+      status: body.status ?? "planning",
+      themeId: body.themeId,
+      createdBy: user.id,
+      updatedBy: user.id,
+    })
+    .returning();
+
+  return c.json({ project: created }, 201);
+});
+
+/** GET /api/projects/:id — รายละเอียด + progress + auto-dates */
+projectRoutes.get("/:id", async (c) => {
+  const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id)) return c.json({ error: "id ต้องเป็นตัวเลข" }, 400);
+
+  const db = createDb(c.env.DB);
+  const [project] = await db.select().from(projects).where(eq(projects.id, id));
+  if (!project) return c.json({ error: "ไม่พบ Project นี้" }, 404);
+
+  const [progress, autoDates] = await Promise.all([
+    computeProjectProgress(db, id),
+    computeProjectAutoDates(db, id),
+  ]);
+
+  return c.json({ project, progress, autoDates });
+});

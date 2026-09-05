@@ -1,0 +1,26 @@
+# apps/api/wrangler.toml
+# Deploy: wrangler deploy (ต้อง wrangler login หรือ CF_API_TOKEN ก่อน)
+
+name = "pm-platform-api"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "development"
+
+[[d1_databases]]
+binding = "DB"                          # เข้าถึงใน worker ผ่าน c.env.DB
+database_name = "pm_platform_db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"   # ได้จาก `wrangler d1 create pm_platform_db`
+
+# secrets (ห้ามใส่ค่าจริงในไฟล์นี้!) — ตั้งผ่านคำสั่งด้านล่างแทน:
+#   wrangler secret put AUTH_SECRET
+# AUTH_SECRET ต้องเป็นค่าเดียวกันกับที่ apps/web ใช้ sign session JWT
+
+[env.production]
+vars = { ENVIRONMENT = "production" }
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "pm_platform_db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
