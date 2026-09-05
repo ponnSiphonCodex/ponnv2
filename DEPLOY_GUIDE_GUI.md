@@ -62,17 +62,31 @@ https://<URL เว็บของคุณ>/api/debug
 
 ถ้า `db.ok: false` อ่าน error message ที่ได้มา (มักเป็น "no such table" ถ้ายังไม่รัน SQL migration)
 
-## STEP E — รัน SQL Migration (ถ้ายังไม่เคยทำ)
+## STEP E — รัน SQL (ไฟล์เดียวจบ)
 
-**กรณี A — สร้าง D1 database ใหม่ (ยังไม่เคยรัน SQL อะไรเลย):**
-รันแค่ `database/migrations/0000_init.sql` (มีคอลัมน์ `password_hash` รวมอยู่แล้ว) ตามด้วย
-`0002_seed_local_user.sql` (insert local user ทดสอบ)
+SQL รวมเป็นไฟล์เดียวแล้วที่ `database/migrations/schema.sql` (สร้างครบ 23 ตาราง +
+ใส่ local user ทดสอบในไฟล์เดียว ไม่ต้องสลับไฟล์)
 
-**กรณี B — เคยรัน 0000_init.sql เวอร์ชันเก่าไปแล้ว (ไม่มีคอลัมน์ password_hash):**
-รัน `database/migrations/0001_add_local_auth.sql` แทน (มี ALTER TABLE + insert user ในตัวเดียว)
+**ขั้นตอน:**
+1. เปิดไฟล์ `database/migrations/schema.sql` จากในเครื่อง (คลิกขวา → Open with → Notepad)
+2. กด **Ctrl+A** แล้ว **Ctrl+C** (คัดลอกทั้งหมด)
+3. ไปที่ Cloudflare Dashboard → D1 → `ponn_platform` → **Console**
+4. คลิกในกล่อง Query → **Ctrl+A** (เลือกของเดิมที่อาจค้างอยู่) → **Ctrl+V** (วางทับ)
+5. **สำคัญที่สุด:** กด **Ctrl+A** อีกครั้ง **ในกล่อง Query** (เพื่อเลือกทุกบรรทัดที่เพิ่งวางเข้าไป
+   ทั้งหมด — ไม่งั้นระบบจะรันแค่บรรทัดที่ cursor อยู่บรรทัดเดียว ทำให้เจอ error "no such table")
+6. กด **Run**
+7. ต้องเห็นข้อความ **"Executed 24/24"** (หรือใกล้เคียง ไม่ใช่ "1/1")
 
-ทั้งสองกรณี ทำผ่าน Cloudflare Dashboard → D1 → `ponn_platform` → Console → วาง SQL →
-Ctrl+A ในกล่อง Query ก่อน Run
+⚠️ **ถ้าเจอ error "table users already exists"** แปลว่าเคยรันไฟล์นี้ (หรือไฟล์เก่า) ไปแล้วบางส่วน
+ให้เช็คก่อนด้วยคำสั่งนี้ว่ามีตารางอะไรอยู่บ้าง:
+```sql
+SELECT name FROM sqlite_master WHERE type='table';
+```
+ถ้าเห็นตารางครบ 23 ตัวแล้ว (users, projects, tasks, ...) แปลว่าสร้างสำเร็จแล้ว ข้าม STEP นี้ได้เลย
+ไปเช็คแค่ว่ามี local user ทดสอบหรือยังด้วย:
+```sql
+SELECT email, password_hash FROM users;
+```
 
 ได้ local user ทดสอบ:
 ```
@@ -96,5 +110,6 @@ Password: Ponnsth@2026
 | อาการ | สาเหตุ | วิธีแก้ |
 |---|---|---|
 | `Property 'DB' does not exist on type 'CloudflareEnv'` (ซ้ำอีก) | ไฟล์ `cloudflare-env.d.ts` ไม่ถูก push ขึ้นจริง | เช็คใน GitHub ว่ามีไฟล์นี้อยู่ที่ `apps/web/cloudflare-env.d.ts` (root ของ apps/web ไม่ใช่ใน src/) |
-| Local login ขึ้น "อีเมลหรือรหัสผ่านไม่ถูกต้อง" ตลอด | ยังไม่รัน SQL migration (STEP E) | รันแล้วเช็คด้วย `SELECT email, password_hash FROM users;` ใน D1 Console |
+| Local login ขึ้น "อีเมลหรือรหัสผ่านไม่ถูกต้อง" ตลอด | ยังไม่รัน SQL (STEP E) | รันแล้วเช็คด้วย `SELECT email, password_hash FROM users;` ใน D1 Console |
+| `Error: no such table: users` | ตารางยังไม่ถูกสร้างเลย (รันแค่ INSERT โดยไม่มีตารางรองรับ) มักเพราะกด Run โดยเลือกแค่บรรทัดเดียว | เปิด `schema.sql` → Ctrl+A ทั้งไฟล์ → วางในกล่อง Query → **Ctrl+A ในกล่อง Query อีกครั้ง** ก่อน Run — ต้องเห็น "Executed 24/24" ไม่ใช่ "1/1" |
 | `/api/debug` ขึ้น 404 | build ยังไม่เสร็จ หรือไฟล์ไม่ถูก push | เช็คว่ามีไฟล์ `apps/web/src/app/api/debug/route.ts` ใน repo จริง |
