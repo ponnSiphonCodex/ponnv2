@@ -15,7 +15,6 @@
     "next-auth": "5.0.0-beta.21",
     "@auth/drizzle-adapter": "^1.4.2",
     "drizzle-orm": "^0.33.0",
-    "jose": "^5.9.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

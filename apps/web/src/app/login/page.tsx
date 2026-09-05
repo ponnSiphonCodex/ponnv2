@@ -23,7 +23,6 @@ const PRIMARY_BUTTON_STYLE: CSSProperties = {
 
 function ErrorBanner({ code }: { code: string | null }) {
   if (!code) return null;
-
   const messages: Record<string, string> = {
     CredentialsSignin: "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
     Configuration: "ระบบตั้งค่าไม่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ",
@@ -32,9 +31,7 @@ function ErrorBanner({ code }: { code: string | null }) {
     OAuthSignin: "เชื่อมต่อ Google ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
     OAuthCallback: "เชื่อมต่อ Google ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
   };
-
   const text = messages[code] ?? "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
-
   return (
     <div style={{ background: "#FEF2F2", color: "#B91C1C", borderRadius: 8, padding: "10px 12px", fontSize: 13, marginBottom: 16, textAlign: "left" }}>
       {text}
@@ -57,16 +54,12 @@ function LoginContent() {
     e.preventDefault();
     setLocalError(null);
     setLoading(true);
-
     const result = await signIn("credentials", { email, password, redirect: false });
-
     setLoading(false);
-
     if (result?.error) {
       setLocalError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
       return;
     }
-
     router.push("/");
     router.refresh();
   }
@@ -87,18 +80,7 @@ function LoginContent() {
         padding: 16,
       }}
     >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 380,
-          background: "#fff",
-          borderRadius: 20,
-          padding: "28px 28px 24px",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
-          textAlign: "center",
-          boxSizing: "border-box",
-        }}
-      >
+      <div style={{ width: "100%", maxWidth: 380, background: "#fff", borderRadius: 20, padding: "28px 28px 24px", boxShadow: "0 20px 60px rgba(0,0,0,0.35)", textAlign: "center", boxSizing: "border-box" }}>
         <div style={{ width: 64, height: 64, margin: "0 auto 16px", borderRadius: 16, background: "#F4F4F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Image src="/rocket-logo.png" alt="Portfolio Workspace" width={40} height={40} priority />
         </div>
@@ -107,16 +89,10 @@ function LoginContent() {
         <p style={{ margin: "4px 0 20px", fontSize: 13, color: "#6B7280" }}>ระบบบริหารพอร์ตโครงการองค์กร</p>
 
         <div style={{ display: "flex", background: "#F4F4F6", borderRadius: 10, padding: 4, marginBottom: 16 }}>
-          <button
-            onClick={() => setTab("google")}
-            style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: tab === "google" ? "#fff" : "transparent", color: tab === "google" ? "#001D58" : "#9AA0A6", boxShadow: tab === "google" ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}
-          >
+          <button onClick={() => setTab("google")} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: tab === "google" ? "#fff" : "transparent", color: tab === "google" ? "#001D58" : "#9AA0A6", boxShadow: tab === "google" ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}>
             บัญชี Google
           </button>
-          <button
-            onClick={() => setTab("local")}
-            style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: tab === "local" ? "#fff" : "transparent", color: tab === "local" ? "#001D58" : "#9AA0A6", boxShadow: tab === "local" ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}
-          >
+          <button onClick={() => setTab("local")} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: tab === "local" ? "#fff" : "transparent", color: tab === "local" ? "#001D58" : "#9AA0A6", boxShadow: tab === "local" ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}>
             อีเมล + รหัสผ่าน
           </button>
         </div>

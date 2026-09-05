@@ -2,12 +2,13 @@
  * apps/web/src/lib/auth.ts
  * Auth.js (NextAuth v5) — Google OAuth + Local Email/Password + DrizzleAdapter(D1)
  *
- * ⚠️ สำคัญ: เวอร์ชันนี้ "ตัด" custom jwt.encode/decode ออกแล้ว (ที่เคยใส่ไว้เพื่อให้ Hono API
- * worker แยกตัวมา verify token ได้) เพราะเป็น config ที่ไม่มาตรฐาน ทำให้ Auth.js init ไม่สำเร็จ
- * → เกิด error=Configuration (login ล้มทั้ง Google + Local พร้อมกัน)
+ * ⚠️⚠️ สำคัญมาก: เวอร์ชันนี้ "ตัด" custom jwt.encode/decode ออกแล้ว
+ * custom JWT ที่เคยใส่ไว้ (เพื่อให้ Hono API worker แยกมา verify token) เป็น config ไม่มาตรฐาน
+ * → ทำให้ Auth.js init ไม่สำเร็จ → เกิด error=Configuration (login ล้มทั้ง Google + Local)
+ * นี่คือต้นตอที่แท้จริงของ "Server error / There is a problem with the server configuration"
  *
- * ตอนนี้หน้า board query D1 ตรง ๆ ในตัวเอง (server component) ไม่ต้องเรียก API worker แยก
- * จึงไม่ต้อง share token ข้าม service อีกต่อไป → ใช้ Auth.js JWT (JWE) มาตรฐานได้เลย
+ * ตอนนี้หน้า board query D1 ตรง ๆ ในตัว (ไม่เรียก API worker แยก) จึงไม่ต้อง share token
+ * ข้าม service → ใช้ Auth.js JWT มาตรฐานได้เลย
  */
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";

@@ -1,9 +1,7 @@
 /**
  * apps/web/src/app/pm/board/page.tsx
  * Kanban Board — query D1 ตรง ๆ ใน server component (ไม่เรียก API worker แยก)
- * ตรวจ session ด้วย auth() ก่อน ถ้าไม่ได้ login เด้งไป /login
- *
- * ใช้ query param (?id=1) แทน dynamic route [projectId] เพื่อลดโฟลเดอร์ชื่อวงเล็บ
+ * ใช้ query param (?id=1) แทน dynamic route [projectId]
  */
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
@@ -15,7 +13,7 @@ import { getBoardData } from "@/lib/board-data";
 export const dynamic = "force-dynamic";
 
 export default async function BoardPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
-  const { env } = getCloudflareContext();
+  const { env } = await getCloudflareContext({ async: true });
   const db = createDb(env.DB);
 
   const { auth } = NextAuth(
@@ -33,7 +31,7 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
       <main style={{ padding: 24 }}>
         <p>ไม่พบ Project (id={String(params.id ?? "1")})</p>
         <p style={{ fontSize: 13, color: "#6B7280" }}>
-          ถ้ายังไม่มีข้อมูล ให้รัน SQL seed ใน D1 Console (มีในไฟล์ database/migrations/schema.sql)
+          ถ้ายังไม่มีข้อมูล ให้รัน SQL seed ใน D1 Console (database/migrations/schema.sql)
         </p>
       </main>
     );

@@ -1,17 +1,9 @@
 -- database/migrations/schema.sql
--- SQL รวมไฟล์เดียวจบ: สร้างตารางทั้งหมด 23 ตาราง + ใส่ local user ทดสอบ
+-- SQL รวมไฟล์เดียว: สร้าง 23 ตาราง + seed local user + project ทดสอบ
+-- ⚠️ ห้ามใส่ PRAGMA — D1 Console รันไม่ได้ (ทำให้ batch ล้ม → "no such table")
+-- ทุกคำสั่ง idempotent (IF NOT EXISTS / ON CONFLICT) รันซ้ำได้ปลอดภัย
 --
--- ⚠️ ห้ามใส่ PRAGMA — D1 Console รัน PRAGMA ไม่ได้ ถ้าใส่จะ error ทั้ง batch (สาเหตุ
---    "no such table: users" ที่เจอมาก่อน)
---
--- ทุกคำสั่งใช้ IF NOT EXISTS / INSERT OR IGNORE / ON CONFLICT จึง "รันซ้ำได้" ปลอดภัย
--- ไม่ error แม้เคยรันไปแล้วบางส่วน
---
--- วิธีรัน: Cloudflare Dashboard > D1 > ponn_platform > Console
---   1) เปิดไฟล์นี้ Ctrl+A → Ctrl+C
---   2) วางในกล่อง Query
---   3) กด Run (ถ้ามีปุ่มลูกศร dropdown ข้าง Run ให้เลือก "Run all" ถ้ามี)
---   4) ต้องเห็น "Executed 40/40" (หรือใกล้เคียง) ไม่ใช่ "1/1"
+-- วิธีรัน: D1 Console → วางทั้งไฟล์ → Ctrl+A ในกล่อง Query → Run (ต้องเห็น "Executed 40/40")
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY, name TEXT, email TEXT NOT NULL UNIQUE, email_verified INTEGER, image TEXT,
@@ -179,30 +171,17 @@ CREATE TABLE IF NOT EXISTS attachments (
 );
 CREATE INDEX IF NOT EXISTS attachments_entity_idx ON attachments(entity_type, entity_id);
 
--- ===== ข้อมูลตั้งต้น (idempotent — รันซ้ำไม่พัง) =====
-
+-- ===== Seed =====
 INSERT OR IGNORE INTO priorities (id, name, level, color) VALUES
-  (1, 'Critical', 1, '#EC186E'),
-  (2, 'High', 2, '#D4A017'),
-  (3, 'Medium', 3, '#6B7280'),
-  (4, 'Low', 4, '#9AA0A6');
+  (1, 'Critical', 1, '#EC186E'), (2, 'High', 2, '#D4A017'), (3, 'Medium', 3, '#6B7280'), (4, 'Low', 4, '#9AA0A6');
 
 -- local user ทดสอบ — email: admin@ponnsth.com / password: Ponnsth@2026
--- password_hash = PBKDF2-SHA256 (100000 รอบ) ตรงกับ apps/web/src/lib/password.ts
 INSERT INTO users (id, name, email, password_hash)
-VALUES (
-  lower(hex(randomblob(16))),
-  'Admin (Local)',
-  'admin@ponnsth.com',
-  '100000:c06ddce4df12fa9a36fbd46283897aba:f1cf10ea3c4bfa5734a35cf7116a1f67f07ea87bfa1e8a2aec2890a63e76287b'
-)
+VALUES (lower(hex(randomblob(16))), 'Admin (Local)', 'admin@ponnsth.com',
+  '100000:c06ddce4df12fa9a36fbd46283897aba:f1cf10ea3c4bfa5734a35cf7116a1f67f07ea87bfa1e8a2aec2890a63e76287b')
 ON CONFLICT(email) DO UPDATE SET password_hash = excluded.password_hash;
-
--- ===== Seed ข้อมูล Project ทดสอบ (ให้ /pm/board?id=1 มีข้อมูลแสดงทันที) =====
 
 INSERT OR IGNORE INTO themes (id, name) VALUES (1, 'Digital Transformation');
 INSERT OR IGNORE INTO projects (id, name, status, theme_id) VALUES (1, 'PM Platform Rollout', 'in_progress', 1);
 INSERT OR IGNORE INTO workflow_statuses (id, project_id, name, category, sort_order) VALUES
-  (1, 1, 'To Do', 'todo', 1),
-  (2, 1, 'Doing', 'doing', 2),
-  (3, 1, 'Done', 'done', 3);
+  (1, 1, 'To Do', 'todo', 1), (2, 1, 'Doing', 'doing', 2), (3, 1, 'Done', 'done', 3);

@@ -1,7 +1,7 @@
 /**
  * apps/web/src/app/api/debug/route.ts
- * Diagnostic endpoint — เปิดใน browser ตรง ๆ (GET /api/debug) เพื่อเช็ค D1 + secrets
- * ⚠️ ลบไฟล์นี้ทิ้งหลัง debug เสร็จ ก่อน production จริงระยะยาว
+ * Diagnostic — เปิด /api/debug ในเบราว์เซอร์เพื่อเช็ค D1 + secrets
+ * ⚠️ ลบทิ้งหลัง debug เสร็จ
  */
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDb, users } from "@/db";
@@ -9,7 +9,7 @@ import { createDb, users } from "@/db";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const { env } = getCloudflareContext();
+  const { env } = await getCloudflareContext({ async: true });
 
   const envCheck = {
     DB_BOUND: typeof env.DB !== "undefined",

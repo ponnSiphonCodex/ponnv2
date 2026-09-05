@@ -1,7 +1,7 @@
 /**
  * apps/web/src/lib/board-data.ts
  * Query ข้อมูล Kanban board จาก D1 ตรง ๆ (ใช้ในหน้า board server component)
- * ย้าย logic มาจาก Hono API worker เดิม เพื่อให้ web app ไม่ต้องพึ่ง API worker แยก
+ * ย้าย logic มาจาก Hono API worker เดิม → web app ไม่ต้องพึ่ง API worker แยกอีกต่อไป
  * (ตัดปัญหา cross-worker cookie / CORS / custom JWT ทั้งหมด)
  */
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -11,7 +11,6 @@ import {
   features,
   projects,
   tasks,
-  themes,
   users,
   workflowStatuses,
   taskWorklogs,
@@ -88,7 +87,6 @@ export async function getBoardData(db: DbClient, projectId: number): Promise<Boa
 
   const taskIds = taskRows.map((t) => t.id);
 
-  // custom fields (polymorphic — เฉพาะ entityType='task')
   const customFieldRows = taskIds.length
     ? await db
         .select({
@@ -110,7 +108,6 @@ export async function getBoardData(db: DbClient, projectId: number): Promise<Boa
     cfMap.set(row.entityId, list);
   }
 
-  // actual hours (SUM worklogs) แบบ batch
   const hoursMap = new Map<number, number>();
   if (taskIds.length) {
     const hourRows = await db
@@ -124,7 +121,6 @@ export async function getBoardData(db: DbClient, projectId: number): Promise<Boa
     for (const r of hourRows) hoursMap.set(r.taskId, r.actualHours);
   }
 
-  // progress %
   let doneCount = 0;
   const statusCategoryMap = new Map(statuses.map((s) => [s.id, s.category]));
   for (const t of taskRows) {
@@ -144,7 +140,6 @@ export async function getBoardData(db: DbClient, projectId: number): Promise<Boa
         id: t.id,
         title: t.title,
         assignee: t.assigneeId ? { id: t.assigneeId, name: t.assigneeName, image: t.assigneeImage } : null,
-        // startDate/dueDate เป็น Date object (schema mode: "timestamp") → แปลงเป็น epoch ms
         startDate: t.startDate instanceof Date ? t.startDate.getTime() : null,
         dueDate: t.dueDate instanceof Date ? t.dueDate.getTime() : null,
         estimatedHours: t.estimatedHours,

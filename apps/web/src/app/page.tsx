@@ -1,8 +1,3 @@
-/**
- * apps/web/src/app/page.tsx
- * ⚠️ getCloudflareContext() ไม่รับ generic — env type มาจาก global CloudflareEnv
- * (apps/web/cloudflare-env.d.ts)
- */
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDb, systemRoles, userRoles } from "@/db";
@@ -10,13 +5,12 @@ import { getAuthConfig } from "@/lib/auth";
 import NextAuth from "next-auth";
 import { eq } from "drizzle-orm";
 
-// บังคับ dynamic — กัน Next.js prerender/เรียก getCloudflareContext() ตอน build (ยังไม่มี CF context)
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const { env } = getCloudflareContext();
-
+  const { env } = await getCloudflareContext({ async: true });
   const db = createDb(env.DB);
+
   const { auth } = NextAuth(
     getAuthConfig(db, { AUTH_SECRET: env.AUTH_SECRET, GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET })
   );
@@ -37,7 +31,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main style={{ padding: 48, fontFamily: "sans-serif", background: "#F4F4F6", minHeight: "100vh" }}>
+    <main style={{ padding: 48, background: "#F4F4F6", minHeight: "100vh" }}>
       <h1 style={{ color: "#001D58", marginBottom: 8 }}>ระบบของคุณ</h1>
       <p style={{ color: "#6B7280", marginBottom: 32 }}>เลือกระบบที่ต้องการเข้าใช้งาน</p>
 
@@ -48,7 +42,6 @@ export default async function HomePage() {
             <p style={{ margin: "8px 0 0", fontSize: 14, color: "#6B7280" }}>Project Management &amp; Portfolio</p>
           </a>
         )}
-
         {modules.includes("RENTALS") && (
           <a href="https://rentals.ponnsth.com" style={{ display: "block", width: 260, padding: 24, background: "#fff", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", textDecoration: "none", color: "#111827", borderTop: "4px solid #EC186E" }}>
             <h3 style={{ margin: 0, color: "#EC186E" }}>Rentals Management</h3>
