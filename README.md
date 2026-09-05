@@ -1,21 +1,21 @@
 # Portfolio Workspace — PM & Portfolio (Cloudflare D1 + Workers)
 
-## v14 — Auth เขียนเอง JS ธรรมดา (ไม่ใช้ NextAuth) + แก้ Favicon
+## v16 — แก้ Login (secrets โดนลบ) + Favicon
 
-- Session = signed cookie HMAC (`lib/session.ts`), Local login (`api/login`), Google OAuth เขียนเอง
-- **Favicon fix**: ย้ายไอคอนไป public/ + middleware exclude + metadata icons explicit
-- Font 15px, ตัด subtitle "ระบบบริหารพอร์ตโครงการองค์กร" ออก
+### ★ Login fix — ฝัง secrets ใน wrangler.jsonc
+ปัญหา: ตั้ง secrets เป็น "Variable" ใน Dashboard → opennextjs-cloudflare deploy (wrangler deploy)
+ลบทิ้งทุกครั้ง → /api/debug ขึ้น false → login พังทั้ง Google + Local
+แก้: ย้าย AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET ไปไว้ใน `apps/web/wrangler.jsonc` (vars)
+→ deploy พร้อมโค้ดทุกครั้ง ไม่มีทางหาย (repo ต้อง Private)
+
+### ★ Favicon fix — icons อยู่ใน public/ อย่างเดียว
+เดิม v15 มี icons ซ้ำทั้ง app/ และ public/ → ชนกัน → favicon ไม่ขึ้น
+แก้: icons อยู่ public/ อย่างเดียว + middleware matcher exclude ไฟล์ .png/.ico + metadata.icons ชี้ /favicon.ico
 
 ## Login
-- Google **หรือ** Email+Password
-- Local user: admin@ponnsth.com / Ponnsth@2026
+- Google **หรือ** admin@ponnsth.com / Ponnsth@2026
 
-## ⚠️ ต้องตั้ง Secrets ใน Cloudflare (Worker > Settings > Variables and Secrets)
-ต้องเป็น **Secret (encrypted)** ไม่ใช่ Variable: AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
-เช็คที่ /api/debug ต้องได้ true ครบ
+## Google redirect URI (ต้องมีใน Console)
+https://pm.ponnsth.com/api/auth/callback/google
 
-## Google redirect URI
-`https://pm.ponnsth.com/api/auth/callback/google` (ตรงกับ Console แล้ว)
-
-## File Upload → Google Drive
-lib/upload.ts + components/file-upload.tsx + google-apps-script/Code.gs
+## File Upload → Google Drive: lib/upload.ts + components/file-upload.tsx + google-apps-script/Code.gs

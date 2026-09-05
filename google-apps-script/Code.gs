@@ -2,7 +2,7 @@
  * Code.gs — Google Apps Script Web App รับไฟล์ Base64 บันทึกลง Drive
  * Deploy: New deployment → Web app → Execute as: Me, Who has access: Anyone
  */
-var FOLDER_ID = ""; // ใส่ Drive Folder ID (เว้นว่าง = My Drive root)
+var FOLDER_ID = "";
 function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);

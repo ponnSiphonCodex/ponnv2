@@ -1,18 +1,7 @@
-/**
- * apps/web/src/lib/upload.ts
- * อัปโหลดไฟล์ไป Google Drive ผ่าน Apps Script (client, JS ธรรมดา)
- */
 const DEFAULT_DRIVE_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbyYcvZGhpwhKUNAd4P60JB4UwAPcxHeJIQ4HhGdJRRgpoO_vRFC-z6AAEsA9GKK76rp/exec";
 export function getDriveUploadUrl(): string { return process.env.NEXT_PUBLIC_DRIVE_UPLOAD_URL || DEFAULT_DRIVE_UPLOAD_URL; }
 export type UploadResult = { ok: boolean; fileId?: string; url?: string; error?: string };
-export function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => { const result = reader.result as string; const comma = result.indexOf(","); resolve(comma >= 0 ? result.slice(comma + 1) : result); };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
+export function fileToBase64(file: File): Promise<string> { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => { const result = reader.result as string; const comma = result.indexOf(","); resolve(comma >= 0 ? result.slice(comma + 1) : result); }; reader.onerror = () => reject(reader.error); reader.readAsDataURL(file); }); }
 export async function uploadToGoogleDrive(file: File, url = getDriveUploadUrl()): Promise<UploadResult> {
   try {
     const base64 = await fileToBase64(file);

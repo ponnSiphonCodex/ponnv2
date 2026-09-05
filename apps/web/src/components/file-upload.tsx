@@ -6,8 +6,7 @@ export function FileUpload({ onUploaded }: { onUploaded?: (result: UploadResult)
   const [result, setResult] = useState<UploadResult | null>(null);
   const [fileName, setFileName] = useState("");
   async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const file = e.target.files?.[0]; if (!file) return;
     setFileName(file.name); setUploading(true); setResult(null);
     const r = await uploadToGoogleDrive(file);
     setUploading(false); setResult(r); onUploaded?.(r);
@@ -15,8 +14,7 @@ export function FileUpload({ onUploaded }: { onUploaded?: (result: UploadResult)
   return (
     <div style={{ border: "1px dashed #E5E7EB", borderRadius: 10, padding: 16 }}>
       <label style={{ display: "inline-block", background: "#001D58", color: "#fff", padding: "10px 16px", borderRadius: 8, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
-        เลือกไฟล์อัปโหลด
-        <input type="file" onChange={handleChange} style={{ display: "none" }} disabled={uploading} />
+        เลือกไฟล์อัปโหลด<input type="file" onChange={handleChange} style={{ display: "none" }} disabled={uploading} />
       </label>
       {fileName && <span style={{ marginLeft: 12, fontSize: 13, color: "#6B7280" }}>{fileName}</span>}
       {uploading && <p style={{ fontSize: 13, color: "#6B7280", marginTop: 12 }}>กำลังอัปโหลดไป Google Drive...</p>}

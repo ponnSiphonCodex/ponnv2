@@ -6,13 +6,12 @@ const PUBLIC_PATHS = ["/login", "/api/login", "/api/auth", "/api/logout", "/api/
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return NextResponse.next();
-
   const hasSession = req.cookies.has("session");
   if (!hasSession) return NextResponse.redirect(new URL("/login", req.url));
   return NextResponse.next();
 }
 
-// ★ matcher exclude ไฟล์ favicon/icon ทั้งหมด — กัน middleware บล็อกรูปจน favicon ไม่ขึ้น
+// ★ exclude static assets ทั้งหมด (รวมไฟล์รูป .png .ico .svg) กัน middleware บล็อก favicon
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|rocket-logo.png|manifest.webmanifest).*)"],
+  matcher: ["/((?!_next/static|_next/image|.*\\.(?:png|ico|svg|jpg|jpeg|webp|gif)$).*)"],
 };
