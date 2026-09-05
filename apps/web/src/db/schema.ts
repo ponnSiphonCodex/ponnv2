@@ -47,12 +47,6 @@ export const sessions = sqliteTable("sessions", {
   expires: integer("expires", { mode: "timestamp" }).notNull(),
 });
 
-export const verificationTokens = sqliteTable(
-  "verification_tokens",
-  { identifier: text("identifier").notNull(), token: text("token").notNull(), expires: integer("expires", { mode: "timestamp" }).notNull() },
-  (t) => ({ pk: primaryKey({ columns: [t.identifier, t.token] }) })
-);
-
 export const systemRoles = sqliteTable("system_roles", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   roleName: text("role_name").notNull(),
@@ -202,59 +196,6 @@ export const taskWorklogs = sqliteTable(
   (t) => ({ taskIdx: index("task_worklogs_task_idx").on(t.taskId) })
 );
 
-export const issues = sqliteTable("issues", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  taskId: integer("task_id").references(() => tasks.id, { onDelete: "cascade" }),
-  projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  description: text("description"),
-  status: text("status", { enum: ["open", "in_progress", "resolved", "closed"] }).notNull().default("open"),
-  severity: text("severity", { enum: ["low", "medium", "high", "critical"] }).notNull().default("medium"),
-  reporterId: text("reporter_id").references(() => users.id, { onDelete: "set null" }),
-  ...auditFields(),
-});
-
-export const risks = sqliteTable("risks", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  description: text("description"),
-  probability: text("probability", { enum: ["low", "medium", "high"] }).notNull().default("medium"),
-  impact: text("impact", { enum: ["low", "medium", "high"] }).notNull().default("medium"),
-  mitigationPlan: text("mitigation_plan"),
-  ownerId: text("owner_id").references(() => users.id, { onDelete: "set null" }),
-  ...auditFields(),
-});
-
-export const comments = sqliteTable(
-  "comments",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    entityType: text("entity_type", { enum: ["task", "project", "feature", "issue", "risk"] }).notNull(),
-    entityId: integer("entity_id").notNull(),
-    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    content: text("content").notNull(),
-    ...auditFields(),
-  },
-  (t) => ({ entityIdx: index("comments_entity_idx").on(t.entityType, t.entityId) })
-);
-
-export const activityLogs = sqliteTable(
-  "activity_logs",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    entityType: text("entity_type").notNull(),
-    entityId: integer("entity_id").notNull(),
-    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
-    action: text("action").notNull(),
-    fieldChanged: text("field_changed"),
-    oldValue: text("old_value"),
-    newValue: text("new_value"),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  },
-  (t) => ({ entityIdx: index("activity_logs_entity_idx").on(t.entityType, t.entityId) })
-);
-
 export const attachments = sqliteTable(
   "attachments",
   {
@@ -263,6 +204,7 @@ export const attachments = sqliteTable(
     entityId: integer("entity_id").notNull(),
     googleDriveFileId: text("google_drive_file_id").notNull(),
     fileName: text("file_name"),
+    fileUrl: text("file_url"),
     uploadedBy: text("uploaded_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   },
@@ -271,7 +213,6 @@ export const attachments = sqliteTable(
 
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
-  sessions: many(sessions),
   roles: many(userRoles),
   worklogs: many(taskWorklogs),
 }));
@@ -280,13 +221,10 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   theme: one(themes, { fields: [projects.themeId], references: [themes.id] }),
   features: many(features),
   workflowStatuses: many(workflowStatuses),
-  risks: many(risks),
-  issues: many(issues),
 }));
 
 export const featuresRelations = relations(features, ({ one, many }) => ({
   project: one(projects, { fields: [features.projectId], references: [projects.id] }),
-  product: one(products, { fields: [features.productId], references: [products.id] }),
   tasks: many(tasks),
 }));
 
@@ -300,15 +238,4 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   workflowStatus: one(workflowStatuses, { fields: [tasks.workflowStatusId], references: [workflowStatuses.id] }),
   assignee: one(users, { fields: [tasks.assigneeId], references: [users.id] }),
   worklogs: many(taskWorklogs),
-}));
-
-export const customFieldsRelations = relations(customFields, ({ many }) => ({ values: many(customFieldValues) }));
-
-export const customFieldValuesRelations = relations(customFieldValues, ({ one }) => ({
-  field: one(customFields, { fields: [customFieldValues.customFieldId], references: [customFields.id] }),
-}));
-
-export const taskWorklogsRelations = relations(taskWorklogs, ({ one }) => ({
-  task: one(tasks, { fields: [taskWorklogs.taskId], references: [tasks.id] }),
-  user: one(users, { fields: [taskWorklogs.userId], references: [users.id] }),
 }));

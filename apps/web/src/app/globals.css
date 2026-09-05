@@ -15,11 +15,5 @@ html, body {
   line-height: 1.6;
   color: var(--color-text);
 }
-input::placeholder, textarea::placeholder {
-  color: var(--color-placeholder);
-  opacity: 1;
-}
-input, button, textarea, select {
-  font-family: inherit;
-  font-size: inherit;
-}
+input::placeholder, textarea::placeholder { color: var(--color-placeholder); opacity: 1; }
+input, button, textarea, select { font-family: inherit; font-size: inherit; }

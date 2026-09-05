@@ -1,27 +1,21 @@
 /**
- * apps/web/src/app/pm/board/page.tsx
- * Kanban Board — query D1 ตรง ๆ ใน server component (ไม่เรียก API worker แยก)
- * ใช้ query param (?id=1) แทน dynamic route [projectId]
+ * apps/web/src/app/pm/board/page.tsx — Kanban Board
+ * เช็ค session เอง → query D1 ตรง (ไม่พึ่ง API worker / NextAuth)
  */
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import NextAuth from "next-auth";
 import { createDb } from "@/db";
-import { getAuthConfig } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/current-user";
 import { getBoardData } from "@/lib/board-data";
 
 export const dynamic = "force-dynamic";
 
 export default async function BoardPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   const { env } = await getCloudflareContext({ async: true });
+  const user = await getCurrentUser(env.AUTH_SECRET);
+  if (!user) redirect("/login");
+
   const db = createDb(env.DB);
-
-  const { auth } = NextAuth(
-    getAuthConfig(db, { AUTH_SECRET: env.AUTH_SECRET, GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET })
-  );
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
   const params = await searchParams;
   const projectId = Number(params.id ?? "1");
   const board = Number.isInteger(projectId) ? await getBoardData(db, projectId) : null;
@@ -30,20 +24,22 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
     return (
       <main style={{ padding: 24 }}>
         <p>ไม่พบ Project (id={String(params.id ?? "1")})</p>
-        <p style={{ fontSize: 13, color: "#6B7280" }}>
-          ถ้ายังไม่มีข้อมูล ให้รัน SQL seed ใน D1 Console (database/migrations/schema.sql)
-        </p>
+        <p style={{ fontSize: 13, color: "#6B7280" }}>ถ้ายังไม่มีข้อมูล ให้รัน database/migrations/schema.sql ใน D1 Console</p>
+        <p style={{ marginTop: 16 }}><a href="/api/logout" style={{ color: "#EC186E" }}>ออกจากระบบ</a></p>
       </main>
     );
   }
 
   return (
     <main style={{ padding: 24 }}>
-      <header style={{ marginBottom: 24 }}>
-        <h1 style={{ color: "#001D58", margin: 0 }}>{board.project.name}</h1>
-        <p style={{ color: "#6B7280" }}>
-          Progress: {board.project.progress.done}/{board.project.progress.total} ({board.project.progress.percent}%)
-        </p>
+      <header style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h1 style={{ color: "#001D58", margin: 0 }}>{board.project.name}</h1>
+          <p style={{ color: "#6B7280" }}>
+            Progress: {board.project.progress.done}/{board.project.progress.total} ({board.project.progress.percent}%)
+          </p>
+        </div>
+        <a href="/api/logout" style={{ fontSize: 13, color: "#6B7280", textDecoration: "none" }}>ออกจากระบบ</a>
       </header>
 
       <div style={{ display: "flex", gap: 16, overflowX: "auto" }}>

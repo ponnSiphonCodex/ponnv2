@@ -1,15 +1,12 @@
 /**
  * apps/web/src/lib/password.ts
- * Password hashing สำหรับ Local Email+Password login — PBKDF2-SHA256 ผ่าน Web Crypto
- * รูปแบบเก็บใน DB: "<iterations>:<saltHex>:<hashHex>"
+ * PBKDF2-SHA256 ผ่าน Web Crypto — รูปแบบ "<iterations>:<saltHex>:<hashHex>"
  */
-
 const PBKDF2_ITERATIONS = 100_000;
 
 function toHex(buffer: ArrayBuffer): string {
   return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
-
 function fromHex(hex: string): Uint8Array {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
@@ -18,24 +15,16 @@ function fromHex(hex: string): Uint8Array {
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt, iterations: PBKDF2_ITERATIONS, hash: "SHA-256" },
-    keyMaterial,
-    256
-  );
+  const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: PBKDF2_ITERATIONS, hash: "SHA-256" }, km, 256);
   return `${PBKDF2_ITERATIONS}:${toHex(salt.buffer)}:${toHex(bits)}`;
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const parts = stored.split(":");
   if (parts.length !== 3) return false;
-
   const [iterStr, saltHex, hashHex] = parts;
-  const iterations = Number(iterStr);
-  const salt = fromHex(saltHex);
-
-  const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations, hash: "SHA-256" }, keyMaterial, 256);
+  const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: fromHex(saltHex), iterations: Number(iterStr), hash: "SHA-256" }, km, 256);
   return toHex(bits) === hashHex;
 }

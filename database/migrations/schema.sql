@@ -1,9 +1,9 @@
 -- database/migrations/schema.sql
--- SQL รวมไฟล์เดียว: สร้าง 23 ตาราง + seed local user + project ทดสอบ
--- ⚠️ ห้ามใส่ PRAGMA — D1 Console รันไม่ได้ (ทำให้ batch ล้ม → "no such table")
--- ทุกคำสั่ง idempotent (IF NOT EXISTS / ON CONFLICT) รันซ้ำได้ปลอดภัย
+-- SQL รวมไฟล์เดียว: สร้างตาราง + seed local user + project ทดสอบ
+-- ⚠️ ห้ามใส่ PRAGMA — D1 Console รันไม่ได้ (batch ล้ม → "no such table")
+-- ทุกคำสั่ง idempotent (IF NOT EXISTS / ON CONFLICT) รันซ้ำได้
 --
--- วิธีรัน: D1 Console → วางทั้งไฟล์ → Ctrl+A ในกล่อง Query → Run (ต้องเห็น "Executed 40/40")
+-- วิธีรัน: D1 Console → วางทั้งไฟล์ → Ctrl+A ในกล่อง Query → Run (ต้องเห็น "Executed NN/NN")
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY, name TEXT, email TEXT NOT NULL UNIQUE, email_verified INTEGER, image TEXT,
@@ -21,10 +21,6 @@ CREATE INDEX IF NOT EXISTS accounts_user_idx ON accounts(user_id);
 
 CREATE TABLE IF NOT EXISTS sessions (
   session_token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS verification_tokens (
-  identifier TEXT NOT NULL, token TEXT NOT NULL, expires INTEGER NOT NULL, PRIMARY KEY (identifier, token)
 );
 
 CREATE TABLE IF NOT EXISTS system_roles (
@@ -129,44 +125,9 @@ CREATE TABLE IF NOT EXISTS task_worklogs (
 );
 CREATE INDEX IF NOT EXISTS task_worklogs_task_idx ON task_worklogs(task_id);
 
-CREATE TABLE IF NOT EXISTS issues (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
-  project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE, title TEXT NOT NULL, description TEXT,
-  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','in_progress','resolved','closed')),
-  severity TEXT NOT NULL DEFAULT 'medium' CHECK (severity IN ('low','medium','high','critical')),
-  reporter_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-  created_at INTEGER NOT NULL DEFAULT (unixepoch()), updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  created_by TEXT REFERENCES users(id) ON DELETE SET NULL, updated_by TEXT REFERENCES users(id) ON DELETE SET NULL
-);
-
-CREATE TABLE IF NOT EXISTS risks (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  title TEXT NOT NULL, description TEXT,
-  probability TEXT NOT NULL DEFAULT 'medium' CHECK (probability IN ('low','medium','high')),
-  impact TEXT NOT NULL DEFAULT 'medium' CHECK (impact IN ('low','medium','high')),
-  mitigation_plan TEXT, owner_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-  created_at INTEGER NOT NULL DEFAULT (unixepoch()), updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  created_by TEXT REFERENCES users(id) ON DELETE SET NULL, updated_by TEXT REFERENCES users(id) ON DELETE SET NULL
-);
-
-CREATE TABLE IF NOT EXISTS comments (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, entity_type TEXT NOT NULL CHECK (entity_type IN ('task','project','feature','issue','risk')),
-  entity_id INTEGER NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, content TEXT NOT NULL,
-  created_at INTEGER NOT NULL DEFAULT (unixepoch()), updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  created_by TEXT REFERENCES users(id) ON DELETE SET NULL, updated_by TEXT REFERENCES users(id) ON DELETE SET NULL
-);
-CREATE INDEX IF NOT EXISTS comments_entity_idx ON comments(entity_type, entity_id);
-
-CREATE TABLE IF NOT EXISTS activity_logs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, entity_type TEXT NOT NULL, entity_id INTEGER NOT NULL,
-  user_id TEXT REFERENCES users(id) ON DELETE SET NULL, action TEXT NOT NULL,
-  field_changed TEXT, old_value TEXT, new_value TEXT, created_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-CREATE INDEX IF NOT EXISTS activity_logs_entity_idx ON activity_logs(entity_type, entity_id);
-
 CREATE TABLE IF NOT EXISTS attachments (
   id INTEGER PRIMARY KEY AUTOINCREMENT, entity_type TEXT NOT NULL CHECK (entity_type IN ('task','project','feature','issue')),
-  entity_id INTEGER NOT NULL, google_drive_file_id TEXT NOT NULL, file_name TEXT,
+  entity_id INTEGER NOT NULL, google_drive_file_id TEXT NOT NULL, file_name TEXT, file_url TEXT,
   uploaded_by TEXT REFERENCES users(id) ON DELETE SET NULL, created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 CREATE INDEX IF NOT EXISTS attachments_entity_idx ON attachments(entity_type, entity_id);

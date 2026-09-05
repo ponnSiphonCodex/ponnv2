@@ -1,6 +1,6 @@
 /**
  * apps/web/src/app/api/debug/route.ts
- * Diagnostic — เปิด /api/debug ในเบราว์เซอร์เพื่อเช็ค D1 + secrets
+ * Diagnostic — GET /api/debug เช็ค D1 + secrets + นับ user
  * ⚠️ ลบทิ้งหลัง debug เสร็จ
  */
 import { getCloudflareContext } from "@opennextjs/cloudflare";
@@ -19,7 +19,6 @@ export async function GET() {
   };
 
   let dbCheck: { ok: boolean; error?: string; userCount?: number } = { ok: false };
-
   if (envCheck.DB_BOUND) {
     try {
       const db = createDb(env.DB);
@@ -29,7 +28,7 @@ export async function GET() {
       dbCheck = { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
   } else {
-    dbCheck = { ok: false, error: "env.DB ไม่มีค่า — Worker ยังไม่ได้ผูก D1 binding" };
+    dbCheck = { ok: false, error: "env.DB ไม่มีค่า — ยังไม่ผูก D1 binding" };
   }
 
   return Response.json({ env: envCheck, db: dbCheck }, { status: 200 });

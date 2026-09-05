@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Sarabun } from "next/font/google";
-import { AppSessionProvider } from "@/components/session-provider";
 import "./globals.css";
 
 const sarabun = Sarabun({
@@ -18,9 +17,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th" className={sarabun.variable}>
-      <body>
-        <AppSessionProvider>{children}</AppSessionProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
