@@ -7,9 +7,6 @@
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "pm-platform-web" }],
   "d1_databases": [{ "binding": "DB", "database_name": "ponn_platform", "database_id": "940740b8-9177-489a-9344-47b3e61302f8" }],
-
-  // ★ vars ฝังตรงนี้ = deploy พร้อม Worker ทุกครั้ง ไม่โดน wrangler deploy ลบ (ต่างจาก Dashboard Variable)
-  // ⚠️ repo ต้อง Private เพราะมี secret จริง — จะย้ายไป Cloudflare Secret ทีหลังก็ได้
   "vars": {
     "AUTH_SECRET": "pmPlatform_ponnsth_2026_kJ8mN2pQ7rT4vW9xZ1aB3cD5eF6gH0iL",
     "GOOGLE_CLIENT_ID": "71834421978-cuhvt0kbulcki1e8q4e1d7pmt1kq8sk6.apps.googleusercontent.com",

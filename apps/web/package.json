@@ -2,14 +2,7 @@
   "name": "pm-platform-web",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "build:worker": "opennextjs-cloudflare build",
-    "preview": "npm run build:worker && opennextjs-cloudflare preview",
-    "deploy": "npm run build:worker && opennextjs-cloudflare deploy",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv"
-  },
+  "scripts": { "dev": "next dev", "build": "next build", "build:worker": "opennextjs-cloudflare build", "preview": "npm run build:worker && opennextjs-cloudflare preview", "deploy": "npm run build:worker && opennextjs-cloudflare deploy", "cf-typegen": "wrangler types --env-interface CloudflareEnv" },
   "dependencies": { "next": "^15.5.0", "drizzle-orm": "^0.33.0", "react": "^19.0.0", "react-dom": "^19.0.0" },
   "devDependencies": { "@opennextjs/cloudflare": "^1.0.0", "@cloudflare/workers-types": "^4.20240924.0", "@types/react": "^19.0.0", "@types/node": "^22.5.5", "typescript": "^5.5.4", "wrangler": "^4.0.0" }
 }

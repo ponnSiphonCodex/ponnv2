@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-
 const PUBLIC_PATHS = ["/login", "/api/login", "/api/auth", "/api/logout", "/api/debug"];
-
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return NextResponse.next();
@@ -10,8 +8,4 @@ export function middleware(req: NextRequest) {
   if (!hasSession) return NextResponse.redirect(new URL("/login", req.url));
   return NextResponse.next();
 }
-
-// ★ exclude static assets ทั้งหมด (รวมไฟล์รูป .png .ico .svg) กัน middleware บล็อก favicon
-export const config = {
-  matcher: ["/((?!_next/static|_next/image|.*\\.(?:png|ico|svg|jpg|jpeg|webp|gif)$).*)"],
-};
+export const config = { matcher: ["/((?!_next/static|_next/image|.*\\.(?:png|ico|svg|jpg|jpeg|webp|gif)$).*)"] };

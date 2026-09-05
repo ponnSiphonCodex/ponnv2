@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { uploadToGoogleDrive, type UploadResult } from "@/lib/upload";
-export function FileUpload({ onUploaded }: { onUploaded?: (result: UploadResult) => void }) {
+export function FileUpload({ onUploaded }: { onUploaded?: (r: UploadResult) => void }) {
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
   const [fileName, setFileName] = useState("");
@@ -17,9 +17,9 @@ export function FileUpload({ onUploaded }: { onUploaded?: (result: UploadResult)
         เลือกไฟล์อัปโหลด<input type="file" onChange={handleChange} style={{ display: "none" }} disabled={uploading} />
       </label>
       {fileName && <span style={{ marginLeft: 12, fontSize: 13, color: "#6B7280" }}>{fileName}</span>}
-      {uploading && <p style={{ fontSize: 13, color: "#6B7280", marginTop: 12 }}>กำลังอัปโหลดไป Google Drive...</p>}
-      {result?.ok && <p style={{ fontSize: 13, color: "#059669", marginTop: 12 }}>✅ อัปโหลดสำเร็จ{result.url && <> · <a href={result.url} target="_blank" rel="noopener noreferrer" style={{ color: "#001D58" }}>เปิดไฟล์</a></>}</p>}
-      {result && !result.ok && <p style={{ fontSize: 13, color: "#B91C1C", marginTop: 12 }}>❌ อัปโหลดไม่สำเร็จ: {result.error}</p>}
+      {uploading && <p style={{ fontSize: 13, color: "#6B7280", marginTop: 12 }}>กำลังอัปโหลด...</p>}
+      {result?.ok && <p style={{ fontSize: 13, color: "#059669", marginTop: 12 }}>✅ สำเร็จ{result.url && <> · <a href={result.url} target="_blank" rel="noopener noreferrer" style={{ color: "#001D58" }}>เปิดไฟล์</a></>}</p>}
+      {result && !result.ok && <p style={{ fontSize: 13, color: "#B91C1C", marginTop: 12 }}>❌ {result.error}</p>}
     </div>
   );
 }
