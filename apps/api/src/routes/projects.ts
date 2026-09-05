@@ -1,6 +1,3 @@
-/**
- * apps/api/src/routes/projects.ts
- */
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import { projects, themes, createDb } from "../db";
@@ -12,22 +9,12 @@ export const projectRoutes = new Hono<AppEnv>();
 projectRoutes.get("/", async (c) => {
   const db = createDb(c.env.DB);
   const rows = await db
-    .select({
-      id: projects.id,
-      name: projects.name,
-      status: projects.status,
-      themeId: projects.themeId,
-      themeName: themes.name,
-    })
+    .select({ id: projects.id, name: projects.name, status: projects.status, themeId: projects.themeId, themeName: themes.name })
     .from(projects)
     .leftJoin(themes, eq(projects.themeId, themes.id));
 
   const result = await Promise.all(
-    rows.map(async (p) => ({
-      ...p,
-      progress: await computeProjectProgress(db, p.id),
-      autoDates: await computeProjectAutoDates(db, p.id),
-    }))
+    rows.map(async (p) => ({ ...p, progress: await computeProjectProgress(db, p.id), autoDates: await computeProjectAutoDates(db, p.id) }))
   );
 
   return c.json({ projects: result });
@@ -37,10 +24,7 @@ projectRoutes.post("/", async (c) => {
   const db = createDb(c.env.DB);
   const body = await c.req.json<{ name: string; status?: string; themeId?: number }>();
   const user = c.get("user");
-
-  if (!body.name?.trim()) {
-    return c.json({ error: "name ห้ามว่าง" }, 400);
-  }
+  if (!body.name?.trim()) return c.json({ error: "name ห้ามว่าง" }, 400);
 
   const [created] = await db
     .insert(projects)

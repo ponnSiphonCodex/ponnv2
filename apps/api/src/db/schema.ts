@@ -1,33 +1,19 @@
 /**
  * src/db/schema.ts
  * Drizzle ORM schema — Cloudflare D1 (SQLite) — sqlite-core only (ไม่ใช้ Prisma)
- *
- * หมายเหตุสำคัญ: ไฟล์นี้ถูก "ก็อปปี้" ไว้ทั้งใน apps/api/src/db/ และ apps/web/src/db/
- * แบบเหมือนกันเป๊ะ (ไม่ใช้ npm workspace เชื่อมกัน) เหตุผล: Cloudflare Workers Builds
- * ที่ตั้ง "Root Directory" แยกต่อ Worker ไม่ resolve workspace package ข้ามโฟลเดอร์ได้
- * เชื่อถือได้ยากเวลา deploy ผ่านหน้าเว็บ (ไม่มี lockfile ที่ root) — การก็อปปี้ไฟล์เดียวกันไว้ทั้งสองที่
- * ทำให้แต่ละ Worker install ได้เองอิสระ ไม่มี dependency ข้ามโฟลเดอร์เลย
- *
- * ⚠️ ถ้าแก้ schema ในอนาคต ต้องแก้ทั้ง 2 ไฟล์ให้ตรงกัน (apps/api/src/db/schema.ts และ
- * apps/web/src/db/schema.ts) — ไฟล์ SQL อ้างอิงกลางอยู่ที่ database/migrations/0000_init.sql
+ * ก็อปปี้ไว้ทั้งใน apps/api/src/db/ และ apps/web/src/db/ (ต้องแก้ทั้งคู่ถ้าเปลี่ยน schema)
  */
 
 import { sql, relations } from "drizzle-orm";
 import { sqliteTable, text, integer, real, primaryKey, uniqueIndex, index } from "drizzle-orm/sqlite-core";
 
 const auditFields = () => ({
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`)
-    .$onUpdate(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`).$onUpdate(() => new Date()),
   createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
   updatedBy: text("updated_by").references(() => users.id, { onDelete: "set null" }),
 });
 
-// 1) AUTH & USERS LAYER (ตาม @auth/drizzle-adapter — sqlite)
 export const users = sqliteTable("users", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name"),
@@ -68,15 +54,10 @@ export const sessions = sqliteTable("sessions", {
 
 export const verificationTokens = sqliteTable(
   "verification_tokens",
-  {
-    identifier: text("identifier").notNull(),
-    token: text("token").notNull(),
-    expires: integer("expires", { mode: "timestamp" }).notNull(),
-  },
+  { identifier: text("identifier").notNull(), token: text("token").notNull(), expires: integer("expires", { mode: "timestamp" }).notNull() },
   (t) => ({ pk: primaryKey({ columns: [t.identifier, t.token] }) })
 );
 
-// 2) ROLES & PERMISSIONS LAYER
 export const systemRoles = sqliteTable("system_roles", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   roleName: text("role_name").notNull(),
@@ -96,7 +77,6 @@ export const userRoles = sqliteTable(
   (t) => ({ uniqUserRole: uniqueIndex("user_roles_user_role_uniq").on(t.userId, t.roleId) })
 );
 
-// 3) STRATEGY LAYER
 export const themes = sqliteTable("themes", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
@@ -121,7 +101,6 @@ export const requirements = sqliteTable("requirements", {
   ...auditFields(),
 });
 
-// 4) PRODUCT & PROJECT LAYER
 export const priorities = sqliteTable("priorities", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
@@ -155,7 +134,6 @@ export const features = sqliteTable("features", {
   ...auditFields(),
 });
 
-// 5) TASK & KANBAN LAYER
 export const workflowStatuses = sqliteTable(
   "workflow_statuses",
   {
@@ -215,7 +193,6 @@ export const customFieldValues = sqliteTable(
   })
 );
 
-// 6) TRACKING & COLLABORATION LAYER
 export const taskWorklogs = sqliteTable(
   "task_worklogs",
   {
@@ -297,7 +274,6 @@ export const attachments = sqliteTable(
   (t) => ({ entityIdx: index("attachments_entity_idx").on(t.entityType, t.entityId) })
 );
 
-// RELATIONS
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
   sessions: many(sessions),

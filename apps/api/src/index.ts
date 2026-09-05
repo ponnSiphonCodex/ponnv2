@@ -1,7 +1,3 @@
-/**
- * apps/api/src/index.ts
- * Entry point ของ Cloudflare Worker (Hono)
- */
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
@@ -16,7 +12,6 @@ app.use("*", logger());
 app.use(
   "*",
   cors({
-    // ปรับ origin ให้ตรงกับโดเมนจริงของ apps/web — เพิ่ม URL ทดสอบ (*.workers.dev) เข้าไปชั่วคราวได้ระหว่างทดสอบ
     origin: ["http://localhost:3000", "https://ponnsth.com", "https://www.ponnsth.com"],
     credentials: true,
   })

@@ -1,6 +1,3 @@
-/**
- * apps/api/src/routes/tasks.ts
- */
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import { activityLogs, taskWorklogs, tasks, workflowStatuses, createDb } from "../db";
@@ -26,13 +23,8 @@ taskRoutes.patch("/:id/status", async (c) => {
   const [updated] = await db.update(tasks).set({ workflowStatusId, updatedBy: user.id }).where(eq(tasks.id, taskId)).returning();
 
   await db.insert(activityLogs).values({
-    entityType: "task",
-    entityId: taskId,
-    userId: user.id,
-    action: "status_changed",
-    fieldChanged: "workflow_status_id",
-    oldValue: String(existing.workflowStatusId),
-    newValue: String(workflowStatusId),
+    entityType: "task", entityId: taskId, userId: user.id, action: "status_changed",
+    fieldChanged: "workflow_status_id", oldValue: String(existing.workflowStatusId), newValue: String(workflowStatusId),
   });
 
   return c.json({ task: updated });
@@ -43,9 +35,7 @@ taskRoutes.post("/:id/worklogs", async (c) => {
   if (!Number.isInteger(taskId)) return c.json({ error: "id ต้องเป็นตัวเลข" }, 400);
 
   const body = await c.req.json<{ workDate: string; hoursSpent: number; note?: string }>();
-  if (!body.hoursSpent || body.hoursSpent <= 0) {
-    return c.json({ error: "hoursSpent ต้องมากกว่า 0" }, 400);
-  }
+  if (!body.hoursSpent || body.hoursSpent <= 0) return c.json({ error: "hoursSpent ต้องมากกว่า 0" }, 400);
 
   const db = createDb(c.env.DB);
   const user = c.get("user");

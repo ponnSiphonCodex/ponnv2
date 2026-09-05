@@ -1,6 +1,3 @@
-/**
- * apps/api/src/middleware/error.ts
- */
 import type { ErrorHandler } from "hono";
 import type { AppEnv } from "../types";
 

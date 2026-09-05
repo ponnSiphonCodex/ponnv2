@@ -1,10 +1,3 @@
-/**
- * apps/api/src/lib/progress.ts
- * Business logic 3 ข้อตาม spec:
- *   1) Auto-Dates  : start_date = MIN(task.start_date), due_date = MAX(task.due_date)
- *   2) Progress %  : count(task in status.category='done') / count(task ทั้งหมด)
- *   3) Actual Hours: SUM(task_worklogs.hours_spent) แบบ real-time (ไม่ cache)
- */
 import { eq, inArray, sql } from "drizzle-orm";
 import { features, tasks, taskWorklogs, workflowStatuses } from "../db";
 import type { DbClient } from "../db";
@@ -84,7 +77,6 @@ export async function computeTaskActualHours(db: DbClient, taskId: number): Prom
 
 export async function computeActualHoursForTasks(db: DbClient, taskIds: number[]): Promise<Map<number, number>> {
   if (taskIds.length === 0) return new Map();
-
   const rows = await db
     .select({
       taskId: taskWorklogs.taskId,
