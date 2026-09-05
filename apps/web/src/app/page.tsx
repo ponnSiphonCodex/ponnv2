@@ -1,11 +1,5 @@
 /**
  * apps/web/src/app/page.tsx  (หน้า Portal / redirect logic)
- *
- * ⚠️ ต้องมี 2 อย่างนี้เพื่อไม่ให้ build fail ตอน prerender:
- *   1) export const dynamic = "force-dynamic"  → บอก Next.js ว่าห้าม prerender เป็น static
- *      (เพราะหน้านี้ต้องอ่าน D1 + session ตอน request จริง)
- *   2) await getCloudflareContext({ async: true }) → เรียกแบบ async
- *      (แบบ sync ใช้ได้เฉพาะใน dynamic route ที่ไม่ถูก prerender เท่านั้น)
  */
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
@@ -44,7 +38,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main style={{ padding: 48, fontFamily: "sans-serif", background: "#F4F4F6", minHeight: "100vh" }}>
+    <main style={{ padding: 48, fontFamily: "'Sarabun', sans-serif", background: "#F4F4F6", minHeight: "100vh" }}>
       <h1 style={{ color: "#001D58", marginBottom: 8 }}>ระบบของคุณ</h1>
       <p style={{ color: "#6B7280", marginBottom: 32 }}>เลือกระบบที่ต้องการเข้าใช้งาน</p>
 

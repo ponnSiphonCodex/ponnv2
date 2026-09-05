@@ -1,9 +1,6 @@
 /**
- * apps/web/src/app/pm/board/page.tsx  (Kanban Board)
- * ใช้ query param (?id=1) แทน dynamic route segment [projectId]
- *
- * export const dynamic = "force-dynamic" → กัน prerender (หน้านี้ต้องอ่าน cookie + ยิง API ตอน request จริง)
- * Next.js 15: searchParams และ cookies() เป็น async ต้อง await ก่อนใช้
+ * ใช้ query param (?id=1) แทน dynamic route segment [projectId] โดยตั้งใจ
+ * เพื่อลดจำนวนโฟลเดอร์ชื่อวงเล็บในโปรเจกต์
  */
 import { cookies } from "next/headers";
 
@@ -55,11 +52,11 @@ export default async function BoardPage({
   const board = await getBoard(projectId);
 
   if (!board) {
-    return <main style={{ padding: 24 }}>ไม่พบ Project หรือ session หมดอายุ</main>;
+    return <main style={{ padding: 24, fontFamily: "'Sarabun', sans-serif" }}>ไม่พบ Project หรือ session หมดอายุ</main>;
   }
 
   return (
-    <main style={{ padding: 24, fontFamily: "sans-serif" }}>
+    <main style={{ padding: 24, fontFamily: "'Sarabun', sans-serif" }}>
       <header style={{ marginBottom: 24 }}>
         <h1 style={{ color: "#001D58" }}>{board.project.name}</h1>
         <p>
