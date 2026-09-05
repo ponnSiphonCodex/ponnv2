@@ -1,3 +1,7 @@
+/**
+ * apps/api/src/index.ts
+ * Entry point ของ Cloudflare Worker (Hono)
+ */
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
@@ -12,7 +16,15 @@ app.use("*", logger());
 app.use(
   "*",
   cors({
-    origin: ["http://localhost:3000", "https://ponnsth.com", "https://www.ponnsth.com"],
+    // อัปเดตตาม custom domain จริง: web = pm.ponnsth.com, api = apix.ponnsth.com
+    // (ไม่ได้ใช้ CORS จริงจังเพราะ board page เรียก API แบบ server-to-server
+    // ไม่ใช่ browser fetch ตรง แต่คงไว้เผื่ออนาคตมี client-side call)
+    origin: [
+      "http://localhost:3000",
+      "https://ponnsth.com",
+      "https://www.ponnsth.com",
+      "https://pm.ponnsth.com",
+    ],
     credentials: true,
   })
 );

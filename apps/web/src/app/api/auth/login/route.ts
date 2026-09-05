@@ -1,13 +1,13 @@
 /**
  * apps/web/src/app/api/auth/login/route.ts
- * Login ด้วยอีเมล + รหัสผ่าน (ต้องตั้งรหัสผ่านไว้ก่อนผ่าน /setup)
+ * Login ด้วยอีเมล + รหัสผ่าน (ต้องตั้งรหัสผ่านไว้ก่อนผ่าน /setup หรือ seed SQL)
  */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDb, users } from "@/db";
-import { signSessionToken, SESSION_MAX_AGE_SECONDS } from "@/lib/auth";
+import { signSessionToken, SESSION_MAX_AGE_SECONDS, getCookieDomain, getSessionCookieName } from "@/lib/auth";
 import { verifyPassword } from "@/lib/password";
 
 export const dynamic = "force-dynamic";
@@ -44,19 +44,19 @@ export async function POST(req: NextRequest) {
     const token = await signSessionToken({ sub: user.id, email: user.email, name: user.name }, env.AUTH_SECRET);
 
     const isHttps = req.nextUrl.protocol === "https:";
-    const cookieName = isHttps ? "__Secure-authjs.session-token" : "authjs.session-token";
-
     const res = NextResponse.json({ ok: true });
-    res.cookies.set(cookieName, token, {
+    res.cookies.set(getSessionCookieName(isHttps), token, {
       httpOnly: true,
       secure: isHttps,
       sameSite: "lax",
       path: "/",
       maxAge: SESSION_MAX_AGE_SECONDS,
+      domain: getCookieDomain(req.nextUrl.hostname),
     });
     return res;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, error: "internal error: " + message }, { status: 500 });
+    console.error("[auth/login] internal error:", message);
+    return NextResponse.json({ ok: false, error: "internal_error" }, { status: 500 });
   }
 }

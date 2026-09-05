@@ -15,9 +15,7 @@ const auditFields = () => ({
 });
 
 // 1) AUTH & USERS LAYER (ตาม @auth/drizzle-adapter — sqlite)
-// ⚠️ passwordHash เพิ่มเข้ามาเพื่อรองรับ Login แบบอีเมล+รหัสผ่าน (นอกเหนือจาก Google)
-// ดู apps/web/src/lib/password.ts (hash ด้วย Web Crypto PBKDF2) และ
-// apps/web/src/app/api/auth/{login,set-password}/route.ts
+// passwordHash รองรับ Login แบบอีเมล+รหัสผ่าน (นอกเหนือจาก Google)
 export const users = sqliteTable("users", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name"),
@@ -64,13 +62,19 @@ export const verificationTokens = sqliteTable(
 );
 
 // 2) ROLES & PERMISSIONS LAYER
-export const systemRoles = sqliteTable("system_roles", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  roleName: text("role_name").notNull(),
-  module: text("module", { enum: ["PM", "RENTALS", "GLOBAL"] }).notNull(),
-  permissions: text("permissions", { mode: "json" }).$type<Record<string, boolean>>().notNull().$defaultFn(() => ({})),
-  ...auditFields(),
-});
+// ⚠️ uniqueIndex(role_name, module) เพิ่มเข้ามาเพื่อให้ seed script ใช้ "INSERT OR IGNORE"
+// ได้อย่างปลอดภัย (รันซ้ำกี่ครั้งก็ไม่สร้างสิทธิ์ซ้ำ)
+export const systemRoles = sqliteTable(
+  "system_roles",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    roleName: text("role_name").notNull(),
+    module: text("module", { enum: ["PM", "RENTALS", "GLOBAL"] }).notNull(),
+    permissions: text("permissions", { mode: "json" }).$type<Record<string, boolean>>().notNull().$defaultFn(() => ({})),
+    ...auditFields(),
+  },
+  (t) => ({ uniqRoleModule: uniqueIndex("system_roles_name_module_uniq").on(t.roleName, t.module) })
+);
 
 export const userRoles = sqliteTable(
   "user_roles",
