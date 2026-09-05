@@ -6,6 +6,8 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDb, users } from "@/db";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const { env } = getCloudflareContext();
 

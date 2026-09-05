@@ -10,6 +10,9 @@ import { getAuthConfig } from "@/lib/auth";
 import NextAuth from "next-auth";
 import { eq } from "drizzle-orm";
 
+// บังคับ dynamic — กัน Next.js prerender/เรียก getCloudflareContext() ตอน build (ยังไม่มี CF context)
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const { env } = getCloudflareContext();
 

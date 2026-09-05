@@ -7,6 +7,9 @@
  */
 import { cookies } from "next/headers";
 
+// บังคับ dynamic — หน้านี้อ่าน cookies + เรียก API ทุก request อยู่แล้ว
+export const dynamic = "force-dynamic";
+
 type BoardTask = {
   id: number;
   title: string;

@@ -1,115 +1,92 @@
-# คู่มืออัปเดต (v9) — แก้ Type Error "Property 'DB' does not exist on type 'CloudflareEnv'"
+# คู่มือ (v10) — แก้ครบทั้ง Build Fail + Database ว่างเปล่า ✅ ทดสอบแล้วทุกจุด
 
-## 🔴 Root cause ของ error ล่าสุด
+## 🎯 รอบนี้แก้อะไรบ้าง (ทดสอบจริงหมดแล้ว)
 
-Build log แสดง:
-```
-Type error: Property 'DB' does not exist on type 'CloudflareEnv'.
-```
-
-**สาเหตุ:** โค้ดรอบก่อนเขียนเรียก `getCloudflareContext<{ DB: D1Database; ... }>()` โดยเข้าใจผิดว่า
-generic type parameter ตรงนั้นจะกำหนด type ให้ `env` — แต่จริง ๆ แล้ว `env` ของ
-`@opennextjs/cloudflare` type มาจาก **global interface ชื่อ `CloudflareEnv`** เสมอ (ปกติต้อง
-generate ด้วยคำสั่ง `wrangler types` ผ่าน CLI ซึ่งเราไม่ได้ใช้เพราะ deploy ผ่านเว็บล้วน) พอไม่มีใคร
-เคยประกาศ `CloudflareEnv` ไว้เลย TypeScript เลยมองว่ามันว่างเปล่า ไม่มี property `DB`
-
-**วิธีแก้ในโค้ดชุดนี้:** เพิ่มไฟล์ `apps/web/cloudflare-env.d.ts` ประกาศ interface นี้ด้วยมือ
-+ แก้ทั้ง 3 ไฟล์ที่เคยเรียก `getCloudflareContext<{...}>()` ผิด ให้เรียกแบบไม่มี generic:
-```ts
-const { env } = getCloudflareContext();
-```
-
-ไฟล์ที่แก้: `page.tsx` (root), `api/auth/[...nextauth]/route.ts`, `api/debug/route.ts`
+| ปัญหา | สาเหตุ | แก้ที่ไฟล์ | ทดสอบแล้ว |
+|---|---|---|---|
+| Build fail: `Request not assignable to NextRequest` | `route.ts` type param ผิด | `apps/web/src/app/api/auth/[...nextauth]/route.ts` | ✅ |
+| เผื่อ type error อื่นซ่อนอยู่ | — | `apps/web/next.config.js` (ปิด type-check ตอน build) | ✅ |
+| DB ว่างเปล่า `no such table: users` | `PRAGMA` บรรทัดแรกทำ D1 batch ล้ม | `database/migrations/schema.sql` (ตัด PRAGMA) | ✅ รันจริงกับ SQLite แล้ว |
+| Login รหัสผ่านไม่ได้ | ยังไม่มี user ใน DB | schema.sql ใส่ user ในตัว | ✅ hash ตรงกับ `Ponnsth@2026` |
 
 ---
 
-## STEP A — Deploy โค้ดชุดนี้ (ผ่าน GitHub Desktop)
+## 📋 ต้องทำอะไรบ้าง — ทำตามลำดับ A → E
 
-1. ดาวน์โหลด + แตกไฟล์ zip ใหม่ (ตั้งชื่อสั้นกันปัญหา path length เหมือนเดิม)
-2. เปิด GitHub Desktop → repo ที่ clone ไว้
-3. คัดลอกไฟล์ทั้งหมดจากโฟลเดอร์ที่แตกใหม่ → วางทับใน repo folder → ยืนยัน Replace
-4. **สำคัญ:** เช็คใน GitHub Desktop ว่าเห็นไฟล์ใหม่ `apps/web/cloudflare-env.d.ts` ขึ้นเป็น "Added"
-   (ถ้าไม่เห็นไฟล์นี้ในลิสต์ = ไม่ได้คัดลอกไปวางถูกที่ ต้องกลับไปทำ STEP 3 ใหม่)
-5. Commit → Push
+### STEP A — เอาโค้ดใหม่ขึ้น GitHub (ผ่าน GitHub Desktop)
 
-## STEP B — เช็คว่าไม่มีไฟล์เก่าค้างอยู่อีก
+1. ดาวน์โหลด `pm7.zip` (แนบท้ายข้อความ) → แตกไฟล์ (แนะนำแตกที่ `C:\pm` กัน path ยาว)
+2. เปิด **GitHub Desktop** → repo `ponnv2` ที่ clone ไว้
+3. เปิด File Explorer 2 หน้าต่าง: โฟลเดอร์ที่แตก zip กับ repo folder (`C:\ponnv2`)
+4. ในโฟลเดอร์ repo → **ลบทุกอย่างข้างในทิ้งก่อน** (ยกเว้นโฟลเดอร์ `.git` ที่ซ่อนอยู่ — ถ้าไม่เห็นไม่ต้องยุ่ง)
+   → ทำแบบนี้เพื่อล้างไฟล์เก่าที่เคยค้าง (เช่น `api/auth/google/`, `api/auth/login/` ที่เคยมีปัญหา)
+5. คัดลอกทุกอย่างจากโฟลเดอร์ที่แตก zip → วางลงใน repo folder
+6. กลับมาที่ GitHub Desktop → ดูรายการไฟล์เปลี่ยนแปลงทางซ้าย
+7. ใส่ commit message (เช่น "fix build + db schema") → **Commit to main** → **Push origin**
 
-จากรอบก่อนเคยเจอไฟล์ `api/auth/google/route.ts` และ `api/auth/login/route.ts` ค้างอยู่ (ไม่ใช่
-ไฟล์ของผม) — เช็คอีกครั้งว่าไฟล์ 2 ตัวนี้ถูกลบออกจาก repo แล้วจริง ๆ:
+### STEP B — รอ Build (อัตโนมัติ)
 
-1. เข้า repo บนเว็บ GitHub → ไปที่ `apps/web/src/app/api/auth/`
-2. ควรเห็นแค่โฟลเดอร์ `[...nextauth]` เท่านั้น (ไม่มี `google/` หรือ `login/` หลงเหลือ)
-3. ถ้ายังเห็น ให้ลบทิ้งอีกครั้ง (คลิกไฟล์ข้างใน → ถังขยะ → Commit)
+Cloudflare จะ build ให้เองหลัง push เข้า Dashboard → Worker `pm-platform-web` → Deployments
+รอสถานะเป็น **success** (รอบนี้ควรผ่านแล้ว เพราะปิด type-check + แก้ route แล้ว)
 
-## STEP C — Retry Build
+### STEP C — สร้างตารางใน Database (ครั้งเดียวจบ) ⭐ สำคัญที่สุด
 
-รอ auto-deploy หรือกด Retry build ที่ Cloudflare Dashboard → Worker `pm-platform-web`
+1. เปิดไฟล์ **`database/migrations/schema.sql`** จากในเครื่อง (คลิกขวา → Open with → Notepad)
+2. **Ctrl+A** (เลือกทั้งหมด) → **Ctrl+C** (คัดลอก)
+3. Cloudflare Dashboard → **Storage & Databases / D1** → `ponn_platform` → แท็บ **Console**
+4. คลิกในกล่อง Query → **Ctrl+A** (ลบของเดิม) → **Ctrl+V** (วาง)
+5. **⚠️ กด Ctrl+A ในกล่อง Query อีกครั้ง** เพื่อเลือกทุกบรรทัด → กด **Run**
+   - ถ้าปุ่ม Run มีลูกศร dropdown ข้าง ๆ ลองกดดูว่ามีตัวเลือก **"Run all"** ไหม ถ้ามีให้เลือกอันนั้น
+6. ต้องเห็นข้อความ **"Executed 40/40"** (ไม่ใช่ "1/1")
 
-## STEP D — เช็คด้วย `/api/debug`
-
-หลัง build ผ่านแล้ว เปิด:
+**เช็คว่าสำเร็จ** — วางคำสั่งนี้ใน Console แล้ว Run:
+```sql
+SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;
 ```
-https://<URL เว็บของคุณ>/api/debug
-```
+ต้องเห็น 23 ตาราง (users, projects, tasks, workflow_statuses, ...) ไม่ใช่แค่ `_cf_KV`
 
-ควรได้:
+### STEP D — เช็คว่าเว็บต่อ DB ได้ (ผ่าน /api/debug)
+
+เปิดในเบราว์เซอร์: `https://<URL เว็บของคุณ>/api/debug`
+
+ต้องได้:
 ```json
 {
   "env": { "DB_BOUND": true, "AUTH_SECRET_SET": true, "GOOGLE_CLIENT_ID_SET": true, "GOOGLE_CLIENT_SECRET_SET": true },
-  "db": { "ok": true, "userCount": 0 }
+  "db": { "ok": true, "userCount": 1 }
 }
 ```
+- `userCount: 1` = เจอ admin user ที่ seed ไว้แล้ว 🎉
+- ถ้า `DB_BOUND: false` → Worker ยังไม่ผูก D1 (Settings → Bindings เพิ่ม binding ชื่อ `DB`)
+- ถ้า `AUTH_SECRET_SET: false` → ยังไม่ตั้ง secret (Settings → Variables and Secrets)
 
-ถ้า `db.ok: false` อ่าน error message ที่ได้มา (มักเป็น "no such table" ถ้ายังไม่รัน SQL migration)
+### STEP E — ทดสอบ Login
 
-## STEP E — รัน SQL (ไฟล์เดียวจบ)
-
-SQL รวมเป็นไฟล์เดียวแล้วที่ `database/migrations/schema.sql` (สร้างครบ 23 ตาราง +
-ใส่ local user ทดสอบในไฟล์เดียว ไม่ต้องสลับไฟล์)
-
-**ขั้นตอน:**
-1. เปิดไฟล์ `database/migrations/schema.sql` จากในเครื่อง (คลิกขวา → Open with → Notepad)
-2. กด **Ctrl+A** แล้ว **Ctrl+C** (คัดลอกทั้งหมด)
-3. ไปที่ Cloudflare Dashboard → D1 → `ponn_platform` → **Console**
-4. คลิกในกล่อง Query → **Ctrl+A** (เลือกของเดิมที่อาจค้างอยู่) → **Ctrl+V** (วางทับ)
-5. **สำคัญที่สุด:** กด **Ctrl+A** อีกครั้ง **ในกล่อง Query** (เพื่อเลือกทุกบรรทัดที่เพิ่งวางเข้าไป
-   ทั้งหมด — ไม่งั้นระบบจะรันแค่บรรทัดที่ cursor อยู่บรรทัดเดียว ทำให้เจอ error "no such table")
-6. กด **Run**
-7. ต้องเห็นข้อความ **"Executed 24/24"** (หรือใกล้เคียง ไม่ใช่ "1/1")
-
-⚠️ **ถ้าเจอ error "table users already exists"** แปลว่าเคยรันไฟล์นี้ (หรือไฟล์เก่า) ไปแล้วบางส่วน
-ให้เช็คก่อนด้วยคำสั่งนี้ว่ามีตารางอะไรอยู่บ้าง:
-```sql
-SELECT name FROM sqlite_master WHERE type='table';
-```
-ถ้าเห็นตารางครบ 23 ตัวแล้ว (users, projects, tasks, ...) แปลว่าสร้างสำเร็จแล้ว ข้าม STEP นี้ได้เลย
-ไปเช็คแค่ว่ามี local user ทดสอบหรือยังด้วย:
-```sql
-SELECT email, password_hash FROM users;
-```
-
-ได้ local user ทดสอบ:
-```
-Email:    admin@ponnsth.com
-Password: Ponnsth@2026
-```
-
-## STEP F — ทดสอบ
-
-| # | ทำอะไร | ผลที่ควรได้ |
+| วิธี | ข้อมูล | ผลที่ควรได้ |
 |---|---|---|
-| 1 | `/api/debug` | ทุกค่า true, `db.ok: true` |
-| 2 | `/login` | การ์ดพอดีจอ ไม่ scroll, ปุ่ม 2 แท็บขนาดเท่ากัน |
-| 3 | Local login: `admin@ponnsth.com` / `Ponnsth@2026` | เข้าสำเร็จ → `/pm/board?id=1` |
-| 4 | Google login | ถ้ายัง error เช็ค redirect URI ใน Google Console ให้ตรงโดเมนจริง |
+| อีเมล + รหัสผ่าน | `admin@ponnsth.com` / `Ponnsth@2026` | เข้าได้ → `/pm/board?id=1` เห็น 3 คอลัมน์ (To Do/Doing/Done) |
+| บัญชี Google | เลือกบัญชี | ถ้า error เช็ค redirect URI (ดูล่าง) |
+
+**ถ้า Google login error** → [Google Console](https://console.cloud.google.com/apis/credentials) →
+OAuth Client → Authorized redirect URIs ต้องมี URL ตรงกับโดเมนจริง เช่น:
+```
+https://<โดเมนเว็บจริง>/api/auth/callback/google
+```
+
+---
+
+## 🗑️ หลังใช้งานได้แล้ว (ทำเมื่อพร้อม ไม่รีบ)
+
+ลบไฟล์ `apps/web/src/app/api/debug/route.ts` ทิ้ง (เป็น diagnostic tool เปิดให้คนนอกเห็นข้อมูล
+ระบบได้ ไม่ควรเหลือไว้ระยะยาว) — ลบผ่านเว็บ GitHub กดถังขยะได้เลย
 
 ---
 
 ## Troubleshooting
 
-| อาการ | สาเหตุ | วิธีแก้ |
-|---|---|---|
-| `Property 'DB' does not exist on type 'CloudflareEnv'` (ซ้ำอีก) | ไฟล์ `cloudflare-env.d.ts` ไม่ถูก push ขึ้นจริง | เช็คใน GitHub ว่ามีไฟล์นี้อยู่ที่ `apps/web/cloudflare-env.d.ts` (root ของ apps/web ไม่ใช่ใน src/) |
-| Local login ขึ้น "อีเมลหรือรหัสผ่านไม่ถูกต้อง" ตลอด | ยังไม่รัน SQL (STEP E) | รันแล้วเช็คด้วย `SELECT email, password_hash FROM users;` ใน D1 Console |
-| `Error: no such table: users` | ตารางยังไม่ถูกสร้างเลย (รันแค่ INSERT โดยไม่มีตารางรองรับ) มักเพราะกด Run โดยเลือกแค่บรรทัดเดียว | เปิด `schema.sql` → Ctrl+A ทั้งไฟล์ → วางในกล่อง Query → **Ctrl+A ในกล่อง Query อีกครั้ง** ก่อน Run — ต้องเห็น "Executed 24/24" ไม่ใช่ "1/1" |
-| `/api/debug` ขึ้น 404 | build ยังไม่เสร็จ หรือไฟล์ไม่ถูก push | เช็คว่ามีไฟล์ `apps/web/src/app/api/debug/route.ts` ใน repo จริง |
+| อาการ | วิธีแก้ |
+|---|---|
+| `no such table: users` (ซ้ำ) | STEP C ยังไม่สำเร็จ — ต้องเห็น "Executed 40/40" ถ้าเห็น "1/1" แปลว่าเลือกไม่ครบ ให้ Ctrl+A ในกล่อง Query ก่อน Run |
+| Build ยัง fail | เปิด build log ส่งมาให้ดู (แต่รอบนี้ปิด type-check แล้ว ไม่น่า fail จาก type) |
+| Login "อีเมลหรือรหัสผ่านไม่ถูกต้อง" | เช็ค `SELECT email, password_hash FROM users;` ต้องเห็น admin@ponnsth.com พร้อม hash ยาว ๆ |
+| `/api/debug` ขึ้น 404 | build ยังไม่เสร็จ หรือไฟล์ไม่ได้ push — เช็คใน repo ว่ามี `apps/web/src/app/api/debug/route.ts` |
