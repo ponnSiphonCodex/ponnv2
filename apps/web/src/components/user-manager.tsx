@@ -1,0 +1,156 @@
+"use client";
+import { useEffect, useState, useCallback } from "react";
+const NAVY = "#001D58", PINK = "#EC186E";
+type Login = { auth_provider: string; device_info: string | null; ip_address: string | null; success: number; login_time: number };
+type UserRow = { id: string; name: string | null; email: string; company_email: string | null; phone: string | null; active: number; pm_role: string | null; last_login_at: number | null; image: string | null; avatar_url: string | null; roles: { id: number; name: string }[]; logins: Login[] };
+type Orphan = { email: string; lastLogin: number; device: string | null; count: number };
+type Meta = { sysRoles: { id: number; name: string }[]; pmRoles: string[] };
+
+export function UserManager() {
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [orphans, setOrphans] = useState<Orphan[]>([]);
+  const [meta, setMeta] = useState<Meta>({ sysRoles: [], pmRoles: [] });
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<"users" | "requests" | "logins">("users");
+  const [expand, setExpand] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState<{ email?: string } | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/users");
+    if (res.ok) { const d = await res.json(); setUsers(d.users); setOrphans(d.orphanLogins); setMeta({ sysRoles: d.sysRoles, pmRoles: d.pmRoles }); }
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function patch(userId: string, body: any) { await fetch("/api/admin/users", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, ...body }) }); load(); }
+
+  const active = users.filter((u) => u.active).length;
+  const admins = users.filter((u) => u.roles.some((r) => r.name === "System Admin")).length;
+  const inactive = users.filter((u) => !u.active).length;
+  const dt = (u: number | null) => u ? new Date(u * 1000).toLocaleDateString("th-TH") : "-";
+
+  return (
+    <div style={{ padding: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 14, marginBottom: 18 }}>
+        <Stat label="บัญชีทั้งหมด" value={users.length} color={NAVY} />
+        <Stat label="ใช้งานอยู่" value={active} color="#2E7D32" />
+        <Stat label="ผู้ดูแลระบบ" value={admins} color={PINK} />
+        <Stat label="ปิดใช้งาน" value={inactive} color="#DC2626" />
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
+        <div style={{ display: "flex", gap: 6 }}>
+          {(["users", "requests", "logins"] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} style={{ padding: "8px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13.5, background: tab === t ? NAVY : "#fff", color: tab === t ? "#fff" : "#6B7280", boxShadow: tab === t ? "none" : "0 0 0 1px #E5E7EB inset" }}>
+              {t === "users" ? "ผู้ใช้งาน" : t === "requests" ? `คำขอเข้าใช้ (${orphans.length})` : "ประวัติเข้าระบบ"}
+            </button>
+          ))}
+        </div>
+        <button className="btn-primary" onClick={() => setAddOpen({})}>+ เพิ่มผู้ใช้</button>
+      </div>
+
+      {loading && <div style={{ color: "#6B7280" }}>กำลังโหลด...</div>}
+
+      {!loading && tab === "users" && (
+        <div className="card" style={{ overflowX: "auto" }}>
+          <table>
+            <thead><tr style={{ background: NAVY, color: "#fff", textAlign: "left" }}><th style={th}>ผู้ใช้</th><th style={th}>System Role</th><th style={th}>บทบาท PM</th><th style={th}>เข้าล่าสุด</th><th style={th}>สถานะ</th><th style={th}></th></tr></thead>
+            <tbody>
+              {users.map((u) => (
+                <>
+                  <tr key={u.id} style={{ borderTop: "1px solid #F0F1F3" }}>
+                    <td style={td}><div style={{ fontWeight: 600 }}>{u.name || "—"}</div><div style={{ fontSize: 12, color: PINK }}>{u.email}</div></td>
+                    <td style={td}>
+                      <select className="input" style={{ height: 34, width: 150 }} value={u.roles[0]?.id ?? 3} onChange={(e) => patch(u.id, { sysRoleId: Number(e.target.value) })}>
+                        {meta.sysRoles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </select>
+                    </td>
+                    <td style={td}>
+                      <select className="input" style={{ height: 34, width: 170 }} value={u.pm_role ?? ""} onChange={(e) => patch(u.id, { pmRole: e.target.value })}>
+                        <option value="">— ไม่มี —</option>
+                        {meta.pmRoles.map((r) => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    </td>
+                    <td style={{ ...td, fontSize: 12.5, color: "#6B7280" }}>{dt(u.last_login_at)}</td>
+                    <td style={td}><span className="badge" style={{ background: u.active ? "#DCFCE7" : "#FEE2E2", color: u.active ? "#166534" : "#991B1B" }}>{u.active ? "ใช้งาน" : "ปิด"}</span></td>
+                    <td style={{ ...td, whiteSpace: "nowrap" }}>
+                      <button className="btn-ghost" style={{ padding: "5px 10px", marginRight: 6 }} onClick={() => setExpand(expand === u.id ? null : u.id)}>Log</button>
+                      <button style={{ padding: "5px 10px", borderRadius: 8, border: `1px solid ${u.active ? "#FCA5A5" : "#86EFAC"}`, background: "#fff", color: u.active ? "#DC2626" : "#16A34A", cursor: "pointer" }} onClick={() => patch(u.id, { active: u.active ? 0 : 1 })}>{u.active ? "ปิด" : "เปิด"}</button>
+                    </td>
+                  </tr>
+                  {expand === u.id && (
+                    <tr><td colSpan={6} style={{ padding: "0 14px 14px", background: "#FAFAFB" }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: NAVY, margin: "10px 0 6px" }}>10 ครั้งล่าสุด</div>
+                      {u.logins.length === 0 ? <div style={{ fontSize: 12.5, color: "#9AA0A6" }}>ไม่มีประวัติ</div> : (
+                        <table><thead><tr style={{ textAlign: "left" }}><th style={thS}>เวลา</th><th style={thS}>ช่องทาง</th><th style={thS}>อุปกรณ์</th><th style={thS}>IP</th><th style={thS}>ผล</th></tr></thead>
+                          <tbody>{u.logins.map((l, i) => <tr key={i}><td style={tdS}>{new Date(l.login_time * 1000).toLocaleString("th-TH")}</td><td style={tdS}>{l.auth_provider}</td><td style={tdS}>{l.device_info ?? "-"}</td><td style={tdS}>{l.ip_address ?? "-"}</td><td style={tdS}><span className="badge" style={{ background: l.success ? "#DCFCE7" : "#FEE2E2", color: l.success ? "#166534" : "#991B1B" }}>{l.success ? "สำเร็จ" : "ล้มเหลว"}</span></td></tr>)}</tbody>
+                        </table>
+                      )}
+                    </td></tr>
+                  )}
+                </>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {!loading && tab === "requests" && (
+        <div className="card" style={{ padding: 16 }}>
+          <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 12 }}>อีเมลที่เคย login แต่ยังไม่มีบัญชี/สิทธิ์ในระบบ — กดเพิ่มเพื่อเปิดใช้งาน</div>
+          {orphans.length === 0 ? <div style={{ color: "#9AA0A6" }}>ไม่มีคำขอ</div> : orphans.map((o) => (
+            <div key={o.email} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderTop: "1px solid #F0F1F3", gap: 10, flexWrap: "wrap" }}>
+              <div><div style={{ fontWeight: 600 }}>{o.email}</div><div style={{ fontSize: 12, color: "#9AA0A6" }}>ล่าสุด {new Date(o.lastLogin * 1000).toLocaleString("th-TH")} · {o.device ?? "-"} · {o.count} ครั้ง</div></div>
+              <button className="btn-pink" onClick={() => setAddOpen({ email: o.email })}>เพิ่มเป็นผู้ใช้</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && tab === "logins" && (
+        <div className="card" style={{ overflowX: "auto" }}>
+          <table><thead><tr style={{ background: NAVY, color: "#fff", textAlign: "left" }}><th style={th}>ผู้ใช้</th><th style={th}>เวลา</th><th style={th}>ช่องทาง</th><th style={th}>อุปกรณ์</th><th style={th}>ผล</th></tr></thead>
+            <tbody>{users.flatMap((u) => u.logins.slice(0, 3).map((l, i) => <tr key={u.id + i} style={{ borderTop: "1px solid #F0F1F3" }}><td style={td}>{u.name || u.email}</td><td style={{ ...td, fontSize: 12.5 }}>{new Date(l.login_time * 1000).toLocaleString("th-TH")}</td><td style={td}>{l.auth_provider}</td><td style={{ ...td, fontSize: 12.5, color: "#6B7280" }}>{l.device_info ?? "-"}</td><td style={td}><span className="badge" style={{ background: l.success ? "#DCFCE7" : "#FEE2E2", color: l.success ? "#166534" : "#991B1B" }}>{l.success ? "สำเร็จ" : "ล้มเหลว"}</span></td></tr>))}</tbody>
+          </table>
+        </div>
+      )}
+
+      {addOpen && <AddUserModal meta={meta} prefill={addOpen.email} onClose={() => setAddOpen(null)} onSaved={() => { setAddOpen(null); load(); }} />}
+    </div>
+  );
+}
+
+function AddUserModal({ meta, prefill, onClose, onSaved }: { meta: Meta; prefill?: string; onClose: () => void; onSaved: () => void }) {
+  const [email, setEmail] = useState(prefill ?? ""); const [name, setName] = useState(""); const [sysRoleId, setSysRoleId] = useState(2); const [pmRole, setPmRole] = useState("");
+  const [saving, setSaving] = useState(false); const [err, setErr] = useState<string | null>(null);
+  async function submit() {
+    if (!email.trim()) { setErr("กรอกอีเมล"); return; }
+    setSaving(true); setErr(null);
+    const res = await fetch("/api/admin/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, name, sysRoleId, pmRole: pmRole || null }) });
+    setSaving(false);
+    if (!res.ok) { const j = await res.json().catch(() => ({})); setErr(j.error || "เพิ่มไม่สำเร็จ"); return; }
+    onSaved();
+  }
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 16 }} onClick={onClose}>
+      <div className="card" style={{ width: "min(460px,94vw)", padding: 22 }} onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ marginTop: 0, color: NAVY }}>เพิ่มผู้ใช้</h3>
+        {err && <div style={{ background: "#FEF2F2", color: "#B91C1C", padding: 10, borderRadius: 8, marginBottom: 10 }}>{err}</div>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <L label="อีเมล *"><input className="input" value={email} onChange={(e) => setEmail(e.target.value)} /></L>
+          <L label="ชื่อ"><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></L>
+          <L label="System Role"><select className="input" value={sysRoleId} onChange={(e) => setSysRoleId(Number(e.target.value))}>{meta.sysRoles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></L>
+          <L label="บทบาท PM"><select className="input" value={pmRole} onChange={(e) => setPmRole(e.target.value)}><option value="">— ไม่มี —</option>{meta.pmRoles.map((r) => <option key={r} value={r}>{r}</option>)}</select></L>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}><button className="btn-ghost" onClick={onClose}>ยกเลิก</button><button className="btn-primary" onClick={submit} disabled={saving}>{saving ? "กำลังบันทึก..." : "บันทึก"}</button></div>
+      </div>
+    </div>
+  );
+}
+function Stat({ label, value, color }: { label: string; value: number; color: string }) { return <div className="card" style={{ padding: "16px 18px" }}><div style={{ fontSize: 12.5, color: "#6B7280" }}>{label}</div><div style={{ fontSize: 24, fontWeight: 700, color }}>{value}</div></div>; }
+function L({ label, children }: { label: string; children: React.ReactNode }) { return <label style={{ display: "flex", flexDirection: "column", gap: 5 }}><span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{label}</span>{children}</label>; }
+const th: React.CSSProperties = { padding: "11px 14px", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" };
+const td: React.CSSProperties = { padding: "11px 14px", fontSize: 13.5 };
+const thS: React.CSSProperties = { padding: "6px 10px", fontSize: 11.5, color: "#6B7280", fontWeight: 600 };
+const tdS: React.CSSProperties = { padding: "6px 10px", fontSize: 12 };

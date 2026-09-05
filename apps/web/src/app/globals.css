@@ -1,6 +1,13 @@
-:root { --font-size-base: 15px; --color-navy: #001d58; --color-pink: #ec186e; --color-text: #1f2937; --color-muted: #6b7280; --color-placeholder: #c7ccd4; }
+:root { --font-size-base: 15px; --navy: #001d58; --pink: #ec186e; --text: #1f2937; --muted: #6b7280; --line: #e5e7eb; --bg: #f4f4f6; }
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; font-family: var(--font-sarabun), "Sarabun", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: var(--font-size-base); line-height: 1.6; color: var(--color-text); }
-input::placeholder, textarea::placeholder { color: var(--color-placeholder); opacity: 1; }
+html, body { margin: 0; padding: 0; font-family: var(--font-sarabun), "Sarabun", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: var(--font-size-base); line-height: 1.6; color: var(--text); background: var(--bg); }
+input::placeholder, textarea::placeholder { color: #c7ccd4; opacity: 1; }
 input, button, textarea, select { font-family: inherit; font-size: inherit; }
 a { color: inherit; }
+table { border-collapse: collapse; width: 100%; }
+.btn-primary { background: var(--navy); color: #fff; border: none; border-radius: 8px; padding: 9px 16px; font-weight: 600; cursor: pointer; }
+.btn-pink { background: var(--pink); color: #fff; border: none; border-radius: 8px; padding: 9px 16px; font-weight: 600; cursor: pointer; }
+.btn-ghost { background: #fff; color: var(--navy); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-weight: 500; cursor: pointer; }
+.input { width: 100%; height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: #fff; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 12px; }
+.badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; }

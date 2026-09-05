@@ -1,0 +1,124 @@
+"use client";
+import { useEffect, useState, useCallback } from "react";
+import { ENTITIES, type Field } from "@/lib/entities";
+import { apiWrite, saveDraft, loadDraft, clearDraft, initOfflineSync } from "@/lib/offline";
+
+const NAVY = "#001D58";
+type Row = Record<string, any>;
+type RefMap = Record<string, { id: string | number; label: string }[]>;
+
+export function CrudManager({ entity }: { entity: string }) {
+  const def = ENTITIES[entity];
+  const [rows, setRows] = useState<Row[]>([]);
+  const [refs, setRefs] = useState<RefMap>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [canWrite, setCanWrite] = useState(false);
+  const [editing, setEditing] = useState<Row | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true); setError(null);
+    try {
+      const res = await fetch(`/api/crud/${entity}`);
+      if (!res.ok) { const j = await res.json().catch(() => ({})); setError(j.error || "โหลดข้อมูลไม่สำเร็จ"); setLoading(false); return; }
+      const d = await res.json(); setRows(d.rows || []); setCanWrite(!!d.canWrite);
+      const refFields = def.fields.filter((f) => f.type === "ref");
+      const uniq = Array.from(new Set(refFields.map((f) => f.refEntity!)));
+      const map: RefMap = {};
+      await Promise.all(uniq.map(async (re) => { const r = await fetch(`/api/ref/${re}`); if (r.ok) { const j = await r.json(); map[re] = j.options || []; } }));
+      setRefs(map);
+    } catch { setError("เชื่อมต่อไม่สำเร็จ"); }
+    setLoading(false);
+  }, [entity, def]);
+
+  useEffect(() => { load(); const cleanup = initOfflineSync((n) => setFlash(`ส่งข้อมูลที่ค้างไว้ ${n} รายการเรียบร้อย`)); return cleanup; }, [load]);
+
+  function refLabel(f: Field, val: any) { if (val === null || val === undefined || val === "") return "—"; const o = (refs[f.refEntity!] || []).find((x) => String(x.id) === String(val)); return o ? o.label : `#${val}`; }
+  function cell(f: Field, r: Row) { const v = r[f.key]; if (f.type === "ref") return refLabel(f, v); if (v === null || v === undefined || v === "") return "—"; return String(v); }
+
+  async function remove(id: number) {
+    if (!confirm("ลบรายการนี้?")) return;
+    const r = await apiWrite(`/api/crud/${entity}/${id}`, "DELETE", {});
+    if (!r.ok && !r.queued) { alert(r.error || "ลบไม่สำเร็จ"); return; }
+    if (r.queued) setFlash(r.error!); load();
+  }
+
+  const listFields = def.fields.filter((f) => f.listShow);
+  return (
+    <div style={{ padding: 24 }}>
+      {flash && <div style={{ background: "#EFF6FF", color: "#1D4ED8", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{flash}</div>}
+      {canWrite && <button className="btn-pink" onClick={() => setCreating(true)} style={{ marginBottom: 16 }}>+ เพิ่ม {def.label}</button>}
+      {!canWrite && !loading && <div style={{ background: "#FFFBEB", color: "#92400E", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>คุณดูได้อย่างเดียว (ไม่มีสิทธิ์แก้ไขส่วนนี้)</div>}
+      {error && <div style={{ background: "#FEF2F2", color: "#B91C1C", padding: 12, borderRadius: 8, marginBottom: 12 }}>{error}</div>}
+      <div className="card" style={{ overflowX: "auto" }}>
+        <table>
+          <thead><tr style={{ background: "#F9FAFB", textAlign: "left" }}><th style={th}>ID</th>{listFields.map((f) => <th key={f.key} style={th}>{f.label}</th>)}{canWrite && <th style={th}></th>}</tr></thead>
+          <tbody>
+            {loading && <tr><td colSpan={listFields.length + 2} style={{ ...td, color: "#6B7280" }}>กำลังโหลด...</td></tr>}
+            {!loading && rows.length === 0 && <tr><td colSpan={listFields.length + 2} style={{ ...td, color: "#6B7280" }}>ยังไม่มีข้อมูล</td></tr>}
+            {rows.map((r) => (
+              <tr key={r.id} style={{ borderTop: "1px solid #F0F1F3" }}>
+                <td style={{ ...td, color: "#9AA0A6" }}>{r.id}</td>
+                {listFields.map((f) => <td key={f.key} style={td}>{cell(f, r)}</td>)}
+                {canWrite && <td style={{ ...td, whiteSpace: "nowrap" }}><button className="btn-ghost" onClick={() => setEditing(r)} style={{ padding: "5px 10px", marginRight: 6 }}>แก้ไข</button><button onClick={() => remove(r.id)} style={{ padding: "5px 10px", borderRadius: 8, border: "1px solid #FCA5A5", background: "#fff", color: "#DC2626", cursor: "pointer" }}>ลบ</button></td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {(creating || editing) && <EntityForm entity={entity} refs={refs} initial={editing} onClose={() => { setCreating(false); setEditing(null); }} onSaved={(q) => { setCreating(false); setEditing(null); if (q) setFlash(q); load(); }} />}
+    </div>
+  );
+}
+
+function EntityForm({ entity, refs, initial, onClose, onSaved }: { entity: string; refs: RefMap; initial: Row | null; onClose: () => void; onSaved: (queuedMsg?: string) => void }) {
+  const def = ENTITIES[entity];
+  const draftKey = `${entity}:${initial ? initial.id : "new"}`;
+  const [form, setForm] = useState<Row>(() => {
+    const draft = loadDraft<Row>(draftKey);
+    if (draft) return draft;
+    const base: Row = {}; for (const f of def.fields) base[f.key] = initial ? (initial[f.key] ?? "") : ""; return base;
+  });
+  const [saving, setSaving] = useState(false); const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { saveDraft(draftKey, form); }, [form, draftKey]);
+  function set(k: string, v: any) { setForm((s) => ({ ...s, [k]: v })); }
+
+  async function submit() {
+    setSaving(true); setErr(null);
+    const payload: Row = {}; for (const f of def.fields) { let v = form[f.key]; if (v === "") v = null; payload[f.key] = v; }
+    const url = initial ? `/api/crud/${entity}/${initial.id}` : `/api/crud/${entity}`;
+    const r = await apiWrite(url, initial ? "PATCH" : "POST", payload);
+    setSaving(false);
+    if (r.ok) { clearDraft(draftKey); onSaved(); return; }
+    if (r.queued) { clearDraft(draftKey); onSaved(r.error!); return; }
+    setErr(r.error || "บันทึกไม่สำเร็จ");
+  }
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div className="card" style={{ width: "min(560px,94vw)", maxHeight: "88vh", overflowY: "auto", padding: 22 }} onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ marginTop: 0, color: NAVY }}>{initial ? "แก้ไข" : "เพิ่ม"} {def.label}</h3>
+        {err && <div style={{ background: "#FEF2F2", color: "#B91C1C", padding: 10, borderRadius: 8, marginBottom: 10 }}>{err}</div>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {def.fields.map((f) => (
+            <label key={f.key} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{f.label}{f.required && <span style={{ color: "#EC186E" }}> *</span>}</span>
+              {f.type === "textarea" ? <textarea className="input" style={{ height: 80, padding: 10 }} value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} />
+                : f.type === "select" ? <select className="input" value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)}><option value="">— เลือก —</option>{(f.options || []).map((o) => <option key={o} value={o}>{o}</option>)}</select>
+                : f.type === "ref" ? <select className="input" value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)}><option value="">— เลือก —</option>{(refs[f.refEntity!] || []).map((o) => <option key={String(o.id)} value={String(o.id)}>{o.label}</option>)}</select>
+                : <input className="input" type={f.type === "number" ? "number" : f.type === "date" ? "date" : "text"} value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} />}
+            </label>
+          ))}
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 18 }}>
+          <span style={{ fontSize: 11, color: "#9AA0A6" }}>💾 ร่างถูกเก็บอัตโนมัติ</span>
+          <div style={{ display: "flex", gap: 8 }}><button className="btn-ghost" onClick={onClose}>ยกเลิก</button><button className="btn-primary" onClick={submit} disabled={saving}>{saving ? "กำลังบันทึก..." : "บันทึก"}</button></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+const th: React.CSSProperties = { padding: "11px 14px", fontSize: 12.5, color: "#6B7280", fontWeight: 600, whiteSpace: "nowrap" };
+const td: React.CSSProperties = { padding: "11px 14px", fontSize: 13.5 };
+const overlay: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 16 };

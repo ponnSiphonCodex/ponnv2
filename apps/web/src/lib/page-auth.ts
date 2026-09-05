@@ -1,13 +1,51 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDb } from "@/db";
 import { getCurrentUser } from "./current-user";
-import { getRolesForUser, isAdmin, type UserRole } from "./rbac";
-export type PageAuth = { db: ReturnType<typeof createDb>; user: { sub: string; email: string; name: string | null }; roles: UserRole[]; admin: boolean; roleLabel: string };
+import { getRolesForUser, isAdmin, isGuest, primarySystemRole, type UserRole } from "./rbac";
+import { loadScope, type Scope } from "./access";
+
+export type SessionUser = { sub: string; email: string; name: string | null; image: string | null; avatarUrl: string | null };
+export type PageAuth = {
+  db: ReturnType<typeof createDb>; d1: D1Database;
+  user: SessionUser;                 // ตัวตนที่ "แสดง/ทำงานเป็น" (อาจถูก impersonate)
+  realUser: { sub: string; email: string; name: string | null } | null; // ตัวจริง (admin) ถ้ากำลัง impersonate
+  impersonating: boolean;
+  roles: UserRole[]; admin: boolean; guest: boolean; systemRole: string; roleLabel: string;
+  scope: Scope;
+  env: CloudflareEnv;
+};
+
 export async function requireAuth(): Promise<PageAuth | null> {
   const { env } = await getCloudflareContext({ async: true });
-  const user = await getCurrentUser(env.AUTH_SECRET);
-  if (!user) return null;
+  const sess = await getCurrentUser(env.AUTH_SECRET);
+  if (!sess) return null;
   const db = createDb(env.DB);
-  const roles = await getRolesForUser(db, user.sub);
-  return { db, user, roles, admin: isAdmin(roles), roleLabel: roles.length ? roles.map((r) => r.roleName).join(", ") : "ยังไม่กำหนดสิทธิ์" };
+
+  // impersonation: sess.imp = userId ที่ admin เลือกสวมบทบาท
+  let actingId = sess.sub;
+  let impersonating = false;
+  let realUser: { sub: string; email: string; name: string | null } | null = null;
+  if (sess.imp && sess.imp !== sess.sub) {
+    const realRoles = await getRolesForUser(db, sess.sub);
+    if (isAdmin(realRoles)) {
+      actingId = sess.imp;
+      impersonating = true;
+      realUser = { sub: sess.sub, email: sess.email, name: sess.name };
+    }
+  }
+
+  const row = await env.DB.prepare(`SELECT id, email, name, image, avatar_url FROM users WHERE id = ?`).bind(actingId).first<any>();
+  if (!row) return null;
+  const user: SessionUser = { sub: row.id, email: row.email, name: row.name, image: row.image, avatarUrl: row.avatar_url };
+
+  const roles = await getRolesForUser(db, actingId);
+  const admin = isAdmin(roles);
+  const guest = isGuest(roles);
+  const scope = await loadScope(env.DB, actingId, admin, guest);
+  return {
+    db, d1: env.DB, user, realUser, impersonating, roles, admin, guest,
+    systemRole: primarySystemRole(roles),
+    roleLabel: scope.pmRole ? `${primarySystemRole(roles)} · ${scope.pmRole}` : primarySystemRole(roles),
+    scope, env,
+  };
 }

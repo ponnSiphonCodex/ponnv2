@@ -1,25 +1,23 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/page-auth";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { FileUpload } from "@/components/file-upload";
+import { shellProps } from "@/lib/shell-props";
 export const dynamic = "force-dynamic";
 export default async function SettingsPage() {
-  const auth = await requireAuth();
-  if (!auth) redirect("/login");
-  if (!auth.admin) redirect("/pm/dashboard");
+  const a = await requireAuth(); if (!a) redirect("/login"); if (!a.admin) redirect("/pm/dashboard");
   return (
-    <AppShell active="settings" user={auth.user} isAdmin={auth.admin} roleLabel={auth.roleLabel}>
-      <PageHeader title="ตั้งค่าระบบ" subtitle="สำหรับผู้ดูแลระบบ" />
-      <div style={{ padding: 28, maxWidth: 640 }}>
-        <section style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", marginBottom: 20 }}>
-          <h3 style={{ marginTop: 0, color: "#001D58" }}>ทดสอบอัปโหลดไฟล์ → Google Drive</h3>
-          <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>ผ่าน Google Apps Script (ตั้ง URL ใน lib/upload.ts)</p>
-          <FileUpload />
-        </section>
-        <section style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+    <AppShell active="settings" {...shellProps(a)}>
+      <PageHeader title="อัปโหลด & ระบบ" subtitle="ข้อมูลระบบสำหรับผู้ดูแล" />
+      <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16, maxWidth: 640 }}>
+        <div className="card" style={{ padding: 18 }}>
           <h3 style={{ marginTop: 0, color: "#001D58" }}>ข้อมูลระบบ</h3>
-          <p style={{ fontSize: 13, color: "#6B7280" }}>ผู้ใช้: {auth.user.email}<br/>สิทธิ์: {auth.roleLabel}</p>
-        </section>
+          <p style={{ fontSize: 14, color: "#374151" }}>ผู้ใช้: {a.user.email}<br />สิทธิ์: {a.roleLabel}</p>
+          <p style={{ fontSize: 13, color: "#6B7280" }}>ตรวจสอบ env/config ได้ที่ <a href="/api/debug" target="_blank" style={{ color: "#EC186E" }}>/api/debug</a></p>
+        </div>
+        <div className="card" style={{ padding: 18 }}>
+          <h3 style={{ marginTop: 0, color: "#001D58" }}>Telegram แจ้งเตือน</h3>
+          <p style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.8 }}>Bot Token + Admin Chat ID ตั้งใน Cloudflare Secret:<br /><code style={{ background: "#F4F4F6", padding: "1px 6px", borderRadius: 4 }}>TELEGRAM_BOT_TOKEN</code>, <code style={{ background: "#F4F4F6", padding: "1px 6px", borderRadius: 4 }}>TELEGRAM_ADMIN_CHAT_ID</code><br />ผู้ใช้ตั้ง Telegram User ID เองในหน้าโปรไฟล์ และเปิด Toggle รับแจ้งเตือน</p>
+        </div>
       </div>
     </AppShell>
   );

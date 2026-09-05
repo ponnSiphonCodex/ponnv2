@@ -1,30 +1,28 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/page-auth";
-import { getBoardData } from "@/lib/board-data";
+import { getBoardData, listProjects } from "@/lib/board-data";
+import { refOptions } from "@/lib/crud";
+import { visibleProjectIds, canEditProject } from "@/lib/access";
 import { AppShell, PageHeader } from "@/components/app-shell";
+import { BoardClient } from "@/components/board-client";
+import { shellProps } from "@/lib/shell-props";
 export const dynamic = "force-dynamic";
 export default async function BoardPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
-  const auth = await requireAuth();
-  if (!auth) redirect("/login");
-  const params = await searchParams;
-  const projectId = Number(params.id ?? "1");
-  const board = Number.isInteger(projectId) ? await getBoardData(auth.db, projectId) : null;
+  const a = await requireAuth(); if (!a) redirect("/login"); if (a.guest) redirect("/pm/waiting");
+  const sp = await searchParams;
+  const ids = await visibleProjectIds(a.d1, a.scope);
+  let projectId = Number(sp.id ?? "1") || 1;
+  const projects = await listProjects(a.d1, ids);
+  if (ids && !ids.includes(projectId)) projectId = projects[0]?.id ?? projectId;
+  const board = projects.length ? await getBoardData(a.d1, projectId) : null;
+  const users = await refOptions(a.d1, "users");
+  const priorities = await refOptions(a.d1, "priorities");
+  let canWrite = a.scope.isPmo;
+  if (!canWrite && board) { const row = await a.d1.prepare(`SELECT id, product_id FROM projects WHERE id=?`).bind(projectId).first<any>(); canWrite = row ? canEditProject(a.scope, row.id, row.product_id) : false; }
   return (
-    <AppShell active="board" user={auth.user} isAdmin={auth.admin} roleLabel={auth.roleLabel}>
-      <PageHeader title={board ? board.project.name : "กระดานงาน"} subtitle={board ? `ความคืบหน้า ${board.project.progress.done}/${board.project.progress.total} (${board.project.progress.percent}%)` : undefined} />
-      <div style={{ padding: 28 }}>
-        {!board ? <p style={{ color: "#9AA0A6" }}>ไม่พบ Project (id={String(params.id ?? "1")})</p> : (
-          <div style={{ display: "flex", gap: 16, overflowX: "auto" }}>
-            {board.columns.map((col) => (
-              <section key={col.id} style={{ minWidth: 280, background: "#EFF0F3", borderRadius: 10, padding: 12 }}>
-                <h3 style={{ borderBottom: `3px solid ${col.color ?? "#001D58"}`, paddingBottom: 8, marginTop: 0, fontSize: 15 }}>{col.name} ({col.tasks.length})</h3>
-                {col.tasks.length === 0 && <p style={{ fontSize: 13, color: "#9AA0A6" }}>ยังไม่มีงาน</p>}
-                {col.tasks.map((task) => (<article key={task.id} style={{ background: "#fff", borderRadius: 8, padding: 12, marginTop: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}><strong>{task.title}</strong><div style={{ fontSize: 12, color: "#6B7280", marginTop: 4 }}>{task.assignee?.name ?? "ยังไม่มอบหมาย"} · {task.actualHours}/{task.estimatedHours ?? 0} ชม.</div></article>))}
-              </section>
-            ))}
-          </div>
-        )}
-      </div>
+    <AppShell active="board" {...shellProps(a)}>
+      <PageHeader title={board ? board.project.name : "กระดานงาน"} subtitle="ลากการ์ดข้ามคอลัมน์เพื่อเปลี่ยนสถานะ · คลิกการ์ดเพื่อลงเวลา" />
+      {!board ? <div style={{ padding: 40, color: "#6B7280" }}>ไม่พบโปรเจกต์ที่เข้าถึงได้</div> : <BoardClient board={board} projects={projects} users={users} priorities={priorities} canWrite={canWrite} />}
     </AppShell>
   );
 }

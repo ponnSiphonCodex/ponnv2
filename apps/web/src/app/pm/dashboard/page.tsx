@@ -1,30 +1,40 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/page-auth";
-import { listProjects } from "@/lib/board-data";
+import { dashboardStats, listProjects } from "@/lib/board-data";
+import { visibleProjectIds } from "@/lib/access";
 import { AppShell, PageHeader } from "@/components/app-shell";
+import { shellProps } from "@/lib/shell-props";
 export const dynamic = "force-dynamic";
+const NAVY = "#001D58";
 export default async function DashboardPage() {
-  const auth = await requireAuth();
-  if (!auth) redirect("/login");
-  const projects = await listProjects(auth.db);
+  const a = await requireAuth(); if (!a) redirect("/login"); if (a.guest) redirect("/pm/waiting");
+  const ids = await visibleProjectIds(a.d1, a.scope);
+  const stats = await dashboardStats(a.d1, ids);
+  const projects = await listProjects(a.d1, ids);
   return (
-    <AppShell active="dashboard" user={auth.user} isAdmin={auth.admin} roleLabel={auth.roleLabel}>
-      <PageHeader title="แดชบอร์ด" subtitle={`ยินดีต้อนรับ ${auth.user.name || auth.user.email}`} />
-      <div style={{ padding: 28 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16, marginBottom: 28 }}>
-          <Stat label="โครงการทั้งหมด" value={String(projects.length)} color="#001D58" />
-          <Stat label="กำลังดำเนินการ" value={String(projects.filter((p) => p.status === "in_progress").length)} color="#EC186E" />
-          <Stat label="สิทธิ์ของคุณ" value={auth.admin ? "Admin" : auth.roleLabel} color="#D4A017" />
+    <AppShell active="dashboard" {...shellProps(a)}>
+      <PageHeader title="แดชบอร์ด" subtitle={`ยินดีต้อนรับ ${a.user.name ?? a.user.email}`} />
+      <div style={{ padding: 24 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 16, marginBottom: 22 }}>
+          <Stat label="โครงการที่เห็น" value={String(stats.projects)} color="#001D58" />
+          <Stat label="กำลังดำเนินการ" value={String(stats.active)} color="#EC186E" />
+          <Stat label="Issues ค้าง" value={String(stats.openIssues)} color="#D4A017" />
+          <Stat label="Risks เปิดอยู่" value={String(stats.risks)} color="#6B7280" />
         </div>
-        <h3 style={{ color: "#001D58" }}>โครงการล่าสุด</h3>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {projects.length === 0 && <p style={{ color: "#9AA0A6" }}>ยังไม่มีโครงการ</p>}
-          {projects.map((p) => (<a key={p.id} href={`/pm/board?id=${p.id}`} style={{ display: "flex", justifyContent: "space-between", background: "#fff", padding: 16, borderRadius: 10, textDecoration: "none", color: "#111827", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}><strong>{p.name}</strong><span style={{ fontSize: 13, color: "#6B7280" }}>{p.status ?? "-"}</span></a>))}
+        <h2 style={{ fontSize: 17, color: NAVY }}>โครงการ</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {projects.length === 0 && <div className="card" style={{ padding: 18, color: "#6B7280" }}>ยังไม่มีโครงการที่คุณเข้าถึงได้</div>}
+          {projects.map((p) => (
+            <a key={p.id} href={`/pm/board?id=${p.id}`} className="card" style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", textDecoration: "none" }}>
+              <span style={{ fontWeight: 600, color: "#1F2937" }}>{p.name}</span>
+              <span style={{ fontSize: 12.5, color: "#6B7280" }}>{p.status ?? "-"}</span>
+            </a>
+          ))}
         </div>
       </div>
     </AppShell>
   );
 }
 function Stat({ label, value, color }: { label: string; value: string; color: string }) {
-  return (<div style={{ background: "#fff", borderRadius: 12, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", borderTop: `3px solid ${color}` }}><div style={{ fontSize: 13, color: "#6B7280", marginBottom: 6 }}>{label}</div><div style={{ fontSize: 24, fontWeight: 700, color }}>{value}</div></div>);
+  return <div className="card" style={{ padding: "18px 20px", borderTop: `3px solid ${color}` }}><div style={{ fontSize: 13, color: "#6B7280" }}>{label}</div><div style={{ fontSize: 26, fontWeight: 700, color }}>{value}</div></div>;
 }

@@ -1,4 +1,5 @@
-/** Code.gs — Apps Script รับไฟล์ Base64 บันทึกลง Drive. Deploy: Web app, Execute as Me, Access: Anyone */
+/** Code.gs — Apps Script รับไฟล์ Base64 บันทึกลง Drive (สำหรับ avatar + attachments)
+ * Deploy: Web app, Execute as Me, Access: Anyone */
 var FOLDER_ID = "";
 function doPost(e) {
   try {
@@ -7,7 +8,7 @@ function doPost(e) {
     var blob = Utilities.newBlob(Utilities.base64Decode(b.data), b.mimeType || "application/octet-stream", b.filename || ("upload_" + Date.now()));
     var f = FOLDER_ID ? DriveApp.getFolderById(FOLDER_ID).createFile(blob) : DriveApp.createFile(blob);
     f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return out({ fileId: f.getId(), url: f.getUrl() });
+    return out({ fileId: f.getId(), url: "https://drive.google.com/uc?export=view&id=" + f.getId() });
   } catch (err) { return out({ error: String(err) }); }
 }
 function doGet() { return out({ status: "ok" }); }

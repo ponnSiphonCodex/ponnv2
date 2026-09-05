@@ -7,6 +7,5 @@
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "pm-platform-web" }],
   "d1_databases": [{ "binding": "DB", "database_name": "ponn_platform", "database_id": "940740b8-9177-489a-9344-47b3e61302f8" }]
-  // ★ secrets (AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) ตั้งใน Cloudflare Dashboard
-  //   Worker > Settings > Variables and Secrets — เอาออกจากไฟล์นี้เพื่อความปลอดภัย (ตามที่ผู้ใช้ทำได้แล้ว)
+  // secrets: AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ALLOWED_DOMAINS, TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID → ตั้งใน Cloudflare Dashboard
 }
