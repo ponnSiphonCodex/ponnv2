@@ -14,12 +14,17 @@ const auditFields = () => ({
   updatedBy: text("updated_by").references(() => users.id, { onDelete: "set null" }),
 });
 
+// 1) AUTH & USERS LAYER (ตาม @auth/drizzle-adapter — sqlite)
+// ⚠️ passwordHash เพิ่มเข้ามาเพื่อรองรับ Login แบบอีเมล+รหัสผ่าน (นอกเหนือจาก Google)
+// ดู apps/web/src/lib/password.ts (hash ด้วย Web Crypto PBKDF2) และ
+// apps/web/src/app/api/auth/{login,set-password}/route.ts
 export const users = sqliteTable("users", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name"),
   email: text("email").notNull().unique(),
   emailVerified: integer("email_verified", { mode: "timestamp" }),
   image: text("image"),
+  passwordHash: text("password_hash"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`).$onUpdate(() => new Date()),
 });
@@ -58,6 +63,7 @@ export const verificationTokens = sqliteTable(
   (t) => ({ pk: primaryKey({ columns: [t.identifier, t.token] }) })
 );
 
+// 2) ROLES & PERMISSIONS LAYER
 export const systemRoles = sqliteTable("system_roles", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   roleName: text("role_name").notNull(),
@@ -77,6 +83,7 @@ export const userRoles = sqliteTable(
   (t) => ({ uniqUserRole: uniqueIndex("user_roles_user_role_uniq").on(t.userId, t.roleId) })
 );
 
+// 3) STRATEGY LAYER
 export const themes = sqliteTable("themes", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
@@ -101,6 +108,7 @@ export const requirements = sqliteTable("requirements", {
   ...auditFields(),
 });
 
+// 4) PRODUCT & PROJECT LAYER
 export const priorities = sqliteTable("priorities", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
@@ -134,6 +142,7 @@ export const features = sqliteTable("features", {
   ...auditFields(),
 });
 
+// 5) TASK & KANBAN LAYER
 export const workflowStatuses = sqliteTable(
   "workflow_statuses",
   {
@@ -193,6 +202,7 @@ export const customFieldValues = sqliteTable(
   })
 );
 
+// 6) TRACKING & COLLABORATION LAYER
 export const taskWorklogs = sqliteTable(
   "task_worklogs",
   {
@@ -274,6 +284,7 @@ export const attachments = sqliteTable(
   (t) => ({ entityIdx: index("attachments_entity_idx").on(t.entityType, t.entityId) })
 );
 
+// RELATIONS
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
   sessions: many(sessions),
