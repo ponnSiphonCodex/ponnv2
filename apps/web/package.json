@@ -11,18 +11,18 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv"
   },
   "dependencies": {
-    "next": "^14.2.13",
+    "next": "^15.5.0",
     "next-auth": "5.0.0-beta.21",
     "@auth/drizzle-adapter": "^1.4.2",
     "drizzle-orm": "^0.33.0",
     "jose": "^5.9.3",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.0.0",
     "@cloudflare/workers-types": "^4.20240924.0",
-    "@types/react": "^18.3.5",
+    "@types/react": "^19.0.0",
     "@types/node": "^22.5.5",
     "typescript": "^5.5.4",
     "wrangler": "^4.0.0"
