@@ -1,11 +1,7 @@
-/**
- * apps/web/src/middleware.ts
- * เช็คแบบเบา: มี session cookie ไหม (verify จริงเกิดในหน้า page ผ่าน getCurrentUser)
- */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/api/login", "/api/auth", "/api/logout"];
+const PUBLIC_PATHS = ["/login", "/api/login", "/api/auth", "/api/logout", "/api/debug"];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -16,4 +12,7 @@ export function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|rocket-logo.png).*)"] };
+// ★ matcher exclude ไฟล์ favicon/icon ทั้งหมด — กัน middleware บล็อกรูปจน favicon ไม่ขึ้น
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|rocket-logo.png|manifest.webmanifest).*)"],
+};

@@ -1,8 +1,6 @@
 -- database/migrations/schema.sql
 -- SQL รวมไฟล์เดียว: สร้างตาราง + seed local user + project ทดสอบ
--- ⚠️ ห้ามใส่ PRAGMA — D1 Console รันไม่ได้ (batch ล้ม → "no such table")
--- ทุกคำสั่ง idempotent (IF NOT EXISTS / ON CONFLICT) รันซ้ำได้
---
+-- ⚠️ ห้ามใส่ PRAGMA (D1 Console รันไม่ได้) — ทุกคำสั่ง idempotent รันซ้ำได้
 -- วิธีรัน: D1 Console → วางทั้งไฟล์ → Ctrl+A ในกล่อง Query → Run (ต้องเห็น "Executed NN/NN")
 
 CREATE TABLE IF NOT EXISTS users (

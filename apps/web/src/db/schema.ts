@@ -26,19 +26,11 @@ export const accounts = sqliteTable(
     type: text("type").notNull(),
     provider: text("provider").notNull(),
     providerAccountId: text("provider_account_id").notNull(),
-    refresh_token: text("refresh_token"),
-    access_token: text("access_token"),
-    expires_at: integer("expires_at"),
-    token_type: text("token_type"),
-    scope: text("scope"),
-    id_token: text("id_token"),
-    session_state: text("session_state"),
+    refresh_token: text("refresh_token"), access_token: text("access_token"), expires_at: integer("expires_at"),
+    token_type: text("token_type"), scope: text("scope"), id_token: text("id_token"), session_state: text("session_state"),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   },
-  (t) => ({
-    pk: primaryKey({ columns: [t.provider, t.providerAccountId] }),
-    userIdx: index("accounts_user_idx").on(t.userId),
-  })
+  (t) => ({ pk: primaryKey({ columns: [t.provider, t.providerAccountId] }), userIdx: index("accounts_user_idx").on(t.userId) })
 );
 
 export const sessions = sqliteTable("sessions", {
@@ -66,176 +58,45 @@ export const userRoles = sqliteTable(
   (t) => ({ uniqUserRole: uniqueIndex("user_roles_user_role_uniq").on(t.userId, t.roleId) })
 );
 
-export const themes = sqliteTable("themes", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  description: text("description"),
-  ...auditFields(),
-});
-
-export const initiatives = sqliteTable("initiatives", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  themeId: integer("theme_id").notNull().references(() => themes.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  description: text("description"),
-  ...auditFields(),
-});
-
-export const requirements = sqliteTable("requirements", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  initiativeId: integer("initiative_id").notNull().references(() => initiatives.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  type: text("type"),
-  ownerId: text("owner_id").references(() => users.id, { onDelete: "set null" }),
-  ...auditFields(),
-});
-
-export const priorities = sqliteTable("priorities", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  level: integer("level").notNull(),
-  color: text("color"),
-});
-
-export const products = sqliteTable("products", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  requirementId: integer("requirement_id").notNull().references(() => requirements.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  status: text("status"),
-  priorityId: integer("priority_id").references(() => priorities.id, { onDelete: "set null" }),
-  ...auditFields(),
-});
-
-export const projects = sqliteTable("projects", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  status: text("status"),
-  themeId: integer("theme_id").references(() => themes.id, { onDelete: "set null" }),
-  ...auditFields(),
-});
-
-export const features = sqliteTable("features", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  status: text("status"),
-  ...auditFields(),
-});
+export const themes = sqliteTable("themes", { id: integer("id").primaryKey({ autoIncrement: true }), name: text("name").notNull(), description: text("description"), ...auditFields() });
+export const initiatives = sqliteTable("initiatives", { id: integer("id").primaryKey({ autoIncrement: true }), themeId: integer("theme_id").notNull().references(() => themes.id, { onDelete: "cascade" }), name: text("name").notNull(), description: text("description"), ...auditFields() });
+export const requirements = sqliteTable("requirements", { id: integer("id").primaryKey({ autoIncrement: true }), initiativeId: integer("initiative_id").notNull().references(() => initiatives.id, { onDelete: "cascade" }), title: text("title").notNull(), type: text("type"), ownerId: text("owner_id").references(() => users.id, { onDelete: "set null" }), ...auditFields() });
+export const priorities = sqliteTable("priorities", { id: integer("id").primaryKey({ autoIncrement: true }), name: text("name").notNull(), level: integer("level").notNull(), color: text("color") });
+export const products = sqliteTable("products", { id: integer("id").primaryKey({ autoIncrement: true }), requirementId: integer("requirement_id").notNull().references(() => requirements.id, { onDelete: "cascade" }), name: text("name").notNull(), status: text("status"), priorityId: integer("priority_id").references(() => priorities.id, { onDelete: "set null" }), ...auditFields() });
+export const projects = sqliteTable("projects", { id: integer("id").primaryKey({ autoIncrement: true }), name: text("name").notNull(), status: text("status"), themeId: integer("theme_id").references(() => themes.id, { onDelete: "set null" }), ...auditFields() });
+export const features = sqliteTable("features", { id: integer("id").primaryKey({ autoIncrement: true }), productId: integer("product_id").references(() => products.id, { onDelete: "set null" }), projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }), name: text("name").notNull(), status: text("status"), ...auditFields() });
 
 export const workflowStatuses = sqliteTable(
   "workflow_statuses",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    color: text("color"),
-    category: text("category", { enum: ["todo", "doing", "done"] }).notNull(),
-    sortOrder: integer("sort_order").notNull().default(0),
-    ...auditFields(),
-  },
+  { id: integer("id").primaryKey({ autoIncrement: true }), projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }), name: text("name").notNull(), color: text("color"), category: text("category", { enum: ["todo", "doing", "done"] }).notNull(), sortOrder: integer("sort_order").notNull().default(0), ...auditFields() },
   (t) => ({ projectIdx: index("workflow_statuses_project_idx").on(t.projectId) })
 );
 
 export const tasks = sqliteTable(
   "tasks",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    featureId: integer("feature_id").notNull().references(() => features.id, { onDelete: "cascade" }),
-    assigneeId: text("assignee_id").references(() => users.id, { onDelete: "set null" }),
-    title: text("title").notNull(),
-    workflowStatusId: integer("workflow_status_id").notNull().references(() => workflowStatuses.id, { onDelete: "restrict" }),
-    startDate: integer("start_date", { mode: "timestamp" }),
-    dueDate: integer("due_date", { mode: "timestamp" }),
-    estimatedHours: real("estimated_hours"),
-    budgetCost: real("budget_cost"),
-    ...auditFields(),
-  },
-  (t) => ({
-    featureIdx: index("tasks_feature_idx").on(t.featureId),
-    statusIdx: index("tasks_status_idx").on(t.workflowStatusId),
-    assigneeIdx: index("tasks_assignee_idx").on(t.assigneeId),
-  })
+  { id: integer("id").primaryKey({ autoIncrement: true }), featureId: integer("feature_id").notNull().references(() => features.id, { onDelete: "cascade" }), assigneeId: text("assignee_id").references(() => users.id, { onDelete: "set null" }), title: text("title").notNull(), workflowStatusId: integer("workflow_status_id").notNull().references(() => workflowStatuses.id, { onDelete: "restrict" }), startDate: integer("start_date", { mode: "timestamp" }), dueDate: integer("due_date", { mode: "timestamp" }), estimatedHours: real("estimated_hours"), budgetCost: real("budget_cost"), ...auditFields() },
+  (t) => ({ featureIdx: index("tasks_feature_idx").on(t.featureId), statusIdx: index("tasks_status_idx").on(t.workflowStatusId), assigneeIdx: index("tasks_assignee_idx").on(t.assigneeId) })
 );
 
-export const customFields = sqliteTable("custom_fields", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  entityType: text("entity_type", { enum: ["task", "project", "feature"] }).notNull(),
-  fieldName: text("field_name").notNull(),
-  fieldType: text("field_type", { enum: ["text", "number", "date", "select", "checkbox"] }).notNull(),
-  fieldOptions: text("field_options", { mode: "json" }).$type<Record<string, unknown>>(),
-  ...auditFields(),
-});
-
+export const customFields = sqliteTable("custom_fields", { id: integer("id").primaryKey({ autoIncrement: true }), entityType: text("entity_type", { enum: ["task", "project", "feature"] }).notNull(), fieldName: text("field_name").notNull(), fieldType: text("field_type", { enum: ["text", "number", "date", "select", "checkbox"] }).notNull(), fieldOptions: text("field_options", { mode: "json" }).$type<Record<string, unknown>>(), ...auditFields() });
 export const customFieldValues = sqliteTable(
   "custom_field_values",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    customFieldId: integer("custom_field_id").notNull().references(() => customFields.id, { onDelete: "cascade" }),
-    entityId: integer("entity_id").notNull(),
-    value: text("value"),
-    ...auditFields(),
-  },
-  (t) => ({
-    uniqFieldEntity: uniqueIndex("custom_field_values_field_entity_uniq").on(t.customFieldId, t.entityId),
-    entityIdx: index("custom_field_values_entity_idx").on(t.entityId),
-  })
+  { id: integer("id").primaryKey({ autoIncrement: true }), customFieldId: integer("custom_field_id").notNull().references(() => customFields.id, { onDelete: "cascade" }), entityId: integer("entity_id").notNull(), value: text("value"), ...auditFields() },
+  (t) => ({ uniqFieldEntity: uniqueIndex("custom_field_values_field_entity_uniq").on(t.customFieldId, t.entityId), entityIdx: index("custom_field_values_entity_idx").on(t.entityId) })
 );
-
 export const taskWorklogs = sqliteTable(
   "task_worklogs",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
-    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    workDate: integer("work_date", { mode: "timestamp" }).notNull(),
-    hoursSpent: real("hours_spent").notNull(),
-    note: text("note"),
-    ...auditFields(),
-  },
+  { id: integer("id").primaryKey({ autoIncrement: true }), taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }), userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), workDate: integer("work_date", { mode: "timestamp" }).notNull(), hoursSpent: real("hours_spent").notNull(), note: text("note"), ...auditFields() },
   (t) => ({ taskIdx: index("task_worklogs_task_idx").on(t.taskId) })
 );
-
 export const attachments = sqliteTable(
   "attachments",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    entityType: text("entity_type", { enum: ["task", "project", "feature", "issue"] }).notNull(),
-    entityId: integer("entity_id").notNull(),
-    googleDriveFileId: text("google_drive_file_id").notNull(),
-    fileName: text("file_name"),
-    fileUrl: text("file_url"),
-    uploadedBy: text("uploaded_by").references(() => users.id, { onDelete: "set null" }),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  },
+  { id: integer("id").primaryKey({ autoIncrement: true }), entityType: text("entity_type", { enum: ["task", "project", "feature", "issue"] }).notNull(), entityId: integer("entity_id").notNull(), googleDriveFileId: text("google_drive_file_id").notNull(), fileName: text("file_name"), fileUrl: text("file_url"), uploadedBy: text("uploaded_by").references(() => users.id, { onDelete: "set null" }), createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`) },
   (t) => ({ entityIdx: index("attachments_entity_idx").on(t.entityType, t.entityId) })
 );
 
-export const usersRelations = relations(users, ({ many }) => ({
-  accounts: many(accounts),
-  roles: many(userRoles),
-  worklogs: many(taskWorklogs),
-}));
-
-export const projectsRelations = relations(projects, ({ one, many }) => ({
-  theme: one(themes, { fields: [projects.themeId], references: [themes.id] }),
-  features: many(features),
-  workflowStatuses: many(workflowStatuses),
-}));
-
-export const featuresRelations = relations(features, ({ one, many }) => ({
-  project: one(projects, { fields: [features.projectId], references: [projects.id] }),
-  tasks: many(tasks),
-}));
-
-export const workflowStatusesRelations = relations(workflowStatuses, ({ one, many }) => ({
-  project: one(projects, { fields: [workflowStatuses.projectId], references: [projects.id] }),
-  tasks: many(tasks),
-}));
-
-export const tasksRelations = relations(tasks, ({ one, many }) => ({
-  feature: one(features, { fields: [tasks.featureId], references: [features.id] }),
-  workflowStatus: one(workflowStatuses, { fields: [tasks.workflowStatusId], references: [workflowStatuses.id] }),
-  assignee: one(users, { fields: [tasks.assigneeId], references: [users.id] }),
-  worklogs: many(taskWorklogs),
-}));
+export const usersRelations = relations(users, ({ many }) => ({ accounts: many(accounts), roles: many(userRoles), worklogs: many(taskWorklogs) }));
+export const projectsRelations = relations(projects, ({ one, many }) => ({ theme: one(themes, { fields: [projects.themeId], references: [themes.id] }), features: many(features), workflowStatuses: many(workflowStatuses) }));
+export const featuresRelations = relations(features, ({ one, many }) => ({ project: one(projects, { fields: [features.projectId], references: [projects.id] }), tasks: many(tasks) }));
+export const workflowStatusesRelations = relations(workflowStatuses, ({ one, many }) => ({ project: one(projects, { fields: [workflowStatuses.projectId], references: [projects.id] }), tasks: many(tasks) }));
+export const tasksRelations = relations(tasks, ({ one, many }) => ({ feature: one(features, { fields: [tasks.featureId], references: [features.id] }), workflowStatus: one(workflowStatuses, { fields: [tasks.workflowStatusId], references: [workflowStatuses.id] }), assignee: one(users, { fields: [tasks.assigneeId], references: [users.id] }), worklogs: many(taskWorklogs) }));

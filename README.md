@@ -1,41 +1,21 @@
 # Portfolio Workspace — PM & Portfolio (Cloudflare D1 + Workers)
 
-## ⭐ v13 — เขียน Auth เองด้วย JavaScript ธรรมดา (เลิกใช้ NextAuth)
+## v14 — Auth เขียนเอง JS ธรรมดา (ไม่ใช้ NextAuth) + แก้ Favicon
 
-NextAuth v5 beta ทำ `error=Configuration` บน Cloudflare ซ้ำหลายรอบ — เวอร์ชันนี้**ทิ้ง NextAuth
-ทั้งหมด** เขียนระบบ auth เองด้วย JS + Web Crypto:
-
-- **Session** = signed cookie (HMAC-SHA256) — `src/lib/session.ts`
-- **Local login** = POST `/api/login` → verify PBKDF2 → set cookie — `src/app/api/login/route.ts`
-- **Google login** = OAuth 2.0 flow เขียนเอง (`/api/auth/google` → `/api/auth/google/callback`)
-- **เช็ค session ในหน้า** = `getCurrentUser()` อ่าน cookie + verify — `src/lib/current-user.ts`
-- ไม่มี dependency `next-auth` / `@auth/*` อีกต่อไป → ตัดต้นตอ Configuration error ถาวร
-
-ทดสอบแล้ว: session sign/verify ถูกต้อง, ปฏิเสธ secret ผิด + token ปลอม
+- Session = signed cookie HMAC (`lib/session.ts`), Local login (`api/login`), Google OAuth เขียนเอง
+- **Favicon fix**: ย้ายไอคอนไป public/ + middleware exclude + metadata icons explicit
+- Font 15px, ตัด subtitle "ระบบบริหารพอร์ตโครงการองค์กร" ออก
 
 ## Login
-- Google OAuth **หรือ** Email+Password (2 แท็บ, Sarabun 14px, 100dvh ไม่ scroll)
-- Local user ทดสอบ: `admin@ponnsth.com` / `Ponnsth@2026`
+- Google **หรือ** Email+Password
+- Local user: admin@ponnsth.com / Ponnsth@2026
 
-## ⚠️ Google OAuth — เพิ่ม redirect URI ใหม่
-เพราะเขียน flow เอง callback path เปลี่ยนเป็น `/api/auth/google/callback` ต้องเพิ่มใน
-[Google Console](https://console.cloud.google.com/apis/credentials) → Authorized redirect URIs:
-```
-https://pm.ponnsth.com/api/auth/google/callback
-```
+## ⚠️ ต้องตั้ง Secrets ใน Cloudflare (Worker > Settings > Variables and Secrets)
+ต้องเป็น **Secret (encrypted)** ไม่ใช่ Variable: AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+เช็คที่ /api/debug ต้องได้ true ครบ
 
-## File Upload → Google Drive (Apps Script)
-- `src/lib/upload.ts` — แปลงไฟล์เป็น Base64 → POST ไป Apps Script /exec
-- `src/components/file-upload.tsx` — คอมโพเนนต์ `<FileUpload />` พร้อมใช้
-- `google-apps-script/Code.gs` — โค้ด Apps Script (paste ในโปรเจกต์ Google Script ของคุณ)
-- ตั้ง URL ใน `src/lib/upload.ts` (DEFAULT_DRIVE_UPLOAD_URL) หรือ env `NEXT_PUBLIC_DRIVE_UPLOAD_URL`
+## Google redirect URI
+`https://pm.ponnsth.com/api/auth/callback/google` (ตรงกับ Console แล้ว)
 
-## Routing
-- `/login` — 2 แท็บ
-- `/` — portal (redirect /pm ถ้าสิทธิ์เดียว)
-- `/pm/board?id=1` — Kanban (query D1 ตรง)
-- `/api/debug` — เช็ค D1 + secrets (ลบทิ้งหลัง debug)
-- `/api/logout` — ออกจากระบบ
-
-## หมายเหตุ
-- ไม่มี API worker (Hono) แล้ว — web app ทำงานในตัวเองครบ query D1 ตรง
+## File Upload → Google Drive
+lib/upload.ts + components/file-upload.tsx + google-apps-script/Code.gs

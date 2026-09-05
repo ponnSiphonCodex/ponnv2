@@ -1,28 +1,16 @@
-/**
- * apps/web/src/app/page.tsx — Portal
- * เช็ค session เอง (ไม่ใช้ NextAuth) → ถ้าไม่ login เด้ง /login
- * สิทธิ์เดียว/ยังไม่ตั้งสิทธิ์ → เข้า /pm ตรง; หลายระบบ → แสดง portal
- */
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDb } from "@/db";
 import { getCurrentUser } from "@/lib/current-user";
 import { getUserModules } from "@/lib/board-data";
-
 export const dynamic = "force-dynamic";
-
 export default async function HomePage() {
   const { env } = await getCloudflareContext({ async: true });
   const user = await getCurrentUser(env.AUTH_SECRET);
   if (!user) redirect("/login");
-
   const db = createDb(env.DB);
   const modules = await getUserModules(db, user.sub);
-
-  if (modules.length === 0 || (modules.length === 1 && modules[0] === "PM")) {
-    redirect("/pm");
-  }
-
+  if (modules.length === 0 || (modules.length === 1 && modules[0] === "PM")) redirect("/pm");
   return (
     <main style={{ padding: 48, background: "#F4F4F6", minHeight: "100vh" }}>
       <h1 style={{ color: "#001D58", marginBottom: 8 }}>ระบบของคุณ</h1>
