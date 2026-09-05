@@ -1,3 +1,8 @@
+/**
+ * apps/web/src/app/page.tsx
+ * ⚠️ getCloudflareContext() ไม่รับ generic — env type มาจาก global CloudflareEnv
+ * (apps/web/cloudflare-env.d.ts)
+ */
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDb, systemRoles, userRoles } from "@/db";
@@ -6,9 +11,7 @@ import NextAuth from "next-auth";
 import { eq } from "drizzle-orm";
 
 export default async function HomePage() {
-  const { env } = getCloudflareContext<{
-    DB: D1Database; AUTH_SECRET: string; GOOGLE_CLIENT_ID: string; GOOGLE_CLIENT_SECRET: string;
-  }>();
+  const { env } = getCloudflareContext();
 
   const db = createDb(env.DB);
   const { auth } = NextAuth(

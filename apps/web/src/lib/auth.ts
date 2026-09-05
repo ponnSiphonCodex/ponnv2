@@ -39,7 +39,6 @@ export function getAuthConfig(
           if (!email || !password) return null;
 
           const [user] = await db.select().from(schema.users).where(eq(schema.users.email, email));
-          // ไม่มี user นี้ หรือ user นี้ login ผ่าน Google อย่างเดียว (ไม่เคยตั้ง local password)
           if (!user || !user.passwordHash) return null;
 
           const valid = await verifyPassword(password, user.passwordHash);

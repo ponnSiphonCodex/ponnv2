@@ -1,173 +1,100 @@
-# คู่มืออัปเดต (v8) — แก้ Build Fail จาก Next.js 15 + ไฟล์ค้างใน repo
+# คู่มืออัปเดต (v9) — แก้ Type Error "Property 'DB' does not exist on type 'CloudflareEnv'"
 
-## 🔴 แก้ build fail ล่าสุด — 2 ปัญหาแยกกัน
+## 🔴 Root cause ของ error ล่าสุด
 
-### ปัญหา 1: Next.js 15 breaking change (บั๊กจากโค้ดของผมเอง)
-Next.js 15 เปลี่ยนให้ `searchParams` (และ `cookies()`) เป็น `Promise` ต้อง `await` ก่อนใช้
-(Next.js 14 เป็นค่า sync ธรรมดา) — โค้ดเดิมเขียนแบบ Next 14 พอ deploy จริงด้วย Next 15 เลย type
-error ตอน build **แก้แล้วใน `apps/web/src/app/pm/board/page.tsx`**
-
-### ปัญหา 2: มีไฟล์ค้างอยู่ใน repo ที่ไม่ได้มาจากไฟล์ที่ผมส่งให้เลย
-Build log แสดง error จากไฟล์ 2 ไฟล์นี้:
+Build log แสดง:
 ```
-apps/web/src/app/api/auth/google/route.ts
-apps/web/src/app/api/auth/login/route.ts
+Type error: Property 'DB' does not exist on type 'CloudflareEnv'.
 ```
-ไฟล์ 2 ไฟล์นี้**ไม่เคยอยู่ใน zip ที่ผมส่งให้เลยสักรอบ** (ผมใช้ NextAuth catch-all route
-`[...nextauth]/route.ts` ตัวเดียวจัดการทั้ง Google + Credentials ให้แล้ว ไม่มีการแยกไฟล์)
 
-**สาเหตุที่ไฟล์นี้โผล่มาในโครงการ:** วิธีอัปเดตที่ใช้อยู่ (copy ไฟล์ใหม่ไปวางทับโฟลเดอร์ repo เดิม)
-เป็นการ "เพิ่ม/ทับ" ไฟล์เท่านั้น **ไม่ลบไฟล์เก่าที่ไม่มีอยู่ในชุดใหม่ออก** ถ้าไฟล์ 2 ไฟล์นี้เคยถูกสร้าง
-ไว้ในโปรเจกต์ก่อนหน้า (เช่น ทดลองสร้างเองหรือมาจากเทมเพลตอื่น) มันจะยังค้างอยู่ตลอดไปจนกว่าจะลบมือ
+**สาเหตุ:** โค้ดรอบก่อนเขียนเรียก `getCloudflareContext<{ DB: D1Database; ... }>()` โดยเข้าใจผิดว่า
+generic type parameter ตรงนั้นจะกำหนด type ให้ `env` — แต่จริง ๆ แล้ว `env` ของ
+`@opennextjs/cloudflare` type มาจาก **global interface ชื่อ `CloudflareEnv`** เสมอ (ปกติต้อง
+generate ด้วยคำสั่ง `wrangler types` ผ่าน CLI ซึ่งเราไม่ได้ใช้เพราะ deploy ผ่านเว็บล้วน) พอไม่มีใคร
+เคยประกาศ `CloudflareEnv` ไว้เลย TypeScript เลยมองว่ามันว่างเปล่า ไม่มี property `DB`
 
-### ✅ วิธีแก้ — ต้องลบ 2 ไฟล์นี้ออกจาก repo ด้วยตัวเอง (ไม่มีใน zip ให้ลบทับ)
+**วิธีแก้ในโค้ดชุดนี้:** เพิ่มไฟล์ `apps/web/cloudflare-env.d.ts` ประกาศ interface นี้ด้วยมือ
++ แก้ทั้ง 3 ไฟล์ที่เคยเรียก `getCloudflareContext<{...}>()` ผิด ให้เรียกแบบไม่มี generic:
+```ts
+const { env } = getCloudflareContext();
+```
 
-**ทำผ่าน GitHub Desktop:**
-1. เปิด File Explorer ไปที่ repo folder (เช่น `C:\ponnv2`)
-2. ไปที่ `apps\web\src\app\api\auth\`
-3. จะเห็นโฟลเดอร์ `google` และ `login` (นอกจาก `[...nextauth]` ที่ควรมี) → **ลบโฟลเดอร์ `google` และ `login` ทั้ง 2 โฟลเดอร์ทิ้ง**
-4. กลับไปที่ GitHub Desktop → จะเห็นไฟล์ที่ถูกลบขึ้นเป็น "Removed" (เครื่องหมาย − สีแดง)
+ไฟล์ที่แก้: `page.tsx` (root), `api/auth/[...nextauth]/route.ts`, `api/debug/route.ts`
+
+---
+
+## STEP A — Deploy โค้ดชุดนี้ (ผ่าน GitHub Desktop)
+
+1. ดาวน์โหลด + แตกไฟล์ zip ใหม่ (ตั้งชื่อสั้นกันปัญหา path length เหมือนเดิม)
+2. เปิด GitHub Desktop → repo ที่ clone ไว้
+3. คัดลอกไฟล์ทั้งหมดจากโฟลเดอร์ที่แตกใหม่ → วางทับใน repo folder → ยืนยัน Replace
+4. **สำคัญ:** เช็คใน GitHub Desktop ว่าเห็นไฟล์ใหม่ `apps/web/cloudflare-env.d.ts` ขึ้นเป็น "Added"
+   (ถ้าไม่เห็นไฟล์นี้ในลิสต์ = ไม่ได้คัดลอกไปวางถูกที่ ต้องกลับไปทำ STEP 3 ใหม่)
 5. Commit → Push
 
-**หรือทำผ่านเว็บ GitHub โดยตรง** (ไฟล์พวกนี้เป็น text ธรรมดา ลบผ่านเว็บได้เลย):
-1. เข้า repo → ไล่ไปที่ `apps/web/src/app/api/auth/google/route.ts`
-2. คลิกไอคอนถังขยะ (Delete this file) → Commit
-3. ทำแบบเดียวกันกับ `apps/web/src/app/api/auth/login/route.ts`
+## STEP B — เช็คว่าไม่มีไฟล์เก่าค้างอยู่อีก
 
----
+จากรอบก่อนเคยเจอไฟล์ `api/auth/google/route.ts` และ `api/auth/login/route.ts` ค้างอยู่ (ไม่ใช่
+ไฟล์ของผม) — เช็คอีกครั้งว่าไฟล์ 2 ตัวนี้ถูกลบออกจาก repo แล้วจริง ๆ:
 
-## สรุปสิ่งที่แก้ในรอบก่อนหน้า (v7 — ยังใช้ได้อยู่)
+1. เข้า repo บนเว็บ GitHub → ไปที่ `apps/web/src/app/api/auth/`
+2. ควรเห็นแค่โฟลเดอร์ `[...nextauth]` เท่านั้น (ไม่มี `google/` หรือ `login/` หลงเหลือ)
+3. ถ้ายังเห็น ให้ลบทิ้งอีกครั้ง (คลิกไฟล์ข้างใน → ถังขยะ → Commit)
 
-1. **เพิ่ม Local Email+Password login แบบสมบูรณ์** (ของเดิมยังไม่มี — เป็นสาเหตุที่แท็บ
-   "อีเมล+รหัสผ่าน" ใช้งานไม่ได้เลยไม่ว่าจะพิมพ์อะไรก็ error)
-2. **เพิ่ม `/api/debug`** — เปิด URL นี้ตรงในเบราว์เซอร์เพื่อเช็คว่า D1 database เชื่อมต่อได้จริงไหม
-3. **แก้ข้อความ** "ระบบจะพาไปหน้าเลือกบัญชี Google ของคุณ" → "Login ก่อนใช้งาน หรือ ติดต่อ ponnsth@gmail.com"
-4. **แก้ปุ่มให้ขนาดเท่ากัน** ทั้งแท็บ Google และแท็บ Local (ปุ่มสูง 48px เท่ากันเป๊ะ + content area สูงเท่ากัน กันการ์ดขยับตอนสลับแท็บ)
+## STEP C — Retry Build
 
----
+รอ auto-deploy หรือกด Retry build ที่ Cloudflare Dashboard → Worker `pm-platform-web`
 
-## STEP A — ทำไม Google Login กับ Local Login ถึง Error
+## STEP D — เช็คด้วย `/api/debug`
 
-### Local Login (อีเมล+รหัสผ่าน)
-**สาเหตุ:** โค้ดเดิมไม่มีระบบนี้เลย — ไม่มีคอลัมน์เก็บรหัสผ่านใน database, ไม่มี logic ตรวจสอบรหัสผ่าน
-เพราะ spec ตอนแรกระบุแค่ Google OAuth เท่านั้น พอมีคนพิมพ์อีเมล/รหัสผ่านแล้วกด submit ระบบเลย error
-กลับมาตลอดเพราะไม่มีอะไรให้ตรวจสอบ
-
-**แก้แล้ว:** เพิ่มคอลัมน์ `password_hash`, เพิ่ม Credentials provider ใน NextAuth, เพิ่มหน้าฟอร์ม
-กรอกอีเมล/รหัสผ่านที่ใช้งานได้จริง
-
-### Google Login
-**สาเหตุที่เป็นไปได้ (เรียงจากพบบ่อยสุด):**
-1. D1 binding ไม่ได้เชื่อมต่อจริง (env.DB เป็น undefined) → DrizzleAdapter สร้าง user ไม่ได้ →
-   error
-2. `AUTH_SECRET` ไม่ตรงกับที่ใช้ sign JWT ก่อนหน้า (ถ้าเคย login ด้วยค่าเก่าแล้วเปลี่ยน secret)
-3. Google Console redirect URI ไม่ตรงกับโดเมนที่ deploy จริง
-
-**วิธีเช็คให้ชัวร์ (ทำ STEP B ก่อน)** — ไม่ต้องเดา เปิด URL เดียวจะรู้ทันทีว่าปัญหาอยู่ตรงไหน
-
----
-
-## STEP B — ใช้ `/api/debug` เช็ค D1 + Secrets (ทำก่อนอื่นเลย)
-
-หลัง deploy โค้ดใหม่เสร็จ (ดู STEP D) ให้เปิด URL นี้ในเบราว์เซอร์:
-
+หลัง build ผ่านแล้ว เปิด:
 ```
 https://<URL เว็บของคุณ>/api/debug
 ```
 
-จะได้ผลลัพธ์แบบ JSON ประมาณนี้:
-
+ควรได้:
 ```json
 {
-  "env": {
-    "DB_BOUND": true,
-    "AUTH_SECRET_SET": true,
-    "GOOGLE_CLIENT_ID_SET": true,
-    "GOOGLE_CLIENT_SECRET_SET": true
-  },
-  "db": {
-    "ok": true,
-    "userCount": 0
-  }
+  "env": { "DB_BOUND": true, "AUTH_SECRET_SET": true, "GOOGLE_CLIENT_ID_SET": true, "GOOGLE_CLIENT_SECRET_SET": true },
+  "db": { "ok": true, "userCount": 0 }
 }
 ```
 
-**อ่านผลลัพธ์:**
+ถ้า `db.ok: false` อ่าน error message ที่ได้มา (มักเป็น "no such table" ถ้ายังไม่รัน SQL migration)
 
-| ค่าที่เห็น | ความหมาย | ต้องทำอะไร |
-|---|---|---|
-| `DB_BOUND: false` | D1 ไม่ได้ผูกกับ Worker เลย | เข้า Cloudflare Dashboard → Worker `pm-platform-web` → Settings → Bindings → เช็คว่ามี D1 binding ชื่อ `DB` ชี้ไปที่ database `ponn_platform` |
-| `db.ok: false` พร้อม error message | ผูก D1 ไว้แล้วแต่ query ไม่ได้ (เช่น table ไม่มีอยู่จริง) | อ่าน error message ตรง ๆ เช่นถ้าเจอ "no such table: users" แปลว่ายังไม่ได้รัน SQL migration หรือรันผิด database |
-| `AUTH_SECRET_SET: false` | ยังไม่ได้ตั้ง secret นี้ | ตั้งผ่าน Settings → Variables and Secrets |
-| ทุกค่าเป็น `true` และ `db.ok: true` | ระบบเชื่อมต่อ D1 สำเร็จแล้ว | ปัญหา Google Login (ถ้ายังไม่ได้) อยู่ที่ Google Console redirect URI แทน — เช็ค STEP C |
+## STEP E — รัน SQL Migration (ถ้ายังไม่เคยทำ)
 
-⚠️ **ลบไฟล์นี้ทิ้งหลัง debug เสร็จ** (`apps/web/src/app/api/debug/route.ts`) เพราะเปิดให้ใครก็ตาม
-เข้าดูได้ว่า infrastructure ตั้งค่าอะไรไว้บ้าง (ไม่ปลอดภัยระยะยาว แม้จะไม่โชว์ค่า secret จริง)
+**กรณี A — สร้าง D1 database ใหม่ (ยังไม่เคยรัน SQL อะไรเลย):**
+รันแค่ `database/migrations/0000_init.sql` (มีคอลัมน์ `password_hash` รวมอยู่แล้ว) ตามด้วย
+`0002_seed_local_user.sql` (insert local user ทดสอบ)
 
----
+**กรณี B — เคยรัน 0000_init.sql เวอร์ชันเก่าไปแล้ว (ไม่มีคอลัมน์ password_hash):**
+รัน `database/migrations/0001_add_local_auth.sql` แทน (มี ALTER TABLE + insert user ในตัวเดียว)
 
-## STEP C — เช็ค Google Console Redirect URI
+ทั้งสองกรณี ทำผ่าน Cloudflare Dashboard → D1 → `ponn_platform` → Console → วาง SQL →
+Ctrl+A ในกล่อง Query ก่อน Run
 
-1. เปิด [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
-2. คลิก OAuth Client ที่ใช้อยู่
-3. เช็ค **Authorized redirect URIs** ต้องมี URL ที่ตรงกับโดเมนจริงที่ deploy อยู่ **เป๊ะทุกตัวอักษร**
-   รวม `https://` และ path `/api/auth/callback/google` เช่น:
-   ```
-   https://apix.ponnsth.com/api/auth/callback/google
-   ```
-   (แก้ตามโดเมนจริงของคุณ — ดูจาก URL ที่ตั้งใน `NEXT_PUBLIC_API_URL` หรือ URL จริงของ Worker เว็บ)
-
----
-
-## STEP D — Deploy โค้ดใหม่ (ผ่าน GitHub Desktop เหมือนเดิม)
-
-1. ดาวน์โหลด + แตกไฟล์ zip ใหม่ (ตั้งชื่อสั้นกันปัญหา path length เหมือนเดิม — แตกที่ `C:\pm3` หรือคล้ายกัน)
-2. เปิด GitHub Desktop → repo `ponnv2` (ที่ clone ไว้แล้ว)
-3. คัดลอกไฟล์ทั้งหมดจากโฟลเดอร์ที่แตกใหม่ → วางทับใน repo folder (`C:\ponnv2`) → ยืนยัน Replace
-4. เช็คใน GitHub Desktop ว่าเห็นไฟล์ใหม่/แก้ไขครบ (โดยเฉพาะ `password.ts`, `api/debug/route.ts`,
-   `login/page.tsx`, `schema.ts` ทั้ง 2 ไฟล์, SQL migration ใหม่)
-5. Commit → Push
-
-## STEP E — รัน SQL Migration เพิ่ม (สำคัญ ห้ามข้าม)
-
-เปิดไฟล์ `database/migrations/0001_add_local_auth.sql` จากในเครื่อง → คัดลอกทั้งหมด → ไปที่
-Cloudflare Dashboard → D1 → `ponn_platform` → **Console** → วาง → Ctrl+A ในกล่อง Query ก่อน →
-**Run**
-
-จะได้ local user ทดสอบ 1 คนทันที:
+ได้ local user ทดสอบ:
 ```
 Email:    admin@ponnsth.com
 Password: Ponnsth@2026
 ```
 
----
-
-## STEP F — สร้าง Local User เพิ่ม (ถ้าต้องการ)
-
-Password hash ต้องคำนวณด้วย PBKDF2-SHA256 ให้ตรง format `<iterations>:<saltHex>:<hashHex>`
-วิธีสร้าง hash ใหม่แบบไม่ต้องใช้ terminal ของตัวเอง — บอก Copilot (ผม) ว่า:
-
-> "ช่วย generate password hash สำหรับ local user ใหม่ email=xxx password=yyy"
-
-จะได้ SQL `INSERT` พร้อมใช้กลับมาให้ทันที (ผมมีเครื่องมือรันโค้ดคำนวณ hash ให้ได้ตรง ๆ)
-
----
-
-## STEP G — ทดสอบ
+## STEP F — ทดสอบ
 
 | # | ทำอะไร | ผลที่ควรได้ |
 |---|---|---|
-| 1 | เปิด `/api/debug` | `db.ok: true` ทุกค่า |
-| 2 | เปิดหน้า `/login` | การ์ดพอดีจอ ไม่มี scroll, ปุ่มทั้ง 2 แท็บขนาดเท่ากัน |
-| 3 | แท็บ "อีเมล + รหัสผ่าน" → กรอก `admin@ponnsth.com` / `Ponnsth@2026` | เข้าระบบสำเร็จ ไป `/pm/board?id=1` |
-| 4 | แท็บ "บัญชี Google" → เลือกบัญชี | ถ้ายัง error ให้เช็ค STEP C (redirect URI) |
+| 1 | `/api/debug` | ทุกค่า true, `db.ok: true` |
+| 2 | `/login` | การ์ดพอดีจอ ไม่ scroll, ปุ่ม 2 แท็บขนาดเท่ากัน |
+| 3 | Local login: `admin@ponnsth.com` / `Ponnsth@2026` | เข้าสำเร็จ → `/pm/board?id=1` |
+| 4 | Google login | ถ้ายัง error เช็ค redirect URI ใน Google Console ให้ตรงโดเมนจริง |
 
 ---
 
-## Troubleshooting เพิ่มเติม
+## Troubleshooting
 
 | อาการ | สาเหตุ | วิธีแก้ |
 |---|---|---|
-| `/api/debug` เข้าไม่ได้ (404) | build ยังไม่เสร็จ หรือไฟล์ไม่ถูก push ขึ้นจริง | เช็คใน GitHub ว่ามีไฟล์ `apps/web/src/app/api/debug/route.ts` อยู่จริง |
-| Local login ขึ้น "อีเมลหรือรหัสผ่านไม่ถูกต้อง" แม้พิมพ์ถูก | ยังไม่ได้รัน STEP E (SQL migration) หรือรันไม่ครบ | กลับไปรัน SQL ใหม่ เช็คด้วย `SELECT email, password_hash FROM users;` ใน D1 Console ว่ามีแถวนี้จริง |
-| Google login ขึ้น `OAuthAccountNotLinked` | เคยสมัคร local password ด้วย email เดียวกันมาก่อน | ปกติ (กันบัญชีซ้ำโดยไม่ตั้งใจ) — ใช้วิธี login เดิมที่เคยใช้ |
+| `Property 'DB' does not exist on type 'CloudflareEnv'` (ซ้ำอีก) | ไฟล์ `cloudflare-env.d.ts` ไม่ถูก push ขึ้นจริง | เช็คใน GitHub ว่ามีไฟล์นี้อยู่ที่ `apps/web/cloudflare-env.d.ts` (root ของ apps/web ไม่ใช่ใน src/) |
+| Local login ขึ้น "อีเมลหรือรหัสผ่านไม่ถูกต้อง" ตลอด | ยังไม่รัน SQL migration (STEP E) | รันแล้วเช็คด้วย `SELECT email, password_hash FROM users;` ใน D1 Console |
+| `/api/debug` ขึ้น 404 | build ยังไม่เสร็จ หรือไฟล์ไม่ถูก push | เช็คว่ามีไฟล์ `apps/web/src/app/api/debug/route.ts` ใน repo จริง |

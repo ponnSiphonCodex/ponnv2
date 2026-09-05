@@ -4,7 +4,6 @@
  *
  * Next.js 15 breaking change: searchParams และ cookies() เปลี่ยนเป็น async/Promise แล้ว
  * (Next.js 14 เป็น sync ธรรมดา) — ต้อง await ทั้งคู่ ไม่งั้น type error ตอน build
- * ดู https://nextjs.org/docs/messages/sync-dynamic-apis
  */
 import { cookies } from "next/headers";
 

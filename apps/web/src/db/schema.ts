@@ -14,8 +14,6 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(),
   emailVerified: integer("email_verified", { mode: "timestamp" }),
   image: text("image"),
-  // passwordHash = "<iterations>:<saltHex>:<hashHex>" จาก PBKDF2-SHA256 (Web Crypto)
-  // NULL สำหรับ user ที่ login ผ่าน Google เท่านั้น (ไม่เคยตั้ง local password)
   passwordHash: text("password_hash"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`).$onUpdate(() => new Date()),

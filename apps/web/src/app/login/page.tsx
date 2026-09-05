@@ -5,18 +5,7 @@ import { Suspense, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-/**
- * หน้า login — 2 วิธี: Google OAuth / Local Email+Password
- *
- * จุดที่ตั้งใจแก้ตามที่ขอ:
- * 1. height: 100dvh (ไม่ใช่ minHeight) + overflow: hidden -> ไม่มี scrollbar แน่นอน
- * 2. ตัดคำว่า "ระบบจะพาไปหน้าเลือกบัญชี Google ของคุณ" ออก แทนด้วยข้อความติดต่อแอดมิน
- * 3. Content area ของทั้ง 2 แท็บใช้ minHeight เท่ากัน (CONTENT_MIN_HEIGHT) +
- *    ปุ่มหลักทั้งคู่ (Google / เข้าสู่ระบบ) ใช้ style เดียวกันทุก property (height, padding, font-size)
- *    เพื่อให้ขนาดเท่ากันเป๊ะไม่ว่าจะสลับไปแท็บไหน
- */
-
-const CONTENT_MIN_HEIGHT = 168; // px — คงที่ทั้ง 2 แท็บ กันการ์ดเปลี่ยนขนาดตอนสลับแท็บ
+const CONTENT_MIN_HEIGHT = 168;
 
 const PRIMARY_BUTTON_STYLE: CSSProperties = {
   width: "100%",
@@ -47,17 +36,7 @@ function ErrorBanner({ code }: { code: string | null }) {
   const text = messages[code] ?? "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
 
   return (
-    <div
-      style={{
-        background: "#FEF2F2",
-        color: "#B91C1C",
-        borderRadius: 8,
-        padding: "10px 12px",
-        fontSize: 13,
-        marginBottom: 16,
-        textAlign: "left",
-      }}
-    >
+    <div style={{ background: "#FEF2F2", color: "#B91C1C", borderRadius: 8, padding: "10px 12px", fontSize: 13, marginBottom: 16, textAlign: "left" }}>
       {text}
     </div>
   );
@@ -120,65 +99,23 @@ function LoginContent() {
           boxSizing: "border-box",
         }}
       >
-        <div
-          style={{
-            width: 64,
-            height: 64,
-            margin: "0 auto 16px",
-            borderRadius: 16,
-            background: "#F4F4F6",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        <div style={{ width: 64, height: 64, margin: "0 auto 16px", borderRadius: 16, background: "#F4F4F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Image src="/rocket-logo.png" alt="Portfolio Workspace" width={40} height={40} priority />
         </div>
 
         <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#001D58" }}>Portfolio Workspace</h1>
         <p style={{ margin: "4px 0 20px", fontSize: 13, color: "#6B7280" }}>ระบบบริหารพอร์ตโครงการองค์กร</p>
 
-        {/* Tabs */}
-        <div
-          style={{
-            display: "flex",
-            background: "#F4F4F6",
-            borderRadius: 10,
-            padding: 4,
-            marginBottom: 16,
-          }}
-        >
+        <div style={{ display: "flex", background: "#F4F4F6", borderRadius: 10, padding: 4, marginBottom: 16 }}>
           <button
             onClick={() => setTab("google")}
-            style={{
-              flex: 1,
-              padding: "10px 0",
-              borderRadius: 8,
-              border: "none",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 600,
-              background: tab === "google" ? "#fff" : "transparent",
-              color: tab === "google" ? "#001D58" : "#9AA0A6",
-              boxShadow: tab === "google" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
-            }}
+            style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: tab === "google" ? "#fff" : "transparent", color: tab === "google" ? "#001D58" : "#9AA0A6", boxShadow: tab === "google" ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}
           >
             บัญชี Google
           </button>
           <button
             onClick={() => setTab("local")}
-            style={{
-              flex: 1,
-              padding: "10px 0",
-              borderRadius: 8,
-              border: "none",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 600,
-              background: tab === "local" ? "#fff" : "transparent",
-              color: tab === "local" ? "#001D58" : "#9AA0A6",
-              boxShadow: tab === "local" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
-            }}
+            style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: tab === "local" ? "#fff" : "transparent", color: tab === "local" ? "#001D58" : "#9AA0A6", boxShadow: tab === "local" ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}
           >
             อีเมล + รหัสผ่าน
           </button>
@@ -186,18 +123,9 @@ function LoginContent() {
 
         <ErrorBanner code={displayError} />
 
-        {/* Content area — minHeight คงที่ทั้ง 2 แท็บ */}
         <div style={{ minHeight: CONTENT_MIN_HEIGHT }}>
           {tab === "google" ? (
-            <button
-              onClick={() => signIn("google", { callbackUrl: "/" })}
-              style={{
-                ...PRIMARY_BUTTON_STYLE,
-                background: "#fff",
-                color: "#1F2937",
-                border: "1px solid #E5E7EB",
-              }}
-            >
+            <button onClick={() => signIn("google", { callbackUrl: "/" })} style={{ ...PRIMARY_BUTTON_STYLE, background: "#fff", color: "#1F2937", border: "1px solid #E5E7EB" }}>
               <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
                 <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.1 8 3l5.7-5.7C34.5 6 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z" />
                 <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.6 18.9 13 24 13c3.1 0 5.9 1.1 8 3l5.7-5.7C34.5 6 29.5 4 24 4c-7.7 0-14.4 4.4-17.7 10.7z" />
@@ -208,58 +136,16 @@ function LoginContent() {
             </button>
           ) : (
             <form onSubmit={handleLocalLogin} style={{ textAlign: "left", display: "flex", flexDirection: "column", gap: 10 }}>
-              <input
-                type="email"
-                required
-                placeholder="อีเมล"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{
-                  width: "100%",
-                  height: 44,
-                  padding: "0 14px",
-                  borderRadius: 8,
-                  border: "1px solid #E5E7EB",
-                  fontSize: 14,
-                  boxSizing: "border-box",
-                }}
-              />
-              <input
-                type="password"
-                required
-                placeholder="รหัสผ่าน"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{
-                  width: "100%",
-                  height: 44,
-                  padding: "0 14px",
-                  borderRadius: 8,
-                  border: "1px solid #E5E7EB",
-                  fontSize: 14,
-                  boxSizing: "border-box",
-                }}
-              />
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  ...PRIMARY_BUTTON_STYLE,
-                  background: "#001D58",
-                  color: "#fff",
-                  border: "none",
-                  opacity: loading ? 0.7 : 1,
-                }}
-              >
+              <input type="email" required placeholder="อีเมล" value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 14, boxSizing: "border-box" }} />
+              <input type="password" required placeholder="รหัสผ่าน" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 14, boxSizing: "border-box" }} />
+              <button type="submit" disabled={loading} style={{ ...PRIMARY_BUTTON_STYLE, background: "#001D58", color: "#fff", border: "none", opacity: loading ? 0.7 : 1 }}>
                 {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
               </button>
             </form>
           )}
         </div>
 
-        <p style={{ marginTop: 16, fontSize: 11, color: "#9AA0A6" }}>
-          Login ก่อนใช้งาน หรือ ติดต่อ ponnsth@gmail.com
-        </p>
+        <p style={{ marginTop: 16, fontSize: 11, color: "#9AA0A6" }}>Login ก่อนใช้งาน หรือ ติดต่อ ponnsth@gmail.com</p>
       </div>
     </main>
   );

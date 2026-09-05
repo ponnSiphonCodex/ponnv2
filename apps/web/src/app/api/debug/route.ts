@@ -1,24 +1,13 @@
 /**
  * apps/web/src/app/api/debug/route.ts
- *
- * Diagnostic endpoint — เปิดใน browser ตรง ๆ (GET /api/debug) เพื่อเช็คว่า:
- *   1. D1 binding (env.DB) ถูกผูกจริงไหม + query ได้จริงไหม
- *   2. Secrets ที่จำเป็น (AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) ถูกตั้งไว้ครบไหม
- *      (บอกแค่ true/false ว่ามีค่าไหม ไม่เปิดเผยค่าจริงของ secret)
- *
- * ⚠️ ควรลบไฟล์นี้ทิ้ง (หรือใส่ auth guard) หลัง debug เสร็จ ก่อน production จริงระยะยาว
- * เพราะบอกข้อมูล infrastructure (แม้ไม่ใช่ secret values ตรง ๆ) แก่ใครก็ตามที่เปิด URL นี้ได้
+ * Diagnostic endpoint — เปิดใน browser ตรง ๆ (GET /api/debug) เพื่อเช็ค D1 + secrets
+ * ⚠️ ลบไฟล์นี้ทิ้งหลัง debug เสร็จ ก่อน production จริงระยะยาว
  */
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDb, users } from "@/db";
 
 export async function GET() {
-  const { env } = getCloudflareContext<{
-    DB: D1Database;
-    AUTH_SECRET?: string;
-    GOOGLE_CLIENT_ID?: string;
-    GOOGLE_CLIENT_SECRET?: string;
-  }>();
+  const { env } = getCloudflareContext();
 
   const envCheck = {
     DB_BOUND: typeof env.DB !== "undefined",
@@ -38,7 +27,7 @@ export async function GET() {
       dbCheck = { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
   } else {
-    dbCheck = { ok: false, error: "env.DB ไม่มีค่า — Worker ยังไม่ได้ผูก D1 binding (เช็ค wrangler.jsonc + Cloudflare Dashboard > Settings > Bindings)" };
+    dbCheck = { ok: false, error: "env.DB ไม่มีค่า — Worker ยังไม่ได้ผูก D1 binding" };
   }
 
   return Response.json({ env: envCheck, db: dbCheck }, { status: 200 });

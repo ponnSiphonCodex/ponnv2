@@ -1,15 +1,7 @@
 /**
  * apps/web/src/lib/password.ts
- *
- * Password hashing สำหรับ Local Email+Password login — ใช้ PBKDF2-SHA256 ผ่าน Web Crypto
- * (crypto.subtle) แทนไลบรารีนอก เช่น bcryptjs เพราะ Web Crypto รองรับ native บน Cloudflare
- * Workers runtime อยู่แล้ว (ไม่ต้องพึ่ง native binding ที่บาง edge runtime รันไม่ได้)
- *
- * รูปแบบที่เก็บใน DB (คอลัมน์ users.password_hash):
- *   "<iterations>:<saltHex>:<hashHex>"
- *
- * ทดสอบแล้วว่า algorithm นี้ให้ผลตรงกันทั้งบน Node.js (>=19, มี globalThis.crypto.subtle)
- * และ Cloudflare Workers — ใช้ generate hash ทดสอบได้ด้วย node ตรง ๆ (ดู DEPLOY_GUIDE_GUI.md)
+ * Password hashing สำหรับ Local Email+Password login — PBKDF2-SHA256 ผ่าน Web Crypto
+ * รูปแบบเก็บใน DB: "<iterations>:<saltHex>:<hashHex>"
  */
 
 const PBKDF2_ITERATIONS = 100_000;
