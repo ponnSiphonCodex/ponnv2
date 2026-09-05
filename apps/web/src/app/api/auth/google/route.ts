@@ -1,10 +1,10 @@
 /**
  * apps/web/src/app/api/auth/google/route.ts
- * เริ่ม Google OAuth 2.0 — redirect ไปหน้า consent ของ Google (เขียน flow เอง ไม่ใช้ NextAuth)
+ * เริ่ม Google OAuth 2.0 — redirect ไปหน้า consent ของ Google
  *
- * ⚠️ redirect_uri = <origin>/api/auth/google/callback
- * ต้องเพิ่ม URL นี้ใน Google Cloud Console → Credentials → Authorized redirect URIs:
- *   https://pm.ponnsth.com/api/auth/google/callback
+ * ⚠️ redirect_uri = <origin>/api/auth/callback/google (ตรงกับ Google Console ที่ตั้งไว้แล้ว)
+ * ⚠️ ถ้าเจอ "invalid_client / OAuth client was not found" = GOOGLE_CLIENT_ID secret ยังไม่ได้
+ *    ตั้งใน Cloudflare (ส่ง client_id ว่าง) → ไปตั้งที่ Worker > Settings > Variables and Secrets
  */
 import type { NextRequest } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
@@ -14,7 +14,13 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const { env } = await getCloudflareContext({ async: true });
   const url = new URL(req.url);
-  const redirectUri = `${url.origin}/api/auth/google/callback`;
+  const redirectUri = `${url.origin}/api/auth/callback/google`;
+
+  // ถ้ายังไม่ได้ตั้ง GOOGLE_CLIENT_ID จะเด้งกลับ login พร้อม error ที่อ่านรู้เรื่อง
+  // (แทนที่จะไปเจอหน้า invalid_client ของ Google ที่งง)
+  if (!env.GOOGLE_CLIENT_ID) {
+    return Response.redirect(`${url.origin}/login?error=NoClientId`, 302);
+  }
 
   const params = new URLSearchParams({
     client_id: env.GOOGLE_CLIENT_ID,

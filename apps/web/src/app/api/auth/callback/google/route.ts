@@ -1,7 +1,10 @@
 /**
- * apps/web/src/app/api/auth/google/callback/route.ts
- * รับ callback จาก Google → แลก code เป็น token → ดึงข้อมูล user → upsert ลง D1 → set session
- * เขียน OAuth flow เอง ไม่ใช้ NextAuth (ตัดต้นตอ error=Configuration)
+ * apps/web/src/app/api/auth/callback/google/route.ts
+ * รับ callback จาก Google → แลก code เป็น token → ดึง profile → upsert D1 → set session
+ *
+ * ⚠️ path นี้ = /api/auth/callback/google (ตรงกับที่ตั้งใน Google Console อยู่แล้ว)
+ * ต้องมี redirect URI นี้ใน Google Console:
+ *   https://pm.ponnsth.com/api/auth/callback/google
  */
 import type { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
@@ -15,13 +18,12 @@ export async function GET(req: NextRequest) {
   const { env } = await getCloudflareContext({ async: true });
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
-  const redirectUri = `${url.origin}/api/auth/google/callback`;
+  const redirectUri = `${url.origin}/api/auth/callback/google`;
 
   if (!code) {
     return Response.redirect(`${url.origin}/login?error=OAuthCallback`, 302);
   }
 
-  // 1) แลก authorization code เป็น access token
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -43,7 +45,6 @@ export async function GET(req: NextRequest) {
     return Response.redirect(`${url.origin}/login?error=OAuthSignin`, 302);
   }
 
-  // 2) ดึงข้อมูล profile จาก userinfo endpoint
   const profileRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
     headers: { Authorization: `Bearer ${tokens.access_token}` },
   });
@@ -56,7 +57,6 @@ export async function GET(req: NextRequest) {
     return Response.redirect(`${url.origin}/login?error=OAuthSignin`, 302);
   }
 
-  // 3) upsert user ตาม email
   const db = createDb(env.DB);
   let [user] = await db.select().from(users).where(eq(users.email, profile.email));
 
@@ -66,7 +66,6 @@ export async function GET(req: NextRequest) {
     user = { id, email: profile.email, name: profile.name ?? null } as typeof user;
   }
 
-  // 4) set session cookie แล้ว redirect เข้าระบบ
   const token = await createSessionToken(env.AUTH_SECRET, { sub: user.id, email: user.email, name: user.name });
   const res = new Response(null, { status: 302, headers: { Location: `${url.origin}/` } });
   res.headers.append("Set-Cookie", buildSessionCookie(token));

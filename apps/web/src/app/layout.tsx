@@ -11,7 +11,6 @@ const sarabun = Sarabun({
 
 export const metadata: Metadata = {
   title: "Portfolio Workspace",
-  description: "ระบบบริหารพอร์ตโครงการองค์กร",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

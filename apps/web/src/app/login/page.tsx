@@ -57,7 +57,9 @@ function LoginContent() {
 
   const bannerText =
     error ??
-    (urlError === "OAuthSignin" || urlError === "OAuthCallback"
+    (urlError === "NoClientId"
+      ? "ยังไม่ได้ตั้งค่า Google (GOOGLE_CLIENT_ID) ในระบบ — กรุณาแจ้งผู้ดูแล"
+      : urlError === "OAuthSignin" || urlError === "OAuthCallback"
       ? "เชื่อมต่อ Google ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
       : urlError
       ? "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
@@ -82,8 +84,7 @@ function LoginContent() {
           <Image src="/rocket-logo.png" alt="Portfolio Workspace" width={40} height={40} priority />
         </div>
 
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#001D58" }}>Portfolio Workspace</h1>
-        <p style={{ margin: "4px 0 20px", fontSize: 13, color: "#6B7280" }}>ระบบบริหารพอร์ตโครงการองค์กร</p>
+        <h1 style={{ margin: "0 0 20px", fontSize: 20, fontWeight: 700, color: "#001D58" }}>Portfolio Workspace</h1>
 
         <div style={{ display: "flex", background: "#F4F4F6", borderRadius: 10, padding: 4, marginBottom: 16 }}>
           <button onClick={() => { setTab("google"); setError(null); }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: tab === "google" ? "#fff" : "transparent", color: tab === "google" ? "#001D58" : "#9AA0A6", boxShadow: tab === "google" ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}>
