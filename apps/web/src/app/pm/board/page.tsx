@@ -1,6 +1,10 @@
 /**
  * ใช้ query param (?id=1) แทน dynamic route segment [projectId] โดยตั้งใจ
  * เพื่อลดจำนวนโฟลเดอร์ชื่อวงเล็บในโปรเจกต์ (ปัญหา path length บน Windows เวลาแตก zip)
+ *
+ * Next.js 15 breaking change: searchParams และ cookies() เปลี่ยนเป็น async/Promise แล้ว
+ * (Next.js 14 เป็น sync ธรรมดา) — ต้อง await ทั้งคู่ ไม่งั้น type error ตอน build
+ * ดู https://nextjs.org/docs/messages/sync-dynamic-apis
  */
 import { cookies } from "next/headers";
 
@@ -28,7 +32,8 @@ type BoardResponse = {
 
 async function getBoard(projectId: string): Promise<BoardResponse | null> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  const cookieHeader = cookies().toString();
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore.toString();
 
   const res = await fetch(`${apiUrl}/api/projects/${projectId}/board`, {
     headers: { cookie: cookieHeader },
@@ -39,8 +44,9 @@ async function getBoard(projectId: string): Promise<BoardResponse | null> {
   return res.json();
 }
 
-export default async function BoardPage({ searchParams }: { searchParams: { id?: string } }) {
-  const projectId = searchParams.id ?? "1";
+export default async function BoardPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
+  const params = await searchParams;
+  const projectId = params.id ?? "1";
   const board = await getBoard(projectId);
 
   if (!board) {

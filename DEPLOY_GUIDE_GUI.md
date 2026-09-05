@@ -1,6 +1,42 @@
-# คู่มืออัปเดต (v7) — เพิ่ม Local Login + Diagnostic Tool + แก้ UI
+# คู่มืออัปเดต (v8) — แก้ Build Fail จาก Next.js 15 + ไฟล์ค้างใน repo
 
-## สรุปสิ่งที่แก้ในรอบนี้
+## 🔴 แก้ build fail ล่าสุด — 2 ปัญหาแยกกัน
+
+### ปัญหา 1: Next.js 15 breaking change (บั๊กจากโค้ดของผมเอง)
+Next.js 15 เปลี่ยนให้ `searchParams` (และ `cookies()`) เป็น `Promise` ต้อง `await` ก่อนใช้
+(Next.js 14 เป็นค่า sync ธรรมดา) — โค้ดเดิมเขียนแบบ Next 14 พอ deploy จริงด้วย Next 15 เลย type
+error ตอน build **แก้แล้วใน `apps/web/src/app/pm/board/page.tsx`**
+
+### ปัญหา 2: มีไฟล์ค้างอยู่ใน repo ที่ไม่ได้มาจากไฟล์ที่ผมส่งให้เลย
+Build log แสดง error จากไฟล์ 2 ไฟล์นี้:
+```
+apps/web/src/app/api/auth/google/route.ts
+apps/web/src/app/api/auth/login/route.ts
+```
+ไฟล์ 2 ไฟล์นี้**ไม่เคยอยู่ใน zip ที่ผมส่งให้เลยสักรอบ** (ผมใช้ NextAuth catch-all route
+`[...nextauth]/route.ts` ตัวเดียวจัดการทั้ง Google + Credentials ให้แล้ว ไม่มีการแยกไฟล์)
+
+**สาเหตุที่ไฟล์นี้โผล่มาในโครงการ:** วิธีอัปเดตที่ใช้อยู่ (copy ไฟล์ใหม่ไปวางทับโฟลเดอร์ repo เดิม)
+เป็นการ "เพิ่ม/ทับ" ไฟล์เท่านั้น **ไม่ลบไฟล์เก่าที่ไม่มีอยู่ในชุดใหม่ออก** ถ้าไฟล์ 2 ไฟล์นี้เคยถูกสร้าง
+ไว้ในโปรเจกต์ก่อนหน้า (เช่น ทดลองสร้างเองหรือมาจากเทมเพลตอื่น) มันจะยังค้างอยู่ตลอดไปจนกว่าจะลบมือ
+
+### ✅ วิธีแก้ — ต้องลบ 2 ไฟล์นี้ออกจาก repo ด้วยตัวเอง (ไม่มีใน zip ให้ลบทับ)
+
+**ทำผ่าน GitHub Desktop:**
+1. เปิด File Explorer ไปที่ repo folder (เช่น `C:\ponnv2`)
+2. ไปที่ `apps\web\src\app\api\auth\`
+3. จะเห็นโฟลเดอร์ `google` และ `login` (นอกจาก `[...nextauth]` ที่ควรมี) → **ลบโฟลเดอร์ `google` และ `login` ทั้ง 2 โฟลเดอร์ทิ้ง**
+4. กลับไปที่ GitHub Desktop → จะเห็นไฟล์ที่ถูกลบขึ้นเป็น "Removed" (เครื่องหมาย − สีแดง)
+5. Commit → Push
+
+**หรือทำผ่านเว็บ GitHub โดยตรง** (ไฟล์พวกนี้เป็น text ธรรมดา ลบผ่านเว็บได้เลย):
+1. เข้า repo → ไล่ไปที่ `apps/web/src/app/api/auth/google/route.ts`
+2. คลิกไอคอนถังขยะ (Delete this file) → Commit
+3. ทำแบบเดียวกันกับ `apps/web/src/app/api/auth/login/route.ts`
+
+---
+
+## สรุปสิ่งที่แก้ในรอบก่อนหน้า (v7 — ยังใช้ได้อยู่)
 
 1. **เพิ่ม Local Email+Password login แบบสมบูรณ์** (ของเดิมยังไม่มี — เป็นสาเหตุที่แท็บ
    "อีเมล+รหัสผ่าน" ใช้งานไม่ได้เลยไม่ว่าจะพิมพ์อะไรก็ error)
