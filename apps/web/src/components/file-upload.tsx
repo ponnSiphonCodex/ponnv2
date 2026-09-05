@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { uploadToGoogleDrive, type UploadResult } from "@/lib/upload";
+import { LoadingOverlay } from "./loading-overlay";
 export function FileUpload({ onUploaded }: { onUploaded?: (r: UploadResult) => void }) {
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
@@ -13,6 +14,7 @@ export function FileUpload({ onUploaded }: { onUploaded?: (r: UploadResult) => v
   }
   return (
     <div style={{ border: "1px dashed #E5E7EB", borderRadius: 10, padding: 16 }}>
+      <LoadingOverlay show={uploading} label="กำลังอัปโหลดไป Google Drive..." />
       <label style={{ display: "inline-block", background: "#001D58", color: "#fff", padding: "10px 16px", borderRadius: 8, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>เลือกไฟล์อัปโหลด<input type="file" onChange={handleChange} style={{ display: "none" }} disabled={uploading} /></label>
       {fileName && <span style={{ marginLeft: 12, fontSize: 13, color: "#6B7280" }}>{fileName}</span>}
       {uploading && <p style={{ fontSize: 13, color: "#6B7280", marginTop: 12 }}>กำลังอัปโหลด...</p>}

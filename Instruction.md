@@ -191,3 +191,18 @@ Drive upload (Apps Script): https://script.google.com/macros/s/AKfycby.../exec
 ```
 
 **Theme สี:** Navy `#001D58` (primary) · Pink `#EC186E` (accent) · พื้นขาว · font Sarabun 15px
+
+---
+
+## 12. อัปเดต v19
+
+### Global Loading Overlay
+- `components/loading-overlay.tsx` — ไอคอน animated (heartbeat line) + เบลอพื้นหลัง + block การกด
+- `<RouteLoadingOverlay />` ใน layout → โผล่อัตโนมัติตอนเปลี่ยนหน้า (ดักคลิก `<a>` ภายใน)
+- `<LoadingOverlay show={} label="" />` ใช้ที่: login (submit), team (update role), file-upload
+- ไอคอนใช้ SVG polyline heartbeat จาก stroke-dasharray animation
+
+### ⚠️ Worker pm-platform-api build fail — ไม่กระทบเว็บ
+`root directory not found` = Worker เก่า `pm-platform-api` ยังตั้ง root=`apps/api` แต่ลบไปแล้ว
+→ **ลบ Worker `pm-platform-api` ทิ้ง** (Dashboard → Workers → pm-platform-api → Delete)
+เว็บจริงคือ `pm-platform-web` ที่ทำงานปกติ

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { LoadingOverlay } from "./loading-overlay";
 type Role = { roleId: number; roleName: string; module: string };
 type User = { id: string; name: string | null; email: string; roles: Role[] };
 type AllRole = { id: number; roleName: string; module: string };
@@ -24,6 +25,7 @@ export function TeamManager() {
   if (error) return <p style={{ color: "#B91C1C" }}>{error}</p>;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <LoadingOverlay show={busy !== null} label="กำลังอัปเดตสิทธิ์..." />
       {users.map((u) => (
         <div key={u.id} style={{ background: "#fff", borderRadius: 12, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>

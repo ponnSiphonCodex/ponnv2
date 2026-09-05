@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Suspense, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import { LoadingOverlay } from "@/components/loading-overlay";
 
 const CONTENT_MIN_HEIGHT = 168;
 const BTN: CSSProperties = { width: "100%", height: 48, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", boxSizing: "border-box" };
@@ -31,6 +32,7 @@ function LoginContent() {
 
   return (
     <main style={{ height: "100dvh", width: "100vw", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(160deg, #001D58 0%, #00133d 60%, #000a24 100%)", boxSizing: "border-box", padding: 16 }}>
+      <LoadingOverlay show={loading} label="กำลังเข้าสู่ระบบ..." />
       <div style={{ width: "100%", maxWidth: 380, background: "#fff", borderRadius: 20, padding: "28px 28px 24px", boxShadow: "0 20px 60px rgba(0,0,0,0.35)", textAlign: "center", boxSizing: "border-box" }}>
         <div style={{ width: 64, height: 64, margin: "0 auto 16px", borderRadius: 16, background: "#F4F4F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Image src="/rocket-logo.png" alt="Portfolio Workspace" width={40} height={40} priority />
