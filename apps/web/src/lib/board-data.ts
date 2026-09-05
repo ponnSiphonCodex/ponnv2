@@ -44,3 +44,22 @@ export async function dashboardStats(db: D1Database, ids?: number[] | null) {
     risks: await one(`SELECT COUNT(*) c FROM risks WHERE status != 'Closed'`),
   };
 }
+
+export async function getMilestones(db: D1Database, projectId: number): Promise<{ id: number; title: string; target_date: number | null; status: string | null }[]> {
+  const r = await db.prepare(`SELECT id, title, target_date, status FROM project_milestones WHERE project_id=? AND target_date IS NOT NULL ORDER BY target_date`).bind(projectId).all();
+  return (r.results ?? []) as any;
+}
+export async function statusBreakdown(db: D1Database, ids?: number[] | null): Promise<{ category: string; c: number }[]> {
+  let sql = `SELECT ws.category AS category, COUNT(*) AS c FROM tasks t JOIN workflow_statuses ws ON t.workflow_status_id=ws.id`;
+  const binds: any[] = [];
+  if (ids && ids.length >= 0) { if (ids.length === 0) return []; sql += ` WHERE t.project_id IN (${ids.map(()=>"?").join(",")})`; binds.push(...ids); }
+  sql += ` GROUP BY ws.category`;
+  const r = await db.prepare(sql).bind(...binds).all(); return (r.results ?? []) as any;
+}
+export async function workloadByUser(db: D1Database, ids?: number[] | null): Promise<{ name: string; c: number }[]> {
+  let sql = `SELECT COALESCE(u.name,u.email,'ยังไม่มอบหมาย') AS name, COUNT(*) AS c FROM tasks t LEFT JOIN users u ON t.assignee_id=u.id LEFT JOIN workflow_statuses ws ON t.workflow_status_id=ws.id WHERE (ws.category IS NULL OR ws.category NOT IN ('done','drop'))`;
+  const binds: any[] = [];
+  if (ids && ids.length >= 0) { if (ids.length === 0) return []; sql += ` AND t.project_id IN (${ids.map(()=>"?").join(",")})`; binds.push(...ids); }
+  sql += ` GROUP BY u.id ORDER BY c DESC LIMIT 8`;
+  const r = await db.prepare(sql).bind(...binds).all(); return (r.results ?? []) as any;
+}

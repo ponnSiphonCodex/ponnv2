@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { apiContext } from "@/lib/api-auth";
+import { notify, logActivity } from "@/lib/notify";
 export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   const c = await apiContext(); if (!c) return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -9,5 +10,8 @@ export async function POST(req: NextRequest) {
   let featureId = b.featureId ?? null;
   if (!featureId) { const f = await c.d1.prepare(`SELECT id FROM features WHERE project_id=? ORDER BY id LIMIT 1`).bind(b.projectId).first<any>(); featureId = f?.id ?? null; }
   const res = await c.d1.prepare(`INSERT INTO tasks (title, project_id, feature_id, workflow_status_id, assignee_id, priority_id, estimated_hours, created_by, updated_by) VALUES (?,?,?,?,?,?,?,?,?)`).bind(b.title, b.projectId, featureId, b.statusId, b.assigneeId ?? null, b.priorityId ?? null, b.estimatedHours ?? null, c.me.sub, c.me.sub).run();
-  return Response.json({ ok: true, id: Number(res.meta?.last_row_id ?? 0) });
+  const id = Number(res.meta?.last_row_id ?? 0);
+  await logActivity(c.d1, { referenceType: "task", referenceId: id, userId: c.me.sub, action: "Created", newValue: b.title });
+  if (b.assigneeId) await notify({ d1: c.d1, env: c.env, targetUserId: b.assigneeId, actorId: c.me.sub, actionType: "Assigned", referenceType: "task", referenceId: id, message: `คุณได้รับมอบหมายงานใหม่: "${b.title}"` });
+  return Response.json({ ok: true, id });
 }

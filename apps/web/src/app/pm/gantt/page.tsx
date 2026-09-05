@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/page-auth";
-import { getGanttRows, listProjects } from "@/lib/board-data";
+import { getGanttRows, listProjects, getMilestones } from "@/lib/board-data";
 import { visibleProjectIds } from "@/lib/access";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { shellProps } from "@/lib/shell-props";
@@ -15,9 +15,11 @@ export default async function GanttPage({ searchParams }: { searchParams: Promis
   let projectId = Number(sp.id ?? "1") || 1;
   if (ids && !ids.includes(projectId)) projectId = projects[0]?.id ?? projectId;
   const rows = await getGanttRows(a.d1, projectId);
+  const milestones = await getMilestones(a.d1, projectId);
   const proj = projects.find((p) => p.id === projectId);
   let min = Infinity, max = -Infinity;
   for (const r of rows) { if (r.start! < min) min = r.start!; if (r.due! > max) max = r.due!; }
+  for (const m of milestones) { if (m.target_date! < min) min = m.target_date!; if (m.target_date! > max) max = m.target_date!; }
   const span = max > min ? max - min : 1; const day = 86400;
   return (
     <AppShell active="gantt" {...shellProps(a)}>
@@ -26,6 +28,14 @@ export default async function GanttPage({ searchParams }: { searchParams: Promis
         {rows.length === 0 ? <div className="card" style={{ padding: 20, color: "#6B7280" }}>ยังไม่มีงานที่กำหนดวันเริ่ม + วันส่ง</div> : (
           <div className="card" style={{ padding: 18, overflowX: "auto" }}>
             <div style={{ minWidth: 640, display: "flex", flexDirection: "column", gap: 10 }}>
+              {milestones.length > 0 && (
+                <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 12, alignItems: "center", paddingBottom: 6, borderBottom: "1px dashed #E5E7EB" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#EC186E" }}>◆ Milestones</div>
+                  <div style={{ position: "relative", height: 22 }}>
+                    {milestones.map((m) => { const left = ((m.target_date! - min) / span) * 100; return <span key={m.id} title={`${m.title} · ${new Date(m.target_date!*1000).toISOString().slice(0,10)}`} style={{ position: "absolute", left: `calc(${left}% - 7px)`, top: 0, color: "#EC186E", fontSize: 16 }}>◆</span>; })}
+                  </div>
+                </div>
+              )}
               {rows.map((r) => {
                 const left = ((r.start! - min) / span) * 100; const width = Math.max(2, ((r.due! - r.start!) / span) * 100); const days = Math.round((r.due! - r.start!) / day);
                 return (

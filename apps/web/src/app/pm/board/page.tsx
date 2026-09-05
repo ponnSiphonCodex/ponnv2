@@ -17,12 +17,16 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
   const board = projects.length ? await getBoardData(a.d1, projectId) : null;
   const users = await refOptions(a.d1, "users");
   const priorities = await refOptions(a.d1, "priorities");
+  const featRows = await a.d1.prepare(`SELECT id, name AS label FROM features WHERE project_id=? ORDER BY id`).bind(projectId).all();
+  const features = (featRows.results ?? []) as any[];
+  const tagRows = await a.d1.prepare(`SELECT id, name, color FROM tags ORDER BY id`).all();
+  const tags = (tagRows.results ?? []) as any[];
   let canWrite = a.scope.isPmo;
   if (!canWrite && board) { const row = await a.d1.prepare(`SELECT id, product_id FROM projects WHERE id=?`).bind(projectId).first<any>(); canWrite = row ? canEditProject(a.scope, row.id, row.product_id) : false; }
   return (
     <AppShell active="board" {...shellProps(a)}>
-      <PageHeader title={board ? board.project.name : "กระดานงาน"} subtitle="ลากการ์ดข้ามคอลัมน์เพื่อเปลี่ยนสถานะ · คลิกการ์ดเพื่อลงเวลา" />
-      {!board ? <div style={{ padding: 40, color: "#6B7280" }}>ไม่พบโปรเจกต์ที่เข้าถึงได้</div> : <BoardClient board={board} projects={projects} users={users} priorities={priorities} canWrite={canWrite} />}
+      <PageHeader title={board ? board.project.name : "กระดานงาน"} subtitle="ลากการ์ดเปลี่ยนสถานะ · คลิกการ์ดเพื่อดู/แก้รายละเอียด" />
+      {!board ? <div style={{ padding: 40, color: "#6B7280" }}>ไม่พบโปรเจกต์ที่เข้าถึงได้</div> : <BoardClient board={board} projects={projects} users={users} priorities={priorities} features={features} tags={tags} canWrite={canWrite} />}
     </AppShell>
   );
 }

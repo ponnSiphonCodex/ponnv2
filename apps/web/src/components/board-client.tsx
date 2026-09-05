@@ -3,20 +3,23 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BoardData } from "@/lib/board-data";
 import { apiWrite } from "@/lib/offline";
+import { TaskDrawer } from "./task-drawer";
 
 const NAVY = "#001D58", PINK = "#EC186E";
 type Ref = { id: string | number; label: string };
+type Tag = { id: number; name: string; color: string | null };
 
-export function BoardClient({ board, projects, users, priorities, canWrite }: {
-  board: BoardData; projects: { id: number; name: string }[]; users: Ref[]; priorities: Ref[]; canWrite: boolean;
+export function BoardClient({ board, projects, users, priorities, features, tags, canWrite }: {
+  board: BoardData; projects: { id: number; name: string }[]; users: Ref[]; priorities: Ref[]; features: Ref[]; tags: Tag[]; canWrite: boolean;
 }) {
   const router = useRouter();
   const [dragId, setDragId] = useState<number | null>(null);
   const [overCol, setOverCol] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [addTo, setAddTo] = useState<number | null>(null);
-  const [logTask, setLogTask] = useState<{ id: number; title: string } | null>(null);
+  const [drawerTask, setDrawerTask] = useState<number | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const statusRefs: Ref[] = board.columns.map((c) => ({ id: c.id, label: c.name }));
 
   async function drop(colId: number) {
     if (dragId == null) return;
@@ -57,7 +60,7 @@ export function BoardClient({ board, projects, users, priorities, canWrite }: {
             <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 9, overflowY: "auto", minHeight: 60 }}>
               {col.tasks.length === 0 && <div style={{ color: "#C7CCD4", fontSize: 13, textAlign: "center", padding: "14px 0" }}>ว่าง</div>}
               {col.tasks.map((t) => (
-                <div key={t.id} draggable={canWrite} onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setOverCol(null); }} onClick={() => canWrite && setLogTask({ id: t.id, title: t.title })}
+                <div key={t.id} draggable={canWrite} onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setOverCol(null); }} onClick={() => setDrawerTask(t.id)}
                   style={{ border: dragId === t.id ? `1.5px solid ${PINK}` : "1px solid #ECEEF1", borderRadius: 10, padding: 11, cursor: canWrite ? "grab" : "default", background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.03)", opacity: dragId === t.id ? 0.5 : 1 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: "#1F2937", marginBottom: 6 }}>{t.title}</div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
@@ -73,7 +76,7 @@ export function BoardClient({ board, projects, users, priorities, canWrite }: {
       </div>
 
       {addTo != null && <AddTaskModal projectId={board.project.id} statusId={addTo} users={users} priorities={priorities} onClose={() => setAddTo(null)} onSaved={(q) => { setAddTo(null); if (q) setFlash(q); router.refresh(); }} />}
-      {logTask && <WorklogModal task={logTask} onClose={() => setLogTask(null)} onSaved={(q) => { setLogTask(null); if (q) setFlash(q); router.refresh(); }} />}
+      {drawerTask != null && <TaskDrawer taskId={drawerTask} users={users} priorities={priorities} statuses={statusRefs} features={features} tags={tags} onClose={() => setDrawerTask(null)} onChanged={() => router.refresh()} />}
     </div>
   );
 }

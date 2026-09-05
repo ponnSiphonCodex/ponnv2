@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { RocketIcon } from "./rocket-icon";
 import { ProfileModal } from "./profile-modal";
+import { NotificationBell } from "./notification-bell";
+import { GlobalSearch } from "./global-search";
 
 const NAVY = "#001D58";
 const PINK = "#EC186E";
@@ -17,6 +19,7 @@ const GROUPS: Group[] = [
     { key: "board", label: "กระดานงาน (Kanban)", href: "/pm/board?id=1", icon: "🗂️" },
     { key: "projects", label: "โครงการ", href: "/pm/manage/projects", icon: "📁" },
     { key: "gantt", label: "Gantt Chart", href: "/pm/gantt?id=1", icon: "📈" },
+    { key: "sprint-board", label: "Sprint Board", href: "/pm/sprint-board", icon: "🏃" },
     { key: "calendar", label: "ปฏิทิน", href: "/pm/calendar", icon: "🗓️" } ] },
   { title: "พอร์ตโฟลิโอ", items: [
     { key: "themes", label: "Themes", href: "/pm/manage/themes", icon: "🎯" },
@@ -34,6 +37,7 @@ const GROUPS: Group[] = [
     { key: "priorities", label: "Priorities", href: "/pm/manage/priorities", icon: "🔺", masterOnly: true },
     { key: "categories", label: "Categories", href: "/pm/manage/categories", icon: "🏷️", masterOnly: true },
     { key: "tags", label: "Tags", href: "/pm/manage/tags", icon: "🔖", masterOnly: true },
+    { key: "custom-fields", label: "Custom Fields", href: "/pm/custom-fields", icon: "🧬", masterOnly: true },
     { key: "secrets", label: "System Secrets", href: "/pm/manage/secrets", icon: "🔑", masterOnly: true } ] },
   { title: "ผู้ดูแลระบบ", items: [
     { key: "users", label: "จัดการผู้ใช้งาน", href: "/pm/users", icon: "🧑‍💼", adminOnly: true },
@@ -96,6 +100,12 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
       </aside>
 
       <main style={{ flex: 1, minWidth: 0, overflowX: "auto" }}>
+        {!guest && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, padding: "8px 20px", background: "#fff", borderBottom: "1px solid #F0F1F3", position: "sticky", top: 0, zIndex: 30 }}>
+            <GlobalSearch />
+            <NotificationBell />
+          </div>
+        )}
         {impersonating && (
           <div style={{ background: "#FEF3C7", borderBottom: "1px solid #FCD34D", color: "#92400E", padding: "8px 20px", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span>👁️ กำลังดูในมุมมองของ <b>{user.name || user.email}</b> (คุณคือ {realName}) — ทำรายการแทนได้ทุกอย่าง</span>

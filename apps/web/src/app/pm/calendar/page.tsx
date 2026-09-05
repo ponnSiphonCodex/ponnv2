@@ -12,8 +12,11 @@ export default async function CalendarPage() {
   const monthStart = Math.floor(Date.UTC(y, m, 1) / 1000); const monthEnd = Math.floor(Date.UTC(y, m + 1, 1) / 1000);
   const tk = await a.d1.prepare(`SELECT t.id, t.title, t.due_date, u.name AS assignee FROM tasks t LEFT JOIN users u ON t.assignee_id=u.id WHERE t.due_date>=? AND t.due_date<? ORDER BY t.due_date`).bind(monthStart, monthEnd).all();
   const tasks = (tk.results ?? []) as any[];
+  const ms = await a.d1.prepare(`SELECT id, title, target_date FROM project_milestones WHERE target_date>=? AND target_date<? ORDER BY target_date`).bind(monthStart, monthEnd).all();
+  const milestones = (ms.results ?? []) as any[];
   const byDay: Record<number, any[]> = {};
-  for (const t of tasks) { const d = new Date(t.due_date * 1000).getUTCDate(); (byDay[d] ||= []).push(t); }
+  for (const t of tasks) { const d = new Date(t.due_date * 1000).getUTCDate(); (byDay[d] ||= []).push({ ...t, kind: "task" }); }
+  for (const m of milestones) { const d = new Date(m.target_date * 1000).getUTCDate(); (byDay[d] ||= []).push({ ...m, kind: "milestone" }); }
   const cells: (number | null)[] = []; for (let i = 0; i < startDay; i++) cells.push(null); for (let d = 1; d <= daysInMonth; d++) cells.push(d);
   const monthName = first.toLocaleDateString("th-TH", { month: "long", year: "numeric", timeZone: "UTC" });
   return (
@@ -25,7 +28,7 @@ export default async function CalendarPage() {
           {cells.map((d, i) => (
             <div key={i} style={{ minHeight: 92, border: "1px solid #F0F1F3", borderRadius: 8, padding: 6, background: d ? "#fff" : "#FAFAFB" }}>
               {d && <div style={{ fontSize: 12, fontWeight: 600, color: NAVY, marginBottom: 4 }}>{d}</div>}
-              {d && (byDay[d] || []).map((t) => <div key={t.id} style={{ fontSize: 10.5, background: "#FDE7F0", color: "#B4185A", borderRadius: 5, padding: "2px 5px", marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={t.title}>{t.title}</div>)}
+              {d && (byDay[d] || []).map((t, k) => <div key={t.kind + t.id + k} style={{ fontSize: 10.5, background: t.kind === "milestone" ? "#FEF3C7" : "#FDE7F0", color: t.kind === "milestone" ? "#92400E" : "#B4185A", borderRadius: 5, padding: "2px 5px", marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={t.title}>{t.kind === "milestone" ? "◆ " : ""}{t.title}</div>)}
             </div>
           ))}
         </div>
