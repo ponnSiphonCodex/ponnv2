@@ -1,19 +1,22 @@
+/**
+ * apps/web/src/lib/auth.ts
+ * Auth.js (NextAuth v5) — Google OAuth + Local Email/Password + DrizzleAdapter(D1)
+ *
+ * ⚠️ สำคัญ: เวอร์ชันนี้ "ตัด" custom jwt.encode/decode ออกแล้ว (ที่เคยใส่ไว้เพื่อให้ Hono API
+ * worker แยกตัวมา verify token ได้) เพราะเป็น config ที่ไม่มาตรฐาน ทำให้ Auth.js init ไม่สำเร็จ
+ * → เกิด error=Configuration (login ล้มทั้ง Google + Local พร้อมกัน)
+ *
+ * ตอนนี้หน้า board query D1 ตรง ๆ ในตัวเอง (server component) ไม่ต้องเรียก API worker แยก
+ * จึงไม่ต้อง share token ข้าม service อีกต่อไป → ใช้ Auth.js JWT (JWE) มาตรฐานได้เลย
+ */
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
-import { SignJWT, jwtVerify } from "jose";
 import { eq } from "drizzle-orm";
 import type { NextAuthConfig } from "next-auth";
-import type { JWT } from "next-auth/jwt";
 import * as schema from "@/db";
 import type { DbClient } from "@/db";
 import { verifyPassword } from "./password";
-
-const MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
-
-function getSecretKey(secret: string) {
-  return new TextEncoder().encode(secret);
-}
 
 export function getAuthConfig(
   db: DbClient,
@@ -22,8 +25,10 @@ export function getAuthConfig(
   return {
     // @ts-expect-error DrizzleAdapter type คาดหวัง generic ตาม schema ของแต่ละโปรเจกต์
     adapter: DrizzleAdapter(db, {
-      usersTable: schema.users, accountsTable: schema.accounts,
-      sessionsTable: schema.sessions, verificationTokensTable: schema.verificationTokens,
+      usersTable: schema.users,
+      accountsTable: schema.accounts,
+      sessionsTable: schema.sessions,
+      verificationTokensTable: schema.verificationTokens,
     }),
     providers: [
       Google({ clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }),
@@ -48,32 +53,16 @@ export function getAuthConfig(
         },
       }),
     ],
-    session: { strategy: "jwt", maxAge: MAX_AGE_SECONDS },
+    session: { strategy: "jwt" },
     secret: env.AUTH_SECRET,
     trustHost: true,
-    jwt: {
-      maxAge: MAX_AGE_SECONDS,
-      async encode({ token }) {
-        return await new SignJWT(token as Record<string, unknown>)
-          .setProtectedHeader({ alg: "HS256" })
-          .setIssuedAt()
-          .setSubject((token?.sub as string) ?? "")
-          .setExpirationTime(Math.floor(Date.now() / 1000) + MAX_AGE_SECONDS)
-          .sign(getSecretKey(env.AUTH_SECRET));
-      },
-      async decode({ token }) {
-        if (!token) return null;
-        try {
-          const { payload } = await jwtVerify(token, getSecretKey(env.AUTH_SECRET), { algorithms: ["HS256"] });
-          return payload as JWT;
-        } catch {
-          return null;
-        }
-      },
-    },
     callbacks: {
       async jwt({ token, user }) {
-        if (user) { token.sub = user.id; token.email = user.email; token.name = user.name; }
+        if (user) {
+          token.sub = user.id;
+          token.email = user.email;
+          token.name = user.name;
+        }
         return token;
       },
       async session({ session, token }) {

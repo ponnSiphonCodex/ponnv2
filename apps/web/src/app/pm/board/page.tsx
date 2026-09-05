@@ -1,65 +1,49 @@
 /**
- * ใช้ query param (?id=1) แทน dynamic route segment [projectId] โดยตั้งใจ
- * เพื่อลดจำนวนโฟลเดอร์ชื่อวงเล็บในโปรเจกต์ (ปัญหา path length บน Windows เวลาแตก zip)
+ * apps/web/src/app/pm/board/page.tsx
+ * Kanban Board — query D1 ตรง ๆ ใน server component (ไม่เรียก API worker แยก)
+ * ตรวจ session ด้วย auth() ก่อน ถ้าไม่ได้ login เด้งไป /login
  *
- * Next.js 15 breaking change: searchParams และ cookies() เปลี่ยนเป็น async/Promise แล้ว
- * (Next.js 14 เป็น sync ธรรมดา) — ต้อง await ทั้งคู่ ไม่งั้น type error ตอน build
+ * ใช้ query param (?id=1) แทน dynamic route [projectId] เพื่อลดโฟลเดอร์ชื่อวงเล็บ
  */
-import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import NextAuth from "next-auth";
+import { createDb } from "@/db";
+import { getAuthConfig } from "@/lib/auth";
+import { getBoardData } from "@/lib/board-data";
 
-// บังคับ dynamic — หน้านี้อ่าน cookies + เรียก API ทุก request อยู่แล้ว
 export const dynamic = "force-dynamic";
 
-type BoardTask = {
-  id: number;
-  title: string;
-  assignee: { id: string; name: string | null; image: string | null } | null;
-  estimatedHours: number | null;
-  actualHours: number;
-  dueDate: number | null;
-};
-
-type BoardColumn = {
-  id: number;
-  name: string;
-  color: string | null;
-  category: "todo" | "doing" | "done";
-  tasks: BoardTask[];
-};
-
-type BoardResponse = {
-  project: { id: number; name: string; progress: { total: number; done: number; percent: number } };
-  columns: BoardColumn[];
-};
-
-async function getBoard(projectId: string): Promise<BoardResponse | null> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore.toString();
-
-  const res = await fetch(`${apiUrl}/api/projects/${projectId}/board`, {
-    headers: { cookie: cookieHeader },
-    cache: "no-store",
-  });
-
-  if (!res.ok) return null;
-  return res.json();
-}
-
 export default async function BoardPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
+  const { env } = getCloudflareContext();
+  const db = createDb(env.DB);
+
+  const { auth } = NextAuth(
+    getAuthConfig(db, { AUTH_SECRET: env.AUTH_SECRET, GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET })
+  );
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
   const params = await searchParams;
-  const projectId = params.id ?? "1";
-  const board = await getBoard(projectId);
+  const projectId = Number(params.id ?? "1");
+  const board = Number.isInteger(projectId) ? await getBoardData(db, projectId) : null;
 
   if (!board) {
-    return <main style={{ padding: 24 }}>ไม่พบ Project หรือ session หมดอายุ</main>;
+    return (
+      <main style={{ padding: 24 }}>
+        <p>ไม่พบ Project (id={String(params.id ?? "1")})</p>
+        <p style={{ fontSize: 13, color: "#6B7280" }}>
+          ถ้ายังไม่มีข้อมูล ให้รัน SQL seed ใน D1 Console (มีในไฟล์ database/migrations/schema.sql)
+        </p>
+      </main>
+    );
   }
 
   return (
-    <main style={{ padding: 24, fontFamily: "sans-serif" }}>
+    <main style={{ padding: 24 }}>
       <header style={{ marginBottom: 24 }}>
-        <h1 style={{ color: "#001D58" }}>{board.project.name}</h1>
-        <p>
+        <h1 style={{ color: "#001D58", margin: 0 }}>{board.project.name}</h1>
+        <p style={{ color: "#6B7280" }}>
           Progress: {board.project.progress.done}/{board.project.progress.total} ({board.project.progress.percent}%)
         </p>
       </header>
@@ -67,9 +51,10 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
       <div style={{ display: "flex", gap: 16, overflowX: "auto" }}>
         {board.columns.map((col) => (
           <section key={col.id} style={{ minWidth: 280, background: "#F4F4F6", borderRadius: 8, padding: 12 }}>
-            <h3 style={{ borderBottom: `3px solid ${col.color ?? "#001D58"}`, paddingBottom: 8 }}>
+            <h3 style={{ borderBottom: `3px solid ${col.color ?? "#001D58"}`, paddingBottom: 8, marginTop: 0 }}>
               {col.name} ({col.tasks.length})
             </h3>
+            {col.tasks.length === 0 && <p style={{ fontSize: 13, color: "#9AA0A6" }}>ยังไม่มีงาน</p>}
             {col.tasks.map((task) => (
               <article key={task.id} style={{ background: "#fff", borderRadius: 6, padding: 10, marginTop: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
                 <strong>{task.title}</strong>

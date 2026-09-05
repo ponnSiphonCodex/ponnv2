@@ -1,0 +1,43 @@
+/* apps/web/src/app/globals.css
+ * Base style ทั้งเว็บ: font Sarabun, ขนาดเริ่มต้น 14px, placeholder เทาจางมาก
+ */
+
+:root {
+  --font-size-base: 14px;
+  --color-navy: #001d58;
+  --color-pink: #ec186e;
+  --color-text: #1f2937;
+  --color-muted: #6b7280;
+  --color-placeholder: #c7ccd4; /* เทาจางมากสำหรับ placeholder / hint */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  /* Sarabun โหลดผ่าน next/font (layout.tsx) แล้ว fallback เป็น sans-serif */
+  font-family: var(--font-sarabun), "Sarabun", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+/* placeholder / hint ใน input, textarea ให้เทาจางมาก */
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-placeholder);
+  opacity: 1; /* กัน Firefox ทำให้จางเกินจนหาย */
+}
+
+/* input, button, textarea สืบทอด font จาก body (default browser ไม่สืบทอดให้) */
+input,
+button,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+}

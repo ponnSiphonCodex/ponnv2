@@ -9,6 +9,14 @@ Reset ที่ [Google Cloud Console](https://console.cloud.google.com/apis/cre
 
 ---
 
+## 0. อัปเดตสถาปัตยกรรม (v11) — web app ทำงานในตัวเอง
+
+- **หน้า board query D1 ตรง ๆ** (server component + Drizzle) ไม่เรียก API worker แยกแล้ว
+  → ตัด custom JWT / cross-worker cookie / CORS ทิ้งทั้งหมด
+- Auth.js ใช้ config **มาตรฐาน** (ตัด custom jwt.encode/decode ที่ทำให้ error=Configuration)
+- Worker `pm-platform-api` (Hono) กลายเป็น **optional** — web app ไม่พึ่งแล้ว
+- Font: **Sarabun** ทั้งเว็บ, ขนาดเริ่มต้น 14px, placeholder เทาจาง (`globals.css` + next/font)
+
 ## 1. โครงสร้างสำคัญ
 
 `apps/api` และ `apps/web` เป็นโปรเจกต์อิสระแยกกันสมบูรณ์ (ไม่มี workspace) ทั้งสองมี
