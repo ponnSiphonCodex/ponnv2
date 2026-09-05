@@ -1,7 +1,11 @@
 /**
- * apps/web/src/app/page.tsx
- * getCloudflareContext() ไม่ต้องใส่ generic แล้ว — env type มาจาก global CloudflareEnv
- * interface ที่ประกาศไว้ใน apps/web/cloudflare-env.d.ts
+ * apps/web/src/app/page.tsx  (หน้า Portal / redirect logic)
+ *
+ * ⚠️ ต้องมี 2 อย่างนี้เพื่อไม่ให้ build fail ตอน prerender:
+ *   1) export const dynamic = "force-dynamic"  → บอก Next.js ว่าห้าม prerender เป็น static
+ *      (เพราะหน้านี้ต้องอ่าน D1 + session ตอน request จริง)
+ *   2) await getCloudflareContext({ async: true }) → เรียกแบบ async
+ *      (แบบ sync ใช้ได้เฉพาะใน dynamic route ที่ไม่ถูก prerender เท่านั้น)
  */
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
@@ -10,8 +14,10 @@ import { getAuthConfig } from "@/lib/auth";
 import NextAuth from "next-auth";
 import { eq } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
-  const { env } = getCloudflareContext();
+  const { env } = await getCloudflareContext({ async: true });
 
   const db = createDb(env.DB);
   const { auth } = NextAuth(

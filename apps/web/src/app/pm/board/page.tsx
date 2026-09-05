@@ -1,11 +1,13 @@
 /**
- * ใช้ query param (?id=1) แทน dynamic route segment [projectId] โดยตั้งใจ
- * เพื่อลดจำนวนโฟลเดอร์ชื่อวงเล็บในโปรเจกต์
+ * apps/web/src/app/pm/board/page.tsx  (Kanban Board)
+ * ใช้ query param (?id=1) แทน dynamic route segment [projectId]
  *
- * หมายเหตุ Next.js 15: searchParams (และ params, cookies()) เปลี่ยนเป็น async/Promise
- * ต้อง await ก่อนใช้งานเสมอ (ต่างจาก Next.js 14 ที่เป็น object ธรรมดา)
+ * export const dynamic = "force-dynamic" → กัน prerender (หน้านี้ต้องอ่าน cookie + ยิง API ตอน request จริง)
+ * Next.js 15: searchParams และ cookies() เป็น async ต้อง await ก่อนใช้
  */
 import { cookies } from "next/headers";
+
+export const dynamic = "force-dynamic";
 
 type BoardTask = {
   id: number;
