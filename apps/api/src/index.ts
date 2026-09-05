@@ -1,8 +1,6 @@
 /**
  * apps/api/src/index.ts
- * Entry point ของ Cloudflare Worker (Hono) — deploy แยกจาก apps/web
- * Public: /health
- * Protected (ต้องมี session cookie จาก apps/web): /api/*
+ * Entry point ของ Cloudflare Worker (Hono)
  */
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -18,20 +16,18 @@ app.use("*", logger());
 app.use(
   "*",
   cors({
-    // ปรับ origin ให้ตรงกับโดเมนจริงของ apps/web (Cloudflare Pages)
+    // ปรับ origin ให้ตรงกับโดเมนจริงของ apps/web — เพิ่ม URL ทดสอบ (*.workers.dev) เข้าไปชั่วคราวได้ระหว่างทดสอบ
     origin: ["http://localhost:3000", "https://ponnsth.com", "https://www.ponnsth.com"],
-    credentials: true, // จำเป็น เพราะ session อยู่ใน cookie ข้าม service
+    credentials: true,
   })
 );
 
 app.get("/health", (c) => c.json({ status: "ok", env: c.env.ENVIRONMENT }));
 
-// ทุก route ใต้ /api ต้องผ่าน auth middleware (verify JWT session ที่ apps/web ออกให้)
 app.use("/api/*", authMiddleware);
 app.route("/api", apiRoutes);
 
 app.onError(onError);
-
 app.notFound((c) => c.json({ error: "Not Found" }, 404));
 
 export default app;

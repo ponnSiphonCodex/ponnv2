@@ -1,37 +1,10 @@
 /**
  * apps/api/src/routes/board.ts
- *
- * GET /api/projects/:projectId/board
- * ดึงข้อมูล Project Board แบบ Kanban ครบชุด: คอลัมน์ (Workflow Status) → Task → Custom Fields
- * พร้อม Progress % และ Actual Hours (real-time จาก worklogs)
- *
- * Response shape:
- * {
- *   project: { id, name, status, theme, autoDates: {startDate, dueDate}, progress: {total, done, percent} },
- *   columns: [
- *     {
- *       id, name, color, category, sortOrder,
- *       tasks: [{
- *         id, title, assignee, startDate, dueDate, estimatedHours, actualHours, budgetCost,
- *         customFields: [{ fieldId, fieldName, fieldType, value }]
- *       }]
- *     }
- *   ]
- * }
+ * GET /api/projects/:projectId/board — Kanban board เต็มรูปแบบ (columns + tasks + custom fields + progress %)
  */
 import { Hono } from "hono";
 import { and, eq, inArray } from "drizzle-orm";
-import {
-  customFields,
-  customFieldValues,
-  features,
-  projects,
-  tasks,
-  themes,
-  users,
-  workflowStatuses,
-} from "@pm-platform/db";
-import { createDb } from "@pm-platform/db";
+import { customFields, customFieldValues, features, projects, tasks, themes, users, workflowStatuses, createDb } from "../db";
 import type { AppEnv } from "../types";
 import { computeActualHoursForTasks, computeProjectAutoDates, computeProjectProgress } from "../lib/progress";
 
@@ -45,7 +18,6 @@ boardRoutes.get("/:projectId/board", async (c) => {
 
   const db = createDb(c.env.DB);
 
-  // 1) Project + Theme
   const [project] = await db
     .select({
       id: projects.id,
@@ -62,7 +34,6 @@ boardRoutes.get("/:projectId/board", async (c) => {
     return c.json({ error: "ไม่พบ Project นี้" }, 404);
   }
 
-  // 2) Workflow Statuses (คอลัมน์ Kanban) เรียงตาม sortOrder
   const statuses = await db
     .select({
       id: workflowStatuses.id,
@@ -75,7 +46,6 @@ boardRoutes.get("/:projectId/board", async (c) => {
     .where(eq(workflowStatuses.projectId, projectId))
     .orderBy(workflowStatuses.sortOrder);
 
-  // 3) Tasks ทั้งหมดของ Project (ผ่าน Feature) พร้อม assignee
   const taskRows = await db
     .select({
       id: tasks.id,
@@ -97,7 +67,6 @@ boardRoutes.get("/:projectId/board", async (c) => {
 
   const taskIds = taskRows.map((t) => t.id);
 
-  // 4) Custom Field Values ของ Task ทั้งหมด (entityType = 'task') + join นิยาม field
   const customFieldRows = taskIds.length
     ? await db
         .select({
@@ -109,15 +78,9 @@ boardRoutes.get("/:projectId/board", async (c) => {
         })
         .from(customFieldValues)
         .innerJoin(customFields, eq(customFieldValues.customFieldId, customFields.id))
-        .where(
-          and(
-            inArray(customFieldValues.entityId, taskIds),
-            eq(customFields.entityType, "task") // กัน id ชนกับ entity อื่น (polymorphic key)
-          )
-        )
+        .where(and(inArray(customFieldValues.entityId, taskIds), eq(customFields.entityType, "task")))
     : [];
 
-  // custom_field_values เป็น polymorphic (entity_type, entity_id) — กรองเฉพาะ field ที่นิยามไว้กับ 'task'
   const taskCustomFieldsMap = new Map<number, Array<{ fieldId: number; fieldName: string; fieldType: string; value: string | null }>>();
   for (const row of customFieldRows) {
     const list = taskCustomFieldsMap.get(row.entityId) ?? [];
@@ -125,16 +88,13 @@ boardRoutes.get("/:projectId/board", async (c) => {
     taskCustomFieldsMap.set(row.entityId, list);
   }
 
-  // 5) Actual Hours แบบ batch (SUM hours_spent group by task)
   const actualHoursMap = await computeActualHoursForTasks(db, taskIds);
 
-  // 6) Progress % + Auto-Dates ระดับ Project
   const [progress, autoDates] = await Promise.all([
     computeProjectProgress(db, projectId),
     computeProjectAutoDates(db, projectId),
   ]);
 
-  // 7) จัดกลุ่ม Task เข้าคอลัมน์ตาม workflowStatusId (คอลัมน์ที่ยังไม่มี Task ก็ต้องแสดง เป็น array ว่าง)
   const columns = statuses.map((status) => ({
     id: status.id,
     name: status.name,

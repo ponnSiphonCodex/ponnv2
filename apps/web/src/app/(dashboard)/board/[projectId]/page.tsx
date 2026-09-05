@@ -1,7 +1,6 @@
 /**
  * apps/web/src/app/(dashboard)/board/[projectId]/page.tsx
  * เรียก apps/api (Hono Worker แยก service) แบบ server-side พร้อม forward cookie
- * เพื่อให้ authMiddleware ฝั่ง Worker verify session JWT ได้
  */
 import { cookies } from "next/headers";
 
@@ -23,16 +22,12 @@ type BoardColumn = {
 };
 
 type BoardResponse = {
-  project: {
-    id: number;
-    name: string;
-    progress: { total: number; done: number; percent: number };
-  };
+  project: { id: number; name: string; progress: { total: number; done: number; percent: number } };
   columns: BoardColumn[];
 };
 
 async function getBoard(projectId: string): Promise<BoardResponse | null> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL; // เช่น https://pm-platform-api.<subdomain>.workers.dev
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   const cookieHeader = cookies().toString();
 
   const res = await fetch(`${apiUrl}/api/projects/${projectId}/board`, {
@@ -56,36 +51,18 @@ export default async function BoardPage({ params }: { params: { projectId: strin
       <header style={{ marginBottom: 24 }}>
         <h1 style={{ color: "#001D58" }}>{board.project.name}</h1>
         <p>
-          Progress: {board.project.progress.done}/{board.project.progress.total} (
-          {board.project.progress.percent}%)
+          Progress: {board.project.progress.done}/{board.project.progress.total} ({board.project.progress.percent}%)
         </p>
       </header>
 
       <div style={{ display: "flex", gap: 16, overflowX: "auto" }}>
         {board.columns.map((col) => (
-          <section
-            key={col.id}
-            style={{
-              minWidth: 280,
-              background: "#F4F4F6",
-              borderRadius: 8,
-              padding: 12,
-            }}
-          >
+          <section key={col.id} style={{ minWidth: 280, background: "#F4F4F6", borderRadius: 8, padding: 12 }}>
             <h3 style={{ borderBottom: `3px solid ${col.color ?? "#001D58"}`, paddingBottom: 8 }}>
               {col.name} ({col.tasks.length})
             </h3>
             {col.tasks.map((task) => (
-              <article
-                key={task.id}
-                style={{
-                  background: "#fff",
-                  borderRadius: 6,
-                  padding: 10,
-                  marginTop: 8,
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                }}
-              >
+              <article key={task.id} style={{ background: "#fff", borderRadius: 6, padding: 10, marginTop: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
                 <strong>{task.title}</strong>
                 <div style={{ fontSize: 12, color: "#6B7280" }}>
                   {task.assignee?.name ?? "ยังไม่มอบหมาย"} · {task.actualHours}/{task.estimatedHours ?? 0} ชม.

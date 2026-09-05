@@ -1,14 +1,7 @@
 /**
  * apps/api/src/middleware/auth.ts
- *
- * Hono (Cloudflare Workers) เป็น service แยกจาก Next.js (apps/web) ที่ถือ Auth.js
- * แนวทาง share session ระหว่างสอง service:
- *   - apps/web ใช้ NextAuth session strategy = "jwt" พร้อม custom jwt.encode/decode
- *     ที่ sign ด้วย HS256 (jose) แทนการใช้ JWE เข้ารหัสแบบ default ของ Auth.js
- *   - ทั้งสอง service ใช้ AUTH_SECRET ตัวเดียวกัน (เก็บเป็น Cloudflare secret ทั้งคู่)
- *   - apps/api จึง verify cookie session token ได้ตรง ๆ ด้วย jose.jwtVerify โดยไม่ต้องพึ่ง Auth.js
- *
- * ดู apps/web/src/lib/auth.ts สำหรับฝั่ง encode/decode ที่ตรงกัน
+ * apps/web ออก session เป็น JWT (HS256, sign เอง ไม่ใช้ JWE default ของ Auth.js)
+ * apps/api verify ด้วย secret เดียวกัน (AUTH_SECRET) ผ่าน jose
  */
 import { jwtVerify } from "jose";
 import { createMiddleware } from "hono/factory";
@@ -27,9 +20,7 @@ export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 
   try {
     const secret = new TextEncoder().encode(c.env.AUTH_SECRET);
-    const { payload } = await jwtVerify(token, secret, {
-      algorithms: ["HS256"],
-    });
+    const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
 
     if (!payload.sub) {
       return c.json({ error: "Unauthorized: malformed session token" }, 401);
@@ -42,7 +33,7 @@ export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
     });
 
     await next();
-  } catch (err) {
+  } catch {
     return c.json({ error: "Unauthorized: invalid or expired session" }, 401);
   }
 });

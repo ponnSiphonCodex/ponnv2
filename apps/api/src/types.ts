@@ -1,7 +1,5 @@
 /**
  * apps/api/src/types.ts
- * Bindings = ผูกกับ wrangler.toml (D1 / secrets)
- * Variables = ค่าที่ middleware set เข้า context (c.set / c.get)
  */
 export type Bindings = {
   DB: D1Database;

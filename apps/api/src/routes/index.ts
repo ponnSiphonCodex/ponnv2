@@ -7,5 +7,5 @@ import { taskRoutes } from "./tasks";
 export const apiRoutes = new Hono<AppEnv>();
 
 apiRoutes.route("/projects", projectRoutes);
-apiRoutes.route("/projects", boardRoutes); // เพิ่ม /projects/:projectId/board
+apiRoutes.route("/projects", boardRoutes);
 apiRoutes.route("/tasks", taskRoutes);

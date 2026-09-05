@@ -1,5 +1,5 @@
 {
-  "name": "@pm-platform/web",
+  "name": "pm-platform-web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,7 +11,6 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv"
   },
   "dependencies": {
-    "@pm-platform/db": "workspace:*",
     "next": "^14.2.13",
     "next-auth": "5.0.0-beta.21",
     "@auth/drizzle-adapter": "^1.4.2",

@@ -1,33 +1,21 @@
 /**
  * apps/api/src/lib/progress.ts
- * Business logic ที่ spec กำหนดไว้ตรง ๆ 3 ข้อ:
+ * Business logic 3 ข้อตาม spec:
  *   1) Auto-Dates  : start_date = MIN(task.start_date), due_date = MAX(task.due_date)
  *   2) Progress %  : count(task in status.category='done') / count(task ทั้งหมด)
  *   3) Actual Hours: SUM(task_worklogs.hours_spent) แบบ real-time (ไม่ cache)
- *
- * ทุกฟังก์ชันคำนวณ on-the-fly ตอน query ไม่มีการ denormalize ค่าเหล่านี้ลงตาราง
- * เพื่อกันข้อมูลไม่ sync กับ Task ล่าสุด
  */
 import { eq, inArray, sql } from "drizzle-orm";
-import { features, tasks, taskWorklogs, workflowStatuses } from "@pm-platform/db";
-import type { DbClient } from "@pm-platform/db";
+import { features, tasks, taskWorklogs, workflowStatuses } from "../db";
+import type { DbClient } from "../db";
 
-export type ProgressResult = {
-  total: number;
-  done: number;
-  percent: number; // 0–100 ทศนิยม 1 ตำแหน่ง
-};
-
-export type AutoDates = {
-  startDate: Date | null;
-  dueDate: Date | null;
-};
+export type ProgressResult = { total: number; done: number; percent: number };
+export type AutoDates = { startDate: Date | null; dueDate: Date | null };
 
 function epochToDate(epochSeconds: number | null): Date | null {
   return epochSeconds ? new Date(epochSeconds * 1000) : null;
 }
 
-/** Progress % ของ Project ทั้งก้อน (รวมทุก Feature/Task ในโปรเจกต์) */
 export async function computeProjectProgress(db: DbClient, projectId: number): Promise<ProgressResult> {
   const [row] = await db
     .select({
@@ -45,7 +33,6 @@ export async function computeProjectProgress(db: DbClient, projectId: number): P
   return { total, done, percent };
 }
 
-/** Progress % ระดับ Feature เดียว */
 export async function computeFeatureProgress(db: DbClient, featureId: number): Promise<ProgressResult> {
   const [row] = await db
     .select({
@@ -62,7 +49,6 @@ export async function computeFeatureProgress(db: DbClient, featureId: number): P
   return { total, done, percent };
 }
 
-/** Auto-Dates ของ Project = MIN/MAX ของ Task ทุกตัวใน Project (ผ่าน Feature) */
 export async function computeProjectAutoDates(db: DbClient, projectId: number): Promise<AutoDates> {
   const [row] = await db
     .select({
@@ -76,7 +62,6 @@ export async function computeProjectAutoDates(db: DbClient, projectId: number): 
   return { startDate: epochToDate(row?.startDate ?? null), dueDate: epochToDate(row?.dueDate ?? null) };
 }
 
-/** Auto-Dates ของ Feature เดียว = MIN/MAX ของ Task ที่อยู่ใน Feature นั้น */
 export async function computeFeatureAutoDates(db: DbClient, featureId: number): Promise<AutoDates> {
   const [row] = await db
     .select({
@@ -89,7 +74,6 @@ export async function computeFeatureAutoDates(db: DbClient, featureId: number): 
   return { startDate: epochToDate(row?.startDate ?? null), dueDate: epochToDate(row?.dueDate ?? null) };
 }
 
-/** Actual Hours ของ Task เดียว = SUM(hours_spent) */
 export async function computeTaskActualHours(db: DbClient, taskId: number): Promise<number> {
   const [row] = await db
     .select({ actualHours: sql<number>`coalesce(sum(${taskWorklogs.hoursSpent}), 0)`.mapWith(Number) })
@@ -98,10 +82,6 @@ export async function computeTaskActualHours(db: DbClient, taskId: number): Prom
   return row?.actualHours ?? 0;
 }
 
-/**
- * Actual Hours แบบ batch สำหรับหลาย Task พร้อมกัน (ใช้ตอน render Board ทั้งกระดาน
- * เพื่อเลี่ยงการยิง query ทีละ Task — สำคัญมากเมื่อ Task มีเป็นร้อย)
- */
 export async function computeActualHoursForTasks(db: DbClient, taskIds: number[]): Promise<Map<number, number>> {
   if (taskIds.length === 0) return new Map();
 
