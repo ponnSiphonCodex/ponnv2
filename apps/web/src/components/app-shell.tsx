@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { RocketIcon } from "./rocket-icon";
 import { ProfileModal } from "./profile-modal";
 import { NotificationBell } from "./notification-bell";
 import { GlobalSearch } from "./global-search";
+import { Icon, RocketLogo } from "./icons";
 
 const NAVY = "#001D58";
 const PINK = "#EC186E";
@@ -13,36 +13,35 @@ type Item = { key: string; label: string; href: string; icon: string; adminOnly?
 type Group = { title: string; items: Item[] };
 const GROUPS: Group[] = [
   { title: "ภาพรวม", items: [
-    { key: "dashboard", label: "แดชบอร์ด", href: "/pm/dashboard", icon: "📊" },
-    { key: "todos", label: "งานของฉันวันนี้", href: "/pm/todos", icon: "✅" } ] },
+    { key: "dashboard", label: "แดชบอร์ด", href: "/pm/dashboard", icon: "dashboard" },
+    { key: "todos", label: "งานของฉันวันนี้", href: "/pm/todos", icon: "todo" } ] },
   { title: "การส่งมอบงาน", items: [
-    { key: "board", label: "กระดานงาน (Kanban)", href: "/pm/board?id=1", icon: "🗂️" },
-    { key: "projects", label: "โครงการ", href: "/pm/manage/projects", icon: "📁" },
-    { key: "gantt", label: "Gantt Chart", href: "/pm/gantt?id=1", icon: "📈" },
-    { key: "sprint-board", label: "Sprint Board", href: "/pm/sprint-board", icon: "🏃" },
-    { key: "calendar", label: "ปฏิทิน", href: "/pm/calendar", icon: "🗓️" } ] },
+    { key: "board", label: "กระดานงาน (Kanban)", href: "/pm/board?id=1", icon: "board" },
+    { key: "projects", label: "โครงการ", href: "/pm/manage/projects", icon: "project" },
+    { key: "gantt", label: "Gantt Chart", href: "/pm/gantt?id=1", icon: "gantt" },
+    { key: "sprint-board", label: "Sprint Board", href: "/pm/sprint-board", icon: "sprint" },
+    { key: "calendar", label: "ปฏิทิน", href: "/pm/calendar", icon: "calendar" } ] },
   { title: "พอร์ตโฟลิโอ", items: [
-    { key: "themes", label: "Themes", href: "/pm/manage/themes", icon: "🎯" },
-    { key: "initiatives", label: "Initiatives", href: "/pm/manage/initiatives", icon: "🚩" },
-    { key: "requirements", label: "Requirements", href: "/pm/manage/requirements", icon: "📄" },
-    { key: "products", label: "Products", href: "/pm/manage/products", icon: "📦" },
-    { key: "features", label: "Features", href: "/pm/manage/features", icon: "🧩" },
-    { key: "milestones", label: "Milestones", href: "/pm/manage/milestones", icon: "🏁" },
-    { key: "sprints", label: "Sprints", href: "/pm/manage/sprints", icon: "⚡" } ] },
+    { key: "themes", label: "Themes", href: "/pm/manage/themes", icon: "theme" },
+    { key: "initiatives", label: "Initiatives", href: "/pm/manage/initiatives", icon: "initiative" },
+    { key: "requirements", label: "Requirements", href: "/pm/manage/requirements", icon: "requirement" },
+    { key: "products", label: "Products", href: "/pm/manage/products", icon: "product" },
+    { key: "features", label: "Features", href: "/pm/manage/features", icon: "feature" },
+    { key: "milestones", label: "Milestones", href: "/pm/manage/milestones", icon: "milestone" },
+    { key: "sprints", label: "Sprints", href: "/pm/manage/sprints", icon: "sprint" } ] },
   { title: "ติดตาม & ความเสี่ยง", items: [
-    { key: "issues", label: "Issues", href: "/pm/manage/issues", icon: "⚠️" },
-    { key: "risks", label: "Risks", href: "/pm/manage/risks", icon: "🛡️" },
-    { key: "meetings", label: "Meetings", href: "/pm/manage/meetings", icon: "👥" } ] },
+    { key: "issues", label: "Issues", href: "/pm/manage/issues", icon: "issue" },
+    { key: "risks", label: "Risks", href: "/pm/manage/risks", icon: "risk" },
+    { key: "meetings", label: "Meetings", href: "/pm/manage/meetings", icon: "meeting" } ] },
   { title: "ตั้งค่า (Master)", items: [
-    { key: "priorities", label: "Priorities", href: "/pm/manage/priorities", icon: "🔺", masterOnly: true },
-    { key: "categories", label: "Categories", href: "/pm/manage/categories", icon: "🏷️", masterOnly: true },
-    { key: "tags", label: "Tags", href: "/pm/manage/tags", icon: "🔖", masterOnly: true },
-    { key: "custom-fields", label: "Custom Fields", href: "/pm/custom-fields", icon: "🧬", masterOnly: true },
-    { key: "secrets", label: "System Secrets", href: "/pm/manage/secrets", icon: "🔑", masterOnly: true } ] },
+    { key: "priorities", label: "Priorities", href: "/pm/manage/priorities", icon: "priority", masterOnly: true },
+    { key: "categories", label: "Categories", href: "/pm/manage/categories", icon: "category", masterOnly: true },
+    { key: "tags", label: "Tags", href: "/pm/manage/tags", icon: "tag", masterOnly: true },
+    { key: "custom-fields", label: "Custom Fields", href: "/pm/custom-fields", icon: "custom", masterOnly: true } ] },
   { title: "ผู้ดูแลระบบ", items: [
-    { key: "users", label: "จัดการผู้ใช้งาน", href: "/pm/users", icon: "🧑‍💼", adminOnly: true },
-    { key: "logs", label: "System Log", href: "/pm/logs", icon: "📜", adminOnly: true },
-    { key: "settings", label: "อัปโหลด & ระบบ", href: "/pm/settings", icon: "⚙️", adminOnly: true } ] },
+    { key: "users", label: "จัดการผู้ใช้งาน", href: "/pm/users", icon: "users", adminOnly: true },
+    { key: "logs", label: "System Log", href: "/pm/logs", icon: "log", adminOnly: true },
+    { key: "settings", label: "อัปโหลด & ระบบ", href: "/pm/settings", icon: "settings", adminOnly: true } ] },
 ];
 
 export type ShellUser = { id: string; name: string | null; email: string; image: string | null; avatarUrl: string | null };
@@ -66,7 +65,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
       <aside style={{ width, minWidth: width, background: NAVY, color: "#fff", display: "flex", flexDirection: "column", transition: ready ? "width .18s ease, min-width .18s ease" : "none", position: "sticky", top: 0, height: "100dvh" }}>
         {/* rocket logo = toggle button */}
         <button onClick={toggle} aria-label="menu" style={{ display: "flex", alignItems: "center", gap: 11, padding: "15px 14px", borderBottom: "1px solid rgba(255,255,255,.1)", background: "transparent", border: "none", cursor: "pointer", width: "100%" }}>
-          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: collapsed ? 34 : 32, height: collapsed ? 34 : 32 }}><RocketIcon size={collapsed ? 30 : 28} color="#fff" /></span>
+          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: collapsed ? 34 : 32, height: collapsed ? 34 : 32, color: "#fff" }}><RocketLogo size={collapsed ? 30 : 28} /></span>
           {!collapsed && <span style={{ fontWeight: 700, fontSize: 16, color: "#fff", whiteSpace: "nowrap" }}>Portfolio</span>}
         </button>
 
@@ -82,7 +81,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
                   const a = active === m.key;
                   return (
                     <a key={m.key} href={m.href} title={collapsed ? m.label : undefined} style={{ display: "flex", alignItems: "center", gap: 11, padding: collapsed ? "10px 0" : "9px 11px", justifyContent: collapsed ? "center" : "flex-start", borderRadius: 9, textDecoration: "none", color: a ? "#fff" : "rgba(255,255,255,.72)", background: a ? PINK : "transparent", fontSize: 13.5, fontWeight: a ? 600 : 500, whiteSpace: "nowrap", marginBottom: 2 }}>
-                      <span style={{ fontSize: 15 }}>{m.icon}</span>{!collapsed && <span>{m.label}</span>}
+                      <span style={{ display: "flex", alignItems: "center", opacity: a ? 1 : .85 }}><Icon name={m.icon} size={19} /></span>{!collapsed && <span>{m.label}</span>}
                     </a>
                   );
                 })}

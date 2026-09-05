@@ -7,10 +7,14 @@ export async function getBoardData(db: D1Database, projectId: number): Promise<B
   if (!proj) return null;
   const st = await db.prepare(`SELECT id, name, color, category, sort_order FROM workflow_statuses WHERE project_id = ? ORDER BY sort_order`).bind(projectId).all();
   const statuses = (st.results ?? []) as any[];
+  // single query: LEFT JOIN aggregate worklogs (แทน correlated subquery ต่อแถว → เร็วขึ้นมาก)
   const tk = await db.prepare(
     `SELECT t.id, t.title, t.workflow_status_id, t.estimated_hours, t.due_date, t.sort_order, t.assignee_id, u.name AS assignee_name, p.name AS priority_name, p.color AS priority_color,
-     COALESCE((SELECT SUM(w.hours_spent) FROM task_worklogs w WHERE w.task_id = t.id),0) AS actual_hours
-     FROM tasks t LEFT JOIN users u ON t.assignee_id=u.id LEFT JOIN priorities p ON t.priority_id=p.id
+     COALESCE(wl.actual_hours, 0) AS actual_hours
+     FROM tasks t
+     LEFT JOIN users u ON t.assignee_id=u.id
+     LEFT JOIN priorities p ON t.priority_id=p.id
+     LEFT JOIN (SELECT task_id, SUM(hours_spent) AS actual_hours FROM task_worklogs GROUP BY task_id) wl ON wl.task_id = t.id
      WHERE t.project_id = ? OR t.feature_id IN (SELECT id FROM features WHERE project_id = ?) ORDER BY t.sort_order, t.id`
   ).bind(projectId, projectId).all();
   const rows = (tk.results ?? []) as any[];

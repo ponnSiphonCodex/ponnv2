@@ -7,9 +7,9 @@ const NAVY = "#001D58", PINK = "#EC186E";
 type Ref = { id: string | number; label: string };
 type Tag = { id: number; name: string; color: string | null };
 
-export function TaskDrawer({ taskId, users, priorities, statuses, features, tags, onClose, onChanged }: {
+export function TaskDrawer({ taskId, users, priorities, statuses, features, tags, onClose, onChanged, onNeedsReload }: {
   taskId: number; users: Ref[]; priorities: Ref[]; statuses: Ref[]; features: Ref[]; tags: Tag[];
-  onClose: () => void; onChanged: () => void;
+  onClose: () => void; onChanged: (patch?: any) => void; onNeedsReload?: () => void;
 }) {
   const [data, setData] = useState<any>(null);
   const [tab, setTab] = useState<"detail" | "comments" | "worklog" | "files" | "deps" | "activity">("detail");
@@ -25,11 +25,29 @@ export function TaskDrawer({ taskId, users, priorities, statuses, features, tags
   const t = data.task;
   const u2d = (u: number | null) => u ? new Date(u * 1000).toISOString().slice(0, 10) : "";
 
+  // map field ที่แสดงบนการ์ด board → ส่ง patch ให้ board อัปเดตทันที (ไม่ refresh)
+  function cardPatch(body: any): any | undefined {
+    const p: any = {};
+    if ("title" in body) p.title = body.title;
+    if ("workflowStatusId" in body) p.workflowStatusId = body.workflowStatusId ? Number(body.workflowStatusId) : null;
+    if ("assigneeId" in body) p.assignee = body.assigneeId ? { id: body.assigneeId, name: users.find((u) => String(u.id) === String(body.assigneeId))?.label ?? null } : null;
+    if ("priorityId" in body) { const pr = body.priorityId ? priorities.find((x) => String(x.id) === String(body.priorityId)) : null; p.priority = pr ? { name: pr.label, color: null } : null; }
+    if ("estimatedHours" in body) p.estimatedHours = body.estimatedHours ? Number(body.estimatedHours) : null;
+    return Object.keys(p).length ? p : undefined;
+  }
+
+  // optimistic: อัปเดต state ในดรอเวอร์ทันที + แจ้ง board + ยิง API เบื้องหลัง
   async function patch(body: any) {
+    setData((d: any) => ({ ...d, task: { ...d.task, ...toSnake(body) } }));
+    onChanged(cardPatch(body));
     setSaving(true);
     const r = await apiWrite(`/api/tasks/${taskId}`, "PATCH", body);
     setSaving(false);
-    if (r.ok || r.queued) { onChanged(); load(); }
+    if (!r.ok && !r.queued) setMsg("บันทึกไม่สำเร็จ");
+  }
+  function toSnake(b: any) {
+    const m: Record<string, string> = { workflowStatusId: "workflow_status_id", assigneeId: "assignee_id", priorityId: "priority_id", featureId: "feature_id", sprintId: "sprint_id", estimatedHours: "estimated_hours", budgetCost: "budget_cost", startDate: "start_date", dueDate: "due_date", title: "title", note: "note" };
+    const o: any = {}; for (const k in b) o[m[k] ?? k] = b[k]; return o;
   }
 
   return (
@@ -76,12 +94,12 @@ export function TaskDrawer({ taskId, users, priorities, statuses, features, tags
                 </div>
               </Row>
               <CustomFields taskId={taskId} />
-              <button onClick={async () => { if (confirm("ลบงานนี้?")) { await apiWrite(`/api/tasks/${taskId}`, "DELETE", {}); onChanged(); onClose(); } }} style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, border: "1px solid #FCA5A5", background: "#fff", color: "#DC2626", cursor: "pointer", fontWeight: 600 }}>ลบงานนี้</button>
+              <button onClick={async () => { if (confirm("ลบงานนี้?")) { await apiWrite(`/api/tasks/${taskId}`, "DELETE", {}); onNeedsReload?.(); onClose(); } }} style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, border: "1px solid #FCA5A5", background: "#fff", color: "#DC2626", cursor: "pointer", fontWeight: 600 }}>ลบงานนี้</button>
             </div>
           )}
 
-          {tab === "comments" && <CommentTab taskId={taskId} comments={data.comments} onPost={() => { load(); onChanged(); }} />}
-          {tab === "worklog" && <WorklogTab taskId={taskId} worklogs={data.worklogs} onPost={() => { load(); onChanged(); }} />}
+          {tab === "comments" && <CommentTab taskId={taskId} comments={data.comments} onPost={() => { load(); }} />}
+          {tab === "worklog" && <WorklogTab taskId={taskId} worklogs={data.worklogs} onPost={() => { load(); }} />}
           {tab === "files" && <FileTab taskId={taskId} attachments={data.attachments} onChange={() => { load(); onChanged(); }} setMsg={setMsg} />}
           {tab === "deps" && <DepsTab taskId={taskId} />}
           {tab === "activity" && <ActivityTab activity={data.activity} />}

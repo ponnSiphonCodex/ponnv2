@@ -88,11 +88,6 @@ export const ENTITIES: Record<string, EntityDef> = {
   tags: { table: "tags", label: "Tags", masterOnly: true, defaultOrder: "id ASC", fields: [
     { key: "name", label: "ชื่อ", type: "text", required: true, listShow: true },
     { key: "color", label: "สี (hex)", type: "text", listShow: true } ] },
-  secrets: { table: "system_secrets", label: "System Secrets", masterOnly: true, defaultOrder: "id ASC", fields: [
-    { key: "system_name", label: "ระบบ", type: "text", required: true, listShow: true },
-    { key: "key_name", label: "ชื่อ Key", type: "text", required: true, listShow: true },
-    { key: "secret_value", label: "ค่า (Secret)", type: "text" },
-    { key: "note", label: "หมายเหตุ", type: "text", listShow: true } ] },
 };
 export function entityDef(name: string): EntityDef | null { return ENTITIES[name] ?? null; }
 export function dbColumns(def: EntityDef): string[] { return def.fields.map((f) => f.key); }

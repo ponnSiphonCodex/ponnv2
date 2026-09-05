@@ -2,7 +2,7 @@
 import { Suspense, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import { RocketIcon } from "@/components/rocket-icon";
+import { RocketLogo } from "@/components/icons";
 const NAVY = "#001D58", PINK = "#EC186E";
 function LoginContent() {
   const sp = useSearchParams();
@@ -25,7 +25,7 @@ function LoginContent() {
     <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg,#001D58,#0A2E7A)", padding: 20 }}>
       <div className="card" style={{ width: "min(420px,94vw)", padding: 32 }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 22 }}>
-          <div style={{ width: 60, height: 60, borderRadius: 16, background: NAVY, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}><RocketIcon size={38} color="#fff" /></div>
+          <div style={{ width: 60, height: 60, borderRadius: 16, background: NAVY, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12, color: "#fff" }}><RocketLogo size={36} /></div>
           <h1 style={{ margin: 0, fontSize: 20, color: NAVY }}>Portfolio Workspace</h1>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#6B7280" }}>เข้าสู่ระบบเพื่อเริ่มใช้งาน</p>
         </div>

@@ -1,40 +1,32 @@
-# Portfolio Workspace — PM Platform (v21)
+# Portfolio Workspace — PM Platform (v22)
 
 Next.js 15 + Cloudflare D1/Workers + Drizzle + @opennextjs/cloudflare
 
-## ใหม่ใน v21 (ต่อยอด v20) — ทำ P1→P2→P3
+## ใหม่ใน v22 — Performance + UI polish
+### ⚡ แก้ความช้า (กดแล้วรอ ~2 วิ → ทันที)
+- **Optimistic UI ทุกจุด** — Kanban drag, เพิ่มงาน, แก้ในการ์ด, To-do, ตาราง CRUD อัปเดตหน้าจอ**ทันที** แล้วค่อย sync กับ server เบื้องหลัง (ไม่ `router.refresh()` ทั้งหน้าอีกต่อไป)
+- **Task Drawer optimistic** — แก้ field เห็นผลทันทีทั้งในดรอเวอร์และการ์ด board
+- **Query เร็วขึ้น** — board รวม worklog ด้วย `LEFT JOIN aggregate` (เดิม subquery ต่อแถว) + เพิ่ม index `product_owners/project_managers(user_id)`
+- **CRUD manager** — โหลด ref options ครั้งเดียว, หลัง save ดึงเฉพาะแถว
 
-### 🔴 P1 — ใช้งานจริง
-- **Task Detail Drawer** — คลิกการ์ด Kanban เปิดแผงข้าง แก้ได้ทุก field (สถานะ/ผู้รับผิดชอบ/priority/feature/วันที่/ชม./งบ/โน้ต/tags) + แท็บ คอมเมนต์ · ลงเวลา · ไฟล์แนบ · Dependencies · ประวัติ
-- **Telegram auto-notify** — ยิงจริงตอน: มอบหมายงาน, เปลี่ยนสถานะ, มีคอมเมนต์ + Cron `/api/cron/due-soon` เตือนงานใกล้ครบกำหนด (ตั้ง `CRON_SECRET` + Cloudflare Cron Trigger)
-- **Attachment ผูกงานจริง** — แนบไฟล์เข้า task → ขึ้น Drive → บันทึกลง `attachments`
-- **Impersonate audit** — บันทึก activity + แจ้ง Admin Telegram ทุกครั้งที่ admin สวม/ออกบทบาท
-- **Rollup lib** — คำนวณ progress/budget/hours/date แบบ bottom-up (task→feature→project)
-
-### 🟠 P2 — ครบ PM core
-- **Comment thread + Activity log** UI ในการ์ดงาน
-- **Notifications กระดิ่ง** — มุมขวาบน + badge unread + auto-poll 30s
-- **Task Dependencies** — เพิ่ม predecessor (FS/SS/FF/SF) ในการ์ด
-- **Tags บน task** — ติ๊ก tag บนการ์ด
-- **Sprint Board** — เมนูใหม่ แยกงานตาม Sprint + Backlog
-- **Milestones บน Gantt & Calendar** — แสดงเป็นหมุด ◆
-
-### 🟡 P3 — Flexibility & UX
-- **Global Search** — ค้นโครงการ/งาน/คน/issue จาก topbar (respect scope)
-- **Custom Fields** — สร้าง field เอง (Text/Number/Date/Dropdown/Checkbox) ต่อ task/project/feature + กรอกค่าในการ์ด
-- **Dashboard charts** — แถบสถานะงาน + ภาระงานต่อคน
+### 🎨 UI
+- **ไอคอนเมนู Minimal** — เปลี่ยนจาก emoji เป็น line-icon สีขาว (contrast บนพื้น navy) ชุดเดียวกันทั้งระบบ
+- **โลโก้จรวด** (line style) แทนปุ่ม hamburger — คลิกเพื่อย่อ/ขยายเมนู (ใช้ในหน้า login ด้วย)
+- **ลบเมนู System Secrets** ออกทั้งหมด
 
 ## Deploy
-1. GitHub Desktop → วางไฟล์ทับ repo (โครง `apps/web/...`) → Commit → Push → Cloudflare build
-2. **ไม่ต้องรัน migration ใหม่ถ้าเคยรัน v20 schema แล้ว** (v21 ใช้ตารางเดิมทั้งหมด) — ถ้ายังไม่เคย ให้รัน `database/migrations/schema.sql` ใน D1 Console
-3. Secret ใน Cloudflare: `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ALLOWED_DOMAINS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`, (option) `CRON_SECRET`
-
-## Cron (แจ้งเตือนใกล้ครบกำหนด)
-สร้าง Cloudflare Cron Trigger เรียก: `GET https://pm.ponnsth.com/api/cron/due-soon?key=<CRON_SECRET>` ทุกวันเช้า
+1. GitHub Desktop → วางไฟล์ทับ repo → Commit → Push
+2. **DB migration:** ถ้าเคยรัน v20/v21 แล้ว รันเฉพาะ 2 บรรทัดนี้ใน D1 Console (เพิ่ม index — ไม่บังคับแต่แนะนำ):
+   ```sql
+   CREATE INDEX IF NOT EXISTS product_owners_user_idx ON product_owners(user_id);
+   CREATE INDEX IF NOT EXISTS project_managers_user_idx ON project_managers(user_id);
+   ```
+   ถ้ายังไม่เคยรันเลย ให้รัน `database/migrations/schema.sql` ทั้งไฟล์
+3. Secret เดิม: `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ALLOWED_DOMAINS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`, (option) `CRON_SECRET`
 
 ## Login ทดสอบ
 - ponnsiphon@gmail.com / pn2811qp (System Admin + PMO)
 - admin@ponnsth.com / Ponnsth@2026 (System Admin)
 
-## ยังเหลือ (roadmap ถัดไป)
-- Multi-view สลับในหน้าเดียว + filter/group, Bulk actions (เลือกหลาย task), Dependency เส้นบน Gantt, Soft delete, Export Excel/PDF, Rentals module
+## หมายเหตุ performance
+Optimistic = หน้าจอตอบทันที; ถ้า network ช้าหรือ offline ระบบยัง queue ให้อัตโนมัติ (ธง "ส่งข้อมูลที่ค้างไว้..." เมื่อกลับมา online)

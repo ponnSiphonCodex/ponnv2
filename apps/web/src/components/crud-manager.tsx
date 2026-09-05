@@ -18,16 +18,28 @@ export function CrudManager({ entity }: { entity: string }) {
   const [creating, setCreating] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
 
+  // reload เฉพาะแถว (ใช้หลัง save/delete) — ไม่ดึง ref ซ้ำ
+  const loadRows = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/crud/${entity}`);
+      if (!res.ok) { const j = await res.json().catch(() => ({})); setError(j.error || "โหลดข้อมูลไม่สำเร็จ"); return; }
+      const d = await res.json(); setRows(d.rows || []); setCanWrite(!!d.canWrite);
+    } catch { setError("เชื่อมต่อไม่สำเร็จ"); }
+  }, [entity]);
+
+  // โหลดครั้งแรก: rows + refs พร้อมกัน
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const res = await fetch(`/api/crud/${entity}`);
-      if (!res.ok) { const j = await res.json().catch(() => ({})); setError(j.error || "โหลดข้อมูลไม่สำเร็จ"); setLoading(false); return; }
-      const d = await res.json(); setRows(d.rows || []); setCanWrite(!!d.canWrite);
       const refFields = def.fields.filter((f) => f.type === "ref");
       const uniq = Array.from(new Set(refFields.map((f) => f.refEntity!)));
-      const map: RefMap = {};
-      await Promise.all(uniq.map(async (re) => { const r = await fetch(`/api/ref/${re}`); if (r.ok) { const j = await r.json(); map[re] = j.options || []; } }));
+      const [rowsRes, ...refResults] = await Promise.all([
+        fetch(`/api/crud/${entity}`),
+        ...uniq.map((re) => fetch(`/api/ref/${re}`).then((r) => r.ok ? r.json() : { options: [] }).then((j) => ({ re, options: j.options || [] }))),
+      ]);
+      if (!rowsRes.ok) { const j = await rowsRes.json().catch(() => ({})); setError(j.error || "โหลดข้อมูลไม่สำเร็จ"); setLoading(false); return; }
+      const d = await rowsRes.json(); setRows(d.rows || []); setCanWrite(!!d.canWrite);
+      const map: RefMap = {}; for (const r of refResults as any[]) map[r.re] = r.options;
       setRefs(map);
     } catch { setError("เชื่อมต่อไม่สำเร็จ"); }
     setLoading(false);
@@ -42,7 +54,7 @@ export function CrudManager({ entity }: { entity: string }) {
     if (!confirm("ลบรายการนี้?")) return;
     const r = await apiWrite(`/api/crud/${entity}/${id}`, "DELETE", {});
     if (!r.ok && !r.queued) { alert(r.error || "ลบไม่สำเร็จ"); return; }
-    if (r.queued) setFlash(r.error!); load();
+    if (r.queued) setFlash(r.error!); loadRows();
   }
 
   const listFields = def.fields.filter((f) => f.listShow);
@@ -68,7 +80,7 @@ export function CrudManager({ entity }: { entity: string }) {
           </tbody>
         </table>
       </div>
-      {(creating || editing) && <EntityForm entity={entity} refs={refs} initial={editing} onClose={() => { setCreating(false); setEditing(null); }} onSaved={(q) => { setCreating(false); setEditing(null); if (q) setFlash(q); load(); }} />}
+      {(creating || editing) && <EntityForm entity={entity} refs={refs} initial={editing} onClose={() => { setCreating(false); setEditing(null); }} onSaved={(q) => { setCreating(false); setEditing(null); if (q) setFlash(q); loadRows(); }} />}
     </div>
   );
 }
