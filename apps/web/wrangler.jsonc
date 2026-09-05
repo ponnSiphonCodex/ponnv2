@@ -4,18 +4,9 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "services": [
-    { "binding": "WORKER_SELF_REFERENCE", "service": "pm-platform-web" }
-  ],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "pm-platform-web" }],
   "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "ponn_platform",
-      "database_id": "940740b8-9177-489a-9344-47b3e61302f8"
-    }
+    { "binding": "DB", "database_name": "ponn_platform", "database_id": "940740b8-9177-489a-9344-47b3e61302f8" }
   ]
 }

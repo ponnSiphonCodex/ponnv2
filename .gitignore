@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+.dev.vars
+.wrangler/
+.open-next/
+.next/
+dist/
+*.sqlite
+*.db
+.DS_Store
