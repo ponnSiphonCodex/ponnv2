@@ -1,4 +1,3 @@
--- database/migrations/0000_init.sql
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE users (

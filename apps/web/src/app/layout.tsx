@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { AppSessionProvider } from "@/components/session-provider";
-import "./globals.css";
 
+/**
+ * Favicon: Next.js App Router auto-detect ไฟล์ src/app/icon.png,
+ * src/app/apple-icon.png, src/app/favicon.ico เป็น metadata route ให้อัตโนมัติ
+ * ไม่ต้องประกาศ <link rel="icon"> เอง — แค่มีไฟล์อยู่ในโฟลเดอร์ app/ ก็พอ
+ */
 export const metadata: Metadata = {
   title: "Portfolio Workspace",
   description: "ระบบบริหารพอร์ตโครงการองค์กร",
@@ -10,15 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body>
+      <body style={{ margin: 0 }}>
         <AppSessionProvider>{children}</AppSessionProvider>
       </body>
     </html>

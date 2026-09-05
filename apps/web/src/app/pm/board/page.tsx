@@ -1,10 +1,8 @@
 /**
  * ใช้ query param (?id=1) แทน dynamic route segment [projectId] โดยตั้งใจ
- * เพื่อลดจำนวนโฟลเดอร์ชื่อวงเล็บในโปรเจกต์
+ * เพื่อลดจำนวนโฟลเดอร์ชื่อวงเล็บในโปรเจกต์ (ปัญหา path length บน Windows เวลาแตก zip)
  */
 import { cookies } from "next/headers";
-
-export const dynamic = "force-dynamic";
 
 type BoardTask = {
   id: number;
@@ -30,8 +28,7 @@ type BoardResponse = {
 
 async function getBoard(projectId: string): Promise<BoardResponse | null> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore.toString();
+  const cookieHeader = cookies().toString();
 
   const res = await fetch(`${apiUrl}/api/projects/${projectId}/board`, {
     headers: { cookie: cookieHeader },
@@ -42,21 +39,16 @@ async function getBoard(projectId: string): Promise<BoardResponse | null> {
   return res.json();
 }
 
-export default async function BoardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ id?: string }>;
-}) {
-  const params = await searchParams;
-  const projectId = params.id ?? "1";
+export default async function BoardPage({ searchParams }: { searchParams: { id?: string } }) {
+  const projectId = searchParams.id ?? "1";
   const board = await getBoard(projectId);
 
   if (!board) {
-    return <main style={{ padding: 24, fontFamily: "'Sarabun', sans-serif" }}>ไม่พบ Project หรือ session หมดอายุ</main>;
+    return <main style={{ padding: 24 }}>ไม่พบ Project หรือ session หมดอายุ</main>;
   }
 
   return (
-    <main style={{ padding: 24, fontFamily: "'Sarabun', sans-serif" }}>
+    <main style={{ padding: 24, fontFamily: "sans-serif" }}>
       <header style={{ marginBottom: 24 }}>
         <h1 style={{ color: "#001D58" }}>{board.project.name}</h1>
         <p>
