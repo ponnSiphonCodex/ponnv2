@@ -13,9 +13,7 @@ export function FileUpload({ onUploaded }: { onUploaded?: (r: UploadResult) => v
   }
   return (
     <div style={{ border: "1px dashed #E5E7EB", borderRadius: 10, padding: 16 }}>
-      <label style={{ display: "inline-block", background: "#001D58", color: "#fff", padding: "10px 16px", borderRadius: 8, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
-        เลือกไฟล์อัปโหลด<input type="file" onChange={handleChange} style={{ display: "none" }} disabled={uploading} />
-      </label>
+      <label style={{ display: "inline-block", background: "#001D58", color: "#fff", padding: "10px 16px", borderRadius: 8, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>เลือกไฟล์อัปโหลด<input type="file" onChange={handleChange} style={{ display: "none" }} disabled={uploading} /></label>
       {fileName && <span style={{ marginLeft: 12, fontSize: 13, color: "#6B7280" }}>{fileName}</span>}
       {uploading && <p style={{ fontSize: 13, color: "#6B7280", marginTop: 12 }}>กำลังอัปโหลด...</p>}
       {result?.ok && <p style={{ fontSize: 13, color: "#059669", marginTop: 12 }}>✅ สำเร็จ{result.url && <> · <a href={result.url} target="_blank" rel="noopener noreferrer" style={{ color: "#001D58" }}>เปิดไฟล์</a></>}</p>}

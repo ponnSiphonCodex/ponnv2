@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Sarabun } from "next/font/google";
 import "./globals.css";
 const sarabun = Sarabun({ subsets: ["thai", "latin"], weight: ["300", "400", "600", "700"], variable: "--font-sarabun", display: "swap" });
-export const metadata: Metadata = { title: "Portfolio Workspace", icons: { icon: "/favicon.ico", shortcut: "/favicon.ico", apple: "/apple-icon.png" } };
+// v15 style: ปล่อยให้ Next auto-detect favicon จากไฟล์ app/icon.png + app/favicon.ico (ไม่ประกาศ icons เอง)
+export const metadata: Metadata = { title: "Portfolio Workspace" };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (<html lang="th" className={sarabun.variable}><body>{children}</body></html>);
 }

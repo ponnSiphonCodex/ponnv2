@@ -10,9 +10,7 @@ export default async function TeamPage() {
   return (
     <AppShell active="team" user={auth.user} isAdmin={auth.admin} roleLabel={auth.roleLabel}>
       <PageHeader title="ผู้ใช้งาน & สิทธิ์" subtitle="กดปุ่ม role เพื่อเพิ่ม/ถอนสิทธิ์ให้ผู้ใช้แต่ละคน" />
-      <div style={{ padding: 28 }}>
-        <TeamManager />
-      </div>
+      <div style={{ padding: 28 }}><TeamManager /></div>
     </AppShell>
   );
 }

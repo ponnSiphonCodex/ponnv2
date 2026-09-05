@@ -10,6 +10,7 @@ const BTN: CSSProperties = { width: "100%", height: 48, display: "flex", alignIt
 function LoginContent() {
   const sp = useSearchParams();
   const urlError = sp.get("error");
+  const detail = sp.get("detail"); // ★ error จริงจาก Google (debug)
   const [tab, setTab] = useState<"google" | "local">("local");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,7 +40,12 @@ function LoginContent() {
           <button onClick={() => { setTab("google"); setError(null); }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: tab === "google" ? "#fff" : "transparent", color: tab === "google" ? "#001D58" : "#9AA0A6", boxShadow: tab === "google" ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}>บัญชี Google</button>
           <button onClick={() => { setTab("local"); setError(null); }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: tab === "local" ? "#fff" : "transparent", color: tab === "local" ? "#001D58" : "#9AA0A6", boxShadow: tab === "local" ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}>อีเมล + รหัสผ่าน</button>
         </div>
-        {banner && <div style={{ background: "#FEF2F2", color: "#B91C1C", borderRadius: 8, padding: "10px 12px", fontSize: 13, marginBottom: 16, textAlign: "left" }}>{banner}</div>}
+        {banner && (
+          <div style={{ background: "#FEF2F2", color: "#B91C1C", borderRadius: 8, padding: "10px 12px", fontSize: 13, marginBottom: 16, textAlign: "left" }}>
+            {banner}
+            {detail && <div style={{ fontSize: 11, color: "#9B2C2C", marginTop: 6, wordBreak: "break-all" }}>รายละเอียด: {detail}</div>}
+          </div>
+        )}
         <div style={{ minHeight: CONTENT_MIN_HEIGHT }}>
           {tab === "google" ? (
             <a href="/api/auth/google" style={{ ...BTN, background: "#fff", color: "#1F2937", border: "1px solid #E5E7EB", textDecoration: "none" }}>

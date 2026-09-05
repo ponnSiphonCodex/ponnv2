@@ -6,10 +6,7 @@
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "pm-platform-web" }],
-  "d1_databases": [{ "binding": "DB", "database_name": "ponn_platform", "database_id": "940740b8-9177-489a-9344-47b3e61302f8" }],
-  "vars": {
-    "AUTH_SECRET": "pmPlatform_ponnsth_2026_kJ8mN2pQ7rT4vW9xZ1aB3cD5eF6gH0iL",
-    "GOOGLE_CLIENT_ID": "71834421978-cuhvt0kbulcki1e8q4e1d7pmt1kq8sk6.apps.googleusercontent.com",
-    "GOOGLE_CLIENT_SECRET": "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"
-  }
+  "d1_databases": [{ "binding": "DB", "database_name": "ponn_platform", "database_id": "940740b8-9177-489a-9344-47b3e61302f8" }]
+  // ★ secrets (AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) ตั้งใน Cloudflare Dashboard
+  //   Worker > Settings > Variables and Secrets — เอาออกจากไฟล์นี้เพื่อความปลอดภัย (ตามที่ผู้ใช้ทำได้แล้ว)
 }

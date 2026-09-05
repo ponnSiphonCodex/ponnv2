@@ -18,6 +18,4 @@ export async function getBoardData(db: DbClient, projectId: number): Promise<Boa
   const columns: BoardColumn[] = statuses.map((s) => ({ id: s.id, name: s.name, color: s.color, category: s.category, tasks: taskRows.filter((t) => t.workflowStatusId === s.id).map((t) => ({ id: t.id, title: t.title, assignee: t.assigneeId ? { id: t.assigneeId, name: t.assigneeName, image: t.assigneeImage } : null, estimatedHours: t.estimatedHours, actualHours: hoursMap.get(t.id) ?? 0 })) }));
   return { project: { id: project.id, name: project.name, status: project.status, progress: { total, done, percent } }, columns };
 }
-export async function listProjects(db: DbClient) {
-  return db.select({ id: projects.id, name: projects.name, status: projects.status }).from(projects).orderBy(projects.id);
-}
+export async function listProjects(db: DbClient) { return db.select({ id: projects.id, name: projects.name, status: projects.status }).from(projects).orderBy(projects.id); }

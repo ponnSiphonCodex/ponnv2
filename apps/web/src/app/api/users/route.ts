@@ -1,6 +1,3 @@
-/**
- * GET /api/users — list users พร้อม roles (admin เท่านั้น)
- */
 import { eq } from "drizzle-orm";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDb, users, systemRoles, userRoles } from "@/db";
@@ -12,18 +9,11 @@ export async function GET() {
   const me = await getCurrentUser(env.AUTH_SECRET);
   if (!me) return Response.json({ error: "unauthorized" }, { status: 401 });
   const db = createDb(env.DB);
-  const myRoles = await getRolesForUser(db, me.sub);
-  if (!isAdmin(myRoles)) return Response.json({ error: "forbidden" }, { status: 403 });
-
+  if (!isAdmin(await getRolesForUser(db, me.sub))) return Response.json({ error: "forbidden" }, { status: 403 });
   const allUsers = await db.select({ id: users.id, name: users.name, email: users.email }).from(users).orderBy(users.email);
   const roleRows = await db.select({ userId: userRoles.userId, roleId: systemRoles.id, roleName: systemRoles.roleName, module: systemRoles.module }).from(userRoles).innerJoin(systemRoles, eq(userRoles.roleId, systemRoles.id));
   const roleMap = new Map<string, Array<{ roleId: number; roleName: string; module: string }>>();
-  for (const r of roleRows) { const list = roleMap.get(r.userId) ?? []; list.push({ roleId: r.roleId, roleName: r.roleName, module: r.module }); roleMap.set(r.userId, list); }
-
+  for (const r of roleRows) { const l = roleMap.get(r.userId) ?? []; l.push({ roleId: r.roleId, roleName: r.roleName, module: r.module }); roleMap.set(r.userId, l); }
   const allRoles = await db.select({ id: systemRoles.id, roleName: systemRoles.roleName, module: systemRoles.module }).from(systemRoles).orderBy(systemRoles.id);
-
-  return Response.json({
-    users: allUsers.map((u) => ({ ...u, roles: roleMap.get(u.id) ?? [] })),
-    allRoles,
-  });
+  return Response.json({ users: allUsers.map((u) => ({ ...u, roles: roleMap.get(u.id) ?? [] })), allRoles });
 }

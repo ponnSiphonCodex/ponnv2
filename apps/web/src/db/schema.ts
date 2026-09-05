@@ -1,20 +1,12 @@
 import { sql, relations } from "drizzle-orm";
 import { sqliteTable, text, integer, real, primaryKey, uniqueIndex, index } from "drizzle-orm/sqlite-core";
-
 const auditFields = () => ({
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`).$onUpdate(() => new Date()),
   createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
   updatedBy: text("updated_by").references(() => users.id, { onDelete: "set null" }),
 });
-
-export const users = sqliteTable("users", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  name: text("name"), email: text("email").notNull().unique(),
-  emailVerified: integer("email_verified", { mode: "timestamp" }), image: text("image"), passwordHash: text("password_hash"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`).$onUpdate(() => new Date()),
-});
+export const users = sqliteTable("users", { id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()), name: text("name"), email: text("email").notNull().unique(), emailVerified: integer("email_verified", { mode: "timestamp" }), image: text("image"), passwordHash: text("password_hash"), createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`), updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`).$onUpdate(() => new Date()) });
 export const accounts = sqliteTable("accounts", { userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), type: text("type").notNull(), provider: text("provider").notNull(), providerAccountId: text("provider_account_id").notNull(), refresh_token: text("refresh_token"), access_token: text("access_token"), expires_at: integer("expires_at"), token_type: text("token_type"), scope: text("scope"), id_token: text("id_token"), session_state: text("session_state"), createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`) }, (t) => ({ pk: primaryKey({ columns: [t.provider, t.providerAccountId] }), userIdx: index("accounts_user_idx").on(t.userId) }));
 export const sessions = sqliteTable("sessions", { sessionToken: text("session_token").primaryKey(), userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), expires: integer("expires", { mode: "timestamp" }).notNull() });
 export const systemRoles = sqliteTable("system_roles", { id: integer("id").primaryKey({ autoIncrement: true }), roleName: text("role_name").notNull(), module: text("module", { enum: ["PM", "RENTALS", "GLOBAL"] }).notNull(), permissions: text("permissions", { mode: "json" }).$type<Record<string, boolean>>().notNull().$defaultFn(() => ({})), ...auditFields() });
@@ -30,7 +22,6 @@ export const workflowStatuses = sqliteTable("workflow_statuses", { id: integer("
 export const tasks = sqliteTable("tasks", { id: integer("id").primaryKey({ autoIncrement: true }), featureId: integer("feature_id").notNull().references(() => features.id, { onDelete: "cascade" }), assigneeId: text("assignee_id").references(() => users.id, { onDelete: "set null" }), title: text("title").notNull(), workflowStatusId: integer("workflow_status_id").notNull().references(() => workflowStatuses.id, { onDelete: "restrict" }), startDate: integer("start_date", { mode: "timestamp" }), dueDate: integer("due_date", { mode: "timestamp" }), estimatedHours: real("estimated_hours"), budgetCost: real("budget_cost"), ...auditFields() }, (t) => ({ featureIdx: index("tasks_feature_idx").on(t.featureId), statusIdx: index("tasks_status_idx").on(t.workflowStatusId), assigneeIdx: index("tasks_assignee_idx").on(t.assigneeId) }));
 export const taskWorklogs = sqliteTable("task_worklogs", { id: integer("id").primaryKey({ autoIncrement: true }), taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }), userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), workDate: integer("work_date", { mode: "timestamp" }).notNull(), hoursSpent: real("hours_spent").notNull(), note: text("note"), ...auditFields() }, (t) => ({ taskIdx: index("task_worklogs_task_idx").on(t.taskId) }));
 export const attachments = sqliteTable("attachments", { id: integer("id").primaryKey({ autoIncrement: true }), entityType: text("entity_type", { enum: ["task", "project", "feature", "issue"] }).notNull(), entityId: integer("entity_id").notNull(), googleDriveFileId: text("google_drive_file_id").notNull(), fileName: text("file_name"), fileUrl: text("file_url"), uploadedBy: text("uploaded_by").references(() => users.id, { onDelete: "set null" }), createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`) }, (t) => ({ entityIdx: index("attachments_entity_idx").on(t.entityType, t.entityId) }));
-
 export const usersRelations = relations(users, ({ many }) => ({ accounts: many(accounts), roles: many(userRoles), worklogs: many(taskWorklogs) }));
 export const projectsRelations = relations(projects, ({ one, many }) => ({ theme: one(themes, { fields: [projects.themeId], references: [themes.id] }), features: many(features), workflowStatuses: many(workflowStatuses) }));
 export const featuresRelations = relations(features, ({ one, many }) => ({ project: one(projects, { fields: [features.projectId], references: [projects.id] }), tasks: many(tasks) }));
