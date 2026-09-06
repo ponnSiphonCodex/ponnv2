@@ -1,5 +1,5 @@
 import type { DbClient } from "@/db";
-export type BoardTask = { id: number; title: string; workflowStatusId: number | null; sortOrder: number; assignee: { id: string; name: string | null } | null; priority: { name: string; color: string | null } | null; estimatedHours: number | null; actualHours: number; dueDate: number | null; projectName?: string | null; projectId?: number | null; productName?: string | null; productId?: number | null; featureName?: string | null; featureId?: number | null; statusName?: string | null; category?: string | null; startDate?: number | null };
+export type BoardTask = { id: number; title: string; workflowStatusId: number | null; sortOrder: number; assignee: { id: string; name: string | null } | null; priority: { name: string; color: string | null } | null; estimatedHours: number | null; actualHours: number; dueDate: number | null; projectName?: string | null; projectId?: number | null; productName?: string | null; productId?: number | null; featureName?: string | null; featureId?: number | null; statusName?: string | null; category?: string | null; startDate?: number | null; note?: string | null; budgetCost?: number | null; createdAt?: number | null; updatedAt?: number | null };
 export type BoardColumn = { id: number; name: string; color: string | null; category: string; tasks: BoardTask[] };
 export type Progress = { total: number; done: number; drop: number; percent: number };
 export type BoardData = { project: { id: number; name: string; status: string | null; progress: Progress }; columns: BoardColumn[] };
@@ -10,7 +10,7 @@ export async function getBoardData(db: DbClient, projectId: number): Promise<Boa
   const statuses = (st.results ?? []) as any[];
   // single query: LEFT JOIN aggregate worklogs (แทน correlated subquery ต่อแถว → เร็วขึ้นมาก)
   const tk = await db.prepare(
-    `SELECT t.id, t.title, t.workflow_status_id, t.estimated_hours, t.due_date, t.start_date, t.sort_order, t.assignee_id, u.name AS assignee_name, p.name AS priority_name, p.color AS priority_color,
+    `SELECT t.id, t.title, t.workflow_status_id, t.estimated_hours, t.due_date, t.start_date, t.note, t.budget_cost, t.created_at, t.updated_at, t.sort_order, t.assignee_id, u.name AS assignee_name, p.name AS priority_name, p.color AS priority_color,
      COALESCE(wl.actual_hours, 0) AS actual_hours
      FROM tasks t
      LEFT JOIN users u ON t.assignee_id=u.id
@@ -40,7 +40,7 @@ export async function getAllProjectsBoard(db: DbClient, ids: number[] | null): P
   let where = "1=1"; const binds: any[] = [];
   if (ids && ids.length >= 0) { if (ids.length === 0) where = "0"; else { where = `t.project_id IN (${ids.map(() => "?").join(",")})`; binds.push(...ids); } }
   const tk = await db.prepare(
-    `SELECT t.id, t.title, t.workflow_status_id, t.estimated_hours, t.due_date, t.start_date, t.sort_order, t.assignee_id,
+    `SELECT t.id, t.title, t.workflow_status_id, t.estimated_hours, t.due_date, t.start_date, t.note, t.budget_cost, t.created_at, t.updated_at, t.sort_order, t.assignee_id,
        u.name AS assignee_name, p.name AS priority_name, p.color AS priority_color,
        ws.name AS status_name, ws.category AS category, pr.name AS project_name, pr.id AS project_id, pd.name AS product_name, pd.id AS product_id, f.name AS feature_name, f.id AS feature_id,
        COALESCE(wl.actual_hours, 0) AS actual_hours
@@ -63,7 +63,7 @@ export async function getAllProjectsBoard(db: DbClient, ids: number[] | null): P
         assignee: t.assignee_id ? { id: t.assignee_id, name: t.assignee_name } : null,
         priority: t.priority_name ? { name: t.priority_name, color: t.priority_color } : null,
         estimatedHours: t.estimated_hours, actualHours: Number(t.actual_hours) || 0, dueDate: t.due_date,
-        statusName: t.status_name ?? null, category: t.category ?? null, startDate: t.start_date ?? null, projectName: t.project_name ?? null, projectId: t.project_id ?? null, productName: t.product_name ?? null, productId: t.product_id ?? null, featureName: t.feature_name ?? null, featureId: t.feature_id ?? null } as any;
+        note: t.note ?? null, budgetCost: t.budget_cost ?? null, createdAt: t.created_at ?? null, updatedAt: t.updated_at ?? null, statusName: t.status_name ?? null, category: t.category ?? null, startDate: t.start_date ?? null, projectName: t.project_name ?? null, projectId: t.project_id ?? null, productName: t.product_name ?? null, productId: t.product_id ?? null, featureName: t.feature_name ?? null, featureId: t.feature_id ?? null } as any;
     }) }));
   const total = rows.length; const denom = total - drop;
   return { project: { id: 0, name: "ทุกโครงการ", status: null, progress: { total, done, drop, percent: denom <= 0 ? 0 : Math.round((done / denom) * 1000) / 10 } }, columns };
