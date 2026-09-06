@@ -1,4 +1,3 @@
-import { createDb, type DbClient } from "@/db";
 import type { NextRequest } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { notify } from "@/lib/notify";
@@ -13,7 +12,7 @@ export async function GET(req: NextRequest) {
   const now = Math.floor(Date.now() / 1000);
   const in48 = now + 48 * 3600;
   // งานที่ยังไม่เสร็จ + due ภายใน 48 ชม.
-  const r = await createDb(env).prepare(
+  const r = await env.DB.prepare(
     `SELECT t.id, t.title, t.assignee_id, t.due_date FROM tasks t
      LEFT JOIN workflow_statuses ws ON t.workflow_status_id=ws.id
      WHERE t.due_date IS NOT NULL AND t.due_date BETWEEN ? AND ? AND t.assignee_id IS NOT NULL
@@ -23,7 +22,7 @@ export async function GET(req: NextRequest) {
   let sent = 0;
   for (const t of rows) {
     const hrs = Math.round((t.due_date - now) / 3600);
-    await notify({ d1: createDb(env), env, targetUserId: t.assignee_id, actorId: null, actionType: "Due_Soon", referenceType: "task", referenceId: t.id, message: `⏰ งาน "${t.title}" ครบกำหนดในอีก ~${hrs} ชม.` });
+    await notify({ d1: env.DB, env, targetUserId: t.assignee_id, actorId: null, actionType: "Due_Soon", referenceType: "task", referenceId: t.id, message: `⏰ งาน "${t.title}" ครบกำหนดในอีก ~${hrs} ชม.` });
     sent++;
   }
   return Response.json({ ok: true, checked: rows.length, notified: sent });

@@ -1,2 +1,21 @@
-import type { NextRequest } from "next/server";import { getCloudflareContext } from "@opennextjs/cloudflare";import { createDb } from "@/db";import { getCurrentUser } from "@/lib/current-user";import { getRolesForUser,isAdmin } from "@/lib/rbac";export const dynamic="force-dynamic";
-export async function POST(req:NextRequest){const {env}=await getCloudflareContext({async:true});const db=createDb(env),me=await getCurrentUser(env.AUTH_SECRET);if(!me)return Response.json({ok:false,error:"unauthorized"},{status:401});if(!isAdmin(await getRolesForUser(db,me.sub)))return Response.json({ok:false,error:"forbidden"},{status:403});let b:any;try{b=await req.json()}catch{return Response.json({ok:false,error:"bad request"},{status:400})}if(!b.userId||!b.roleId||!["add","remove"].includes(b.action))return Response.json({ok:false,error:"invalid params"},{status:400});if(b.action==="add")await db.prepare(`INSERT OR IGNORE INTO user_roles(user_id,role_id,created_by,updated_by) VALUES(?,?,?,?)`).bind(b.userId,b.roleId,me.sub,me.sub).run();else await db.prepare(`DELETE FROM user_roles WHERE user_id=? AND role_id=?`).bind(b.userId,b.roleId).run();return Response.json({ok:true})}
+import type { NextRequest } from "next/server";
+import { and, eq } from "drizzle-orm";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { createDb, userRoles } from "@/db";
+import { getCurrentUser } from "@/lib/current-user";
+import { getRolesForUser, isAdmin } from "@/lib/rbac";
+export const dynamic = "force-dynamic";
+export async function POST(req: NextRequest) {
+  const { env } = await getCloudflareContext({ async: true });
+  const me = await getCurrentUser(env.AUTH_SECRET);
+  if (!me) return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  const db = createDb(env.DB);
+  if (!isAdmin(await getRolesForUser(db, me.sub))) return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
+  let body: { userId?: string; roleId?: number; action?: string };
+  try { body = await req.json(); } catch { return Response.json({ ok: false, error: "bad request" }, { status: 400 }); }
+  const { userId, roleId, action } = body;
+  if (!userId || !roleId || (action !== "add" && action !== "remove")) return Response.json({ ok: false, error: "invalid params" }, { status: 400 });
+  if (action === "add") await db.insert(userRoles).values({ userId, roleId, createdBy: me.sub, updatedBy: me.sub }).onConflictDoNothing();
+  else await db.delete(userRoles).where(and(eq(userRoles.userId, userId), eq(userRoles.roleId, roleId)));
+  return Response.json({ ok: true });
+}

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
+import { eq } from "drizzle-orm";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createDb } from "@/db";
+import { createDb, users, userRoles, systemRoles, loginLogs } from "@/db";
 import { createSessionToken, buildSessionCookie } from "@/lib/session";
 import { notifyAdminChat } from "@/lib/notify";
 export const dynamic = "force-dynamic";
@@ -23,15 +24,16 @@ export async function GET(req: NextRequest) {
   const allowed = (env.ALLOWED_DOMAINS ?? "").split(",").map((d) => d.trim().toLowerCase()).filter(Boolean);
   const domain = profile.email.split("@")[1]?.toLowerCase() ?? "";
   if (allowed.length && !allowed.includes(domain)) return fail(origin, "OAuthSignin", `domain "${domain}" ไม่ได้รับอนุญาต`);
-  const db = createDb(env);
-  let user = await db.prepare(`SELECT * FROM users WHERE email=?`).bind(profile.email).first<any>();
+  const db = createDb(env.DB);
+  let [user] = await db.select().from(users).where(eq(users.email, profile.email));
   const isNew = !user;
-  if (!user) { const id=crypto.randomUUID(); await db.prepare(`INSERT INTO users(id,email,name,image) VALUES(?,?,?,?)`).bind(id,profile.email,profile.name??null,profile.picture??null).run(); user={id,email:profile.email,name:profile.name??null,active:1}; }
-  else if (profile.picture) await db.prepare(`UPDATE users SET image=? WHERE id=?`).bind(profile.picture,user.id).run();
-  if (!user.active && !isNew) return fail(origin,"OAuthSignin","บัญชีถูกปิดใช้งาน");
-  if (isNew) { const g=await db.prepare(`SELECT id FROM system_roles WHERE role_name='Guest' LIMIT 1`).first<any>(); if(g) await db.prepare(`INSERT OR IGNORE INTO user_roles(user_id,role_id) VALUES(?,?)`).bind(user.id,g.id).run(); }
-  await db.prepare(`INSERT INTO login_logs(user_id,email,auth_provider,device_info,ip_address,success) VALUES(?,?,?,?,?,1)`).bind(user.id,user.email,"Google",req.headers.get("user-agent")?.slice(0,180)??null,req.headers.get("cf-connecting-ip")??null).run();
-  await db.prepare(`UPDATE users SET last_login_at=unixepoch() WHERE id=?`).bind(user.id).run();
+  if (!user) { const id = crypto.randomUUID(); await db.insert(users).values({ id, email: profile.email, name: profile.name ?? null, image: profile.picture ?? null }); user = { id, email: profile.email, name: profile.name ?? null } as typeof user; }
+  else if (profile.picture) { await env.DB.prepare(`UPDATE users SET image = ? WHERE id = ?`).bind(profile.picture, user.id).run(); }
+  if (!user.active && !isNew) return fail(origin, "OAuthSignin", "บัญชีถูกปิดใช้งาน");
+  // user ใหม่ = Guest (role 3) รอ admin เพิ่มสิทธิ์
+  if (isNew) { const [g] = await db.select().from(systemRoles).where(eq(systemRoles.roleName, "Guest")); if (g) await db.insert(userRoles).values({ userId: user.id, roleId: g.id }).onConflictDoNothing(); }
+  await db.insert(loginLogs).values({ userId: user.id, email: user.email, authProvider: "Google", deviceInfo: req.headers.get("user-agent")?.slice(0, 180) ?? null, ipAddress: req.headers.get("cf-connecting-ip") ?? null, success: 1 });
+  await env.DB.prepare(`UPDATE users SET last_login_at = unixepoch() WHERE id = ?`).bind(user.id).run();
   const when = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Bangkok" }).slice(0, 16) + " น.";
   if (isNew) await notifyAdminChat(env, `🆕 <b>ผู้ใช้ใหม่เข้าระบบ</b>\n${profile.name ?? profile.email}\n${profile.email}\nGoogle · ${when}\n→ รอเปิดสิทธิ์ที่เมนู จัดการผู้ใช้งาน`);
   else await notifyAdminChat(env, `🔑 <b>เข้าสู่ระบบ</b>\n${user.name ?? user.email} (Google)\n${when}`);

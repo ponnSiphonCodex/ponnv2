@@ -1,10 +1,12 @@
-import type { DbClient } from "@/db";
+import { eq } from "drizzle-orm";
+import { systemRoles, userRoles } from "@/db";
 import type { DbClient } from "@/db";
 export type UserRole = { id: number; roleName: string; module: string };
+// system role หลัก: System Admin | User | Guest
 export async function getRolesForUser(db: DbClient, userId: string): Promise<UserRole[]> {
-  const r = await db.prepare(`SELECT sr.id, sr.role_name AS "roleName", sr.module FROM user_roles ur JOIN system_roles sr ON ur.role_id=sr.id WHERE ur.user_id=?`).bind(userId).all<UserRole>();
-  return r.results ?? [];
+  return db.select({ id: systemRoles.id, roleName: systemRoles.roleName, module: systemRoles.module })
+    .from(userRoles).innerJoin(systemRoles, eq(userRoles.roleId, systemRoles.id)).where(eq(userRoles.userId, userId));
 }
-export function isAdmin(roles: UserRole[]) { return roles.some((r) => r.roleName === "System Admin" || r.module === "GLOBAL"); }
-export function isGuest(roles: UserRole[]) { return roles.length === 0 || roles.every((r) => r.roleName === "Guest" || r.module === "GUEST"); }
-export function primarySystemRole(roles: UserRole[]) { if (isAdmin(roles)) return "System Admin"; if (isGuest(roles)) return "Guest"; return "User"; }
+export function isAdmin(roles: UserRole[]): boolean { return roles.some((r) => r.roleName === "System Admin" || r.module === "GLOBAL"); }
+export function isGuest(roles: UserRole[]): boolean { return roles.length === 0 || roles.every((r) => r.roleName === "Guest" || r.module === "GUEST"); }
+export function primarySystemRole(roles: UserRole[]): string { if (isAdmin(roles)) return "System Admin"; if (isGuest(roles)) return "Guest"; return "User"; }

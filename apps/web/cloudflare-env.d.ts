@@ -1,13 +1,1 @@
-interface CloudflareEnv {
-  NEXT_PUBLIC_SUPABASE_URL: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
-  AUTH_SECRET: string;
-  GOOGLE_CLIENT_ID: string;
-  GOOGLE_CLIENT_SECRET: string;
-  ALLOWED_DOMAINS?: string;
-  TELEGRAM_BOT_TOKEN?: string;
-  TELEGRAM_ADMIN_CHAT_ID?: string;
-  CRON_SECRET?: string;
-  NEXT_PUBLIC_DRIVE_UPLOAD_URL?: string;
-  ASSETS: Fetcher;
-}
+interface CloudflareEnv { DB: D1Database; AUTH_SECRET: string; GOOGLE_CLIENT_ID: string; GOOGLE_CLIENT_SECRET: string; ALLOWED_DOMAINS?: string; TELEGRAM_BOT_TOKEN?: string; TELEGRAM_ADMIN_CHAT_ID?: string; CRON_SECRET?: string; ASSETS: Fetcher; }

@@ -1,4 +1,3 @@
-import { createDb, type DbClient } from "@/db";
 /**
  * access.ts — PM-role based access (contextual RBAC)
  * PMO = เห็น/แก้ทั้งหมด
@@ -15,7 +14,7 @@ export type Scope = {
   managedProjectIds: number[];
 };
 
-export async function loadScope(d1: DbClient, userId: string, isAdmin: boolean, isGuest: boolean): Promise<Scope> {
+export async function loadScope(d1: D1Database, userId: string, isAdmin: boolean, isGuest: boolean): Promise<Scope> {
   const u = await d1.prepare(`SELECT pm_role FROM users WHERE id = ?`).bind(userId).first<{ pm_role: string | null }>();
   const pmRole = u?.pm_role ?? null;
   const isPmo = isAdmin || pmRole === "PMO";
@@ -27,7 +26,7 @@ export async function loadScope(d1: DbClient, userId: string, isAdmin: boolean, 
 }
 
 // project ที่ user มองเห็นได้ (null = เห็นทั้งหมด)
-export async function visibleProjectIds(d1: DbClient, scope: Scope): Promise<number[] | null> {
+export async function visibleProjectIds(d1: D1Database, scope: Scope): Promise<number[] | null> {
   if (scope.isPmo) return null;
   const set = new Set<number>(scope.managedProjectIds);
   if (scope.ownedProductIds.length) {

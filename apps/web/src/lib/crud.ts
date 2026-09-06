@@ -1,4 +1,3 @@
-import { createDb, type DbClient } from "@/db";
 import { entityDef, dbColumns, dateColumns, type EntityDef } from "./entities";
 function dateToUnix(v: unknown): number | null { if (v === null || v === undefined || v === "") return null; if (typeof v === "number") return v; const s = String(v); const ms = Date.parse(s.length === 10 ? s + "T00:00:00Z" : s); return Number.isNaN(ms) ? null : Math.floor(ms / 1000); }
 function unixToDate(v: unknown): string | null { if (v === null || v === undefined) return null; const n = Number(v); if (!Number.isFinite(n)) return null; return new Date(n * 1000).toISOString().slice(0, 10); }
@@ -10,7 +9,7 @@ function coerce(def: EntityDef, key: string, value: unknown): unknown {
   if (f.type === "ref") { if (value === null) return null; return f.refEntity === "users" ? String(value) : Number(value); }
   return value;
 }
-export async function crudList(db: DbClient, name: string, projectFilter?: number[] | null): Promise<Record<string, unknown>[]> {
+export async function crudList(db: D1Database, name: string, projectFilter?: number[] | null): Promise<Record<string, unknown>[]> {
   const def = entityDef(name); if (!def) throw new Error("unknown entity");
   const order = def.defaultOrder ?? "id DESC";
   let sql = `SELECT * FROM ${def.table}`;
@@ -26,7 +25,7 @@ export async function crudList(db: DbClient, name: string, projectFilter?: numbe
   for (const r of rows) for (const c of dcols) r[c] = unixToDate(r[c]);
   return rows;
 }
-export async function crudCreate(db: DbClient, name: string, body: Record<string, unknown>, userId: string): Promise<number> {
+export async function crudCreate(db: D1Database, name: string, body: Record<string, unknown>, userId: string): Promise<number> {
   const def = entityDef(name); if (!def) throw new Error("unknown entity");
   const cols = dbColumns(def).filter((c) => c in body); if (!cols.length) throw new Error("no fields");
   const vals = cols.map((c) => coerce(def, c, body[c]));
@@ -35,18 +34,18 @@ export async function crudCreate(db: DbClient, name: string, body: Record<string
   const res = await db.prepare(sql).bind(...allVals).run();
   return Number(res.meta?.last_row_id ?? 0);
 }
-export async function crudUpdate(db: DbClient, name: string, id: number, body: Record<string, unknown>, userId: string): Promise<void> {
+export async function crudUpdate(db: D1Database, name: string, id: number, body: Record<string, unknown>, userId: string): Promise<void> {
   const def = entityDef(name); if (!def) throw new Error("unknown entity");
   const cols = dbColumns(def).filter((c) => c in body); if (!cols.length) return;
   const setParts = cols.map((c) => `${c} = ?`); const vals = cols.map((c) => coerce(def, c, body[c]));
   setParts.push("updated_by = ?", "updated_at = unixepoch()"); vals.push(userId);
   await db.prepare(`UPDATE ${def.table} SET ${setParts.join(", ")} WHERE id = ?`).bind(...vals, id).run();
 }
-export async function crudDelete(db: DbClient, name: string, id: number): Promise<void> {
+export async function crudDelete(db: D1Database, name: string, id: number): Promise<void> {
   const def = entityDef(name); if (!def) throw new Error("unknown entity");
   await db.prepare(`DELETE FROM ${def.table} WHERE id = ?`).bind(id).run();
 }
-export async function refOptions(db: DbClient, name: string): Promise<{ id: string | number; label: string }[]> {
+export async function refOptions(db: D1Database, name: string): Promise<{ id: string | number; label: string }[]> {
   if (name === "users") { const res = await db.prepare(`SELECT id, COALESCE(name, email) AS label FROM users WHERE active = 1 ORDER BY email`).all(); return (res.results ?? []) as any; }
   const def = entityDef(name); if (!def) return [];
   const labelCol = def.table === "requirements" ? "title" : "name";
