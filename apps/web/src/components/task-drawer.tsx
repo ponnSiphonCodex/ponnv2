@@ -38,12 +38,14 @@ export function TaskDrawer({ taskId, users, priorities, statuses, features, tags
 
   // optimistic: อัปเดต state ในดรอเวอร์ทันที + แจ้ง board + ยิง API เบื้องหลัง
   async function patch(body: any) {
+    if (saving) return;
     setData((d: any) => ({ ...d, task: { ...d.task, ...toSnake(body) } }));
     onChanged(cardPatch(body));
-    setSaving(true);
+    setSaving(true); setMsg(null);
     const r = await apiWrite(`/api/tasks/${taskId}`, "PATCH", body);
     setSaving(false);
-    if (!r.ok && !r.queued) setMsg("บันทึกไม่สำเร็จ");
+    if (!r.ok && !r.queued) setMsg(`บันทึกไม่สำเร็จ${r.error ? `: ${r.error}` : " · กรุณารัน database/supabase_v64_safe_migration.sql"}`);
+    else setMsg("บันทึกแล้ว");
   }
   function toSnake(b: any) {
     const m: Record<string, string> = { workflowStatusId: "workflow_status_id", assigneeId: "assignee_id", priorityId: "priority_id", featureId: "feature_id", sprintId: "sprint_id", estimatedHours: "estimated_hours", budgetCost: "budget_cost", startDate: "start_date", dueDate: "due_date", actualStartDate: "actual_start_date", actualEndDate: "actual_end_date", ganttHealth: "gantt_health", actualProgress: "actual_progress", title: "title", note: "note" };
@@ -76,12 +78,12 @@ export function TaskDrawer({ taskId, users, priorities, statuses, features, tags
               <Row label="ผู้รับผิดชอบ"><select className="input" value={t.assignee_id ?? ""} onChange={(e) => patch({ assigneeId: e.target.value || null })}><option value="">— ไม่มี —</option>{users.map((u) => <option key={String(u.id)} value={String(u.id)}>{u.label}</option>)}</select></Row>
               <Row label="Priority"><select className="input" value={t.priority_id ?? ""} onChange={(e) => patch({ priorityId: e.target.value || null })}><option value="">—</option>{priorities.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</select></Row>
               <Row label="Feature"><select className="input" value={t.feature_id ?? ""} onChange={(e) => patch({ featureId: e.target.value || null })}><option value="">—</option>{features.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}</select></Row>
-              <div style={{fontSize:12,fontWeight:700,color:NAVY,marginTop:4}}>Plan (แผน)</div>
+              <section style={{background:"#F4F4F6",border:"1px solid #E5E7EB",borderRadius:10,padding:14,display:"grid",gap:10}}><div style={{fontWeight:700,color:NAVY}}>Plan (แผนงาน)</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <Row label="วันเริ่ม (Plan)"><input className="input" type="date" defaultValue={u2d(t.start_date)} onBlur={(e) => patch({ startDate: e.target.value || null })} /></Row>
                 <Row label="กำหนดส่ง (Plan)"><input className="input" type="date" defaultValue={u2d(t.due_date)} onBlur={(e) => patch({ dueDate: e.target.value || null })} /></Row>
-              </div>
-              <div style={{fontSize:12,fontWeight:700,color:"#16A34A",marginTop:4}}>Actual (ทำจริง)</div>
+              </div></section>
+              <section style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,padding:14,display:"grid",gap:10}}><div style={{fontWeight:700,color:"#16A34A"}}>Actual (ผลการทำงานจริง)</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <Row label="วันเริ่มจริง (Actual)"><input className="input" type="date" defaultValue={u2d(t.actual_start_date)} onBlur={(e) => patch({ actualStartDate: e.target.value || null })} /></Row>
                 <Row label="วันเสร็จจริง (Actual)"><input className="input" type="date" defaultValue={u2d(t.actual_end_date)} onBlur={(e) => patch({ actualEndDate: e.target.value || null })} /></Row>
@@ -89,7 +91,7 @@ export function TaskDrawer({ taskId, users, priorities, statuses, features, tags
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <Row label="สีสถานะบน Gantt"><select className="input" value={t.gantt_health??""} onChange={(e)=>patch({ganttHealth:e.target.value||null})}><option value="">— ยังไม่เลือก —</option><option value="green">เขียว</option><option value="yellow">เหลือง</option><option value="red">แดง</option></select></Row>
                 <Row label="ความคืบหน้าจริง (%)"><input className="input" type="number" min={0} max={100} step={1} value={t.actual_progress??0} onChange={(e)=>setData((d:any)=>({...d,task:{...d.task,actual_progress:Math.max(0,Math.min(100,Number(e.target.value)))}}))} onBlur={(e)=>patch({actualProgress:Math.max(0,Math.min(100,Number(e.target.value)))})}/></Row>
-              </div>
+              </div></section>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <Row label="ชม.ประเมิน"><input className="input" type="number" defaultValue={t.estimated_hours ?? ""} onBlur={(e) => patch({ estimatedHours: e.target.value || null })} /></Row>
                 <Row label="งบประมาณ"><input className="input" type="number" defaultValue={t.budget_cost ?? ""} onBlur={(e) => patch({ budgetCost: e.target.value || null })} /></Row>

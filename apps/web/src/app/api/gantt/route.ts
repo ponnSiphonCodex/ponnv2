@@ -63,7 +63,17 @@ export async function GET(req: NextRequest) {
     for (const m of pm) memMap.set(m.id, m.name);
     const members = Array.from(memMap.entries()).map(([id, name]) => ({ id, name }));
 
-    return Response.json({ tasks, projects, milestones, deps, members });
+    // Reference data สำหรับ Task Drawer ที่เปิดจาก Gantt
+    const [userRows, priorityRows, statusRows, featureRows, tagRows] = await Promise.all([
+      c.d1.prepare(`SELECT id,COALESCE(name,email) label FROM users WHERE active=1 ORDER BY COALESCE(name,email)`).all(),
+      c.d1.prepare(`SELECT id,name label FROM priorities ORDER BY id`).all(),
+      c.d1.prepare(`SELECT id,name label FROM workflow_statuses WHERE project_id IN (${ph}) ORDER BY project_id,sort_order,id`).bind(...pjIds).all(),
+      c.d1.prepare(`SELECT id,name label FROM features WHERE project_id IN (${ph}) ORDER BY project_id,name`).bind(...pjIds).all(),
+      c.d1.prepare(`SELECT id,name,color FROM tags ORDER BY name`).all()
+    ]);
+    const refs = { users:userRows.results??[], priorities:priorityRows.results??[], statuses:statusRows.results??[], features:featureRows.results??[], tags:tagRows.results??[] };
+
+    return Response.json({ tasks, projects, milestones, deps, members, refs });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : String(e), tasks: [], projects: [], milestones: [], deps: [], members: [] }, { status: 500 });
   }
