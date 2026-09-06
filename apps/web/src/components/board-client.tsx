@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { BoardData, BoardColumn, BoardTask } from "@/lib/board-data";
 import { apiWrite } from "@/lib/offline";
@@ -10,8 +10,8 @@ const NAVY = "#001D58", PINK = "#EC186E";
 type Ref = { id: string | number; label: string };
 type Tag = { id: number; name: string; color: string | null };
 
-export function BoardClient({ board, projects, users, priorities, features, tags, canWrite, aggregate = false }: {
-  board: BoardData; projects: { id: number; name: string }[]; users: Ref[]; priorities: Ref[]; features: Ref[]; tags: Tag[]; canWrite: boolean; aggregate?: boolean;
+export function BoardClient({ board, projects, users, priorities, features, tags, canWrite, aggregate = false, isAdmin = false }: {
+  board: BoardData; projects: { id: number; name: string }[]; users: Ref[]; priorities: Ref[]; features: Ref[]; tags: Tag[]; canWrite: boolean; aggregate?: boolean; isAdmin?: boolean;
 }) {
   const router = useRouter();
   // ★ columns เป็น local state → drag/add แก้ทันที ไม่รอ server
@@ -21,6 +21,10 @@ export function BoardClient({ board, projects, users, priorities, features, tags
   const [addTo, setAddTo] = useState<number | null>(null);
   const [drawerTask, setDrawerTask] = useState<number | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [showCardSettings,setShowCardSettings]=useState(false);
+  const [cardFields,setCardFields]=useState<string[]>(["project","assignee","priority","hours"]);
+  useEffect(()=>{try{const v=localStorage.getItem("kanban-card-fields");if(v)setCardFields(JSON.parse(v))}catch{}},[]);
+  const toggleField=(f:string)=>setCardFields(v=>{const n=v.includes(f)?v.filter(x=>x!==f):[...v,f];localStorage.setItem("kanban-card-fields",JSON.stringify(n));return n});
   const [projectIds,setProjectIds]=useState<(number|string)[]>([]); const [productIds,setProductIds]=useState<(number|string)[]>([]); const [featureIds,setFeatureIds]=useState<(number|string)[]>([]);
   const seq = useRef(-1); // id ชั่วคราวสำหรับการ์ดใหม่ (ก่อน server ตอบ)
   const statusRefs: Ref[] = columns.map((c) => ({ id: c.id, label: c.name }));
@@ -61,17 +65,7 @@ export function BoardClient({ board, projects, users, priorities, features, tags
   return (
     <div style={{ padding: 20 }}>
       {flash && <div style={{ background: "#EFF6FF", color: "#1D4ED8", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{flash}</div>}
-      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
-        <select className="input" style={{ width: "auto", minWidth: 220 }} value={aggregate ? "all" : board.project.id} onChange={(e) => router.push(`/pm/board?id=${e.target.value}`)}>
-          <option value="all">📊 ทุกโครงการ (รวม)</option>
-          {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 160, height: 8, background: "#E5E7EB", borderRadius: 5, overflow: "hidden" }}><div style={{ width: `${percent}%`, height: "100%", background: PINK, transition: "width .2s" }} /></div>
-          <span style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{percent}%</span>
-          <span style={{ fontSize: 12.5, color: "#6B7280" }}>({doneCount}/{total - dropCount} เสร็จ · Drop {dropCount})</span>
-        </div>
-      </div>
+      {isAdmin && <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}><button className="btn-ghost" onClick={()=>setShowCardSettings(true)}>⚙ ตั้งค่า Card</button></div>}
 
       {aggregate && <div className="gantt-filters" style={{marginBottom:14}}>
         <div><span className="field-hint">Product</span><MultiSelect placeholder="ทุก Product" options={Array.from(new Map(columns.flatMap(c=>c.tasks).filter(t=>t.productId).map(t=>[String(t.productId),{id:t.productId!,name:t.productName??`Product #${t.productId}`}])).values())} value={productIds} onChange={setProductIds}/></div>
@@ -95,13 +89,13 @@ export function BoardClient({ board, projects, users, priorities, features, tags
               {col.tasks.filter(matches).map((t) => (
                 <div key={t.id} draggable={canWrite} onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setOverCol(null); }} onClick={() => t.id > 0 && setDrawerTask(t.id)}
                   style={{ border: dragId === t.id ? `1.5px solid ${PINK}` : "1px solid #ECEEF1", borderRadius: 10, padding: 11, cursor: aggregate ? "pointer" : (canWrite ? "grab" : "default"), background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.03)", opacity: dragId === t.id ? 0.5 : (t.id < 0 ? 0.6 : 1) }}>
-                  {aggregate && (t as any).projectName && <div style={{ fontSize: 10.5, fontWeight: 700, color: NAVY, background: "#EEF1F6", display: "inline-block", padding: "1px 7px", borderRadius: 5, marginBottom: 5 }}>{(t as any).projectName}</div>}
-                  <div style={{ fontSize: 13.5, fontWeight: 600, color: "#1F2937", marginBottom: 6 }}>{t.title}</div>
+                  {cardFields.includes("project") && aggregate && (t as any).projectName && <div style={{ fontSize: 10.5, fontWeight: 700, color: NAVY, background: "#EEF1F6", display: "inline-block", padding: "1px 7px", borderRadius: 5, marginBottom: 5 }}>{(t as any).projectName}</div>}
+                  <div style={{fontSize:10.5,color:"#9AA0A6",marginBottom:3}}>TASK-{String(t.id).padStart(5,"0")}</div><div style={{ fontSize: 13.5, fontWeight: 600, color: "#1F2937", marginBottom: 6 }}>{t.title}</div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 11.5, color: "#6B7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.assignee?.name ?? "ยังไม่มอบหมาย"}</span>
-                    {t.priority && <span className="badge" style={{ color: "#fff", background: t.priority.color || "#6B7280" }}>{t.priority.name}</span>}
+                    {cardFields.includes("assignee")&&<span style={{ fontSize: 11.5, color: "#6B7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.assignee?.name ?? "ยังไม่มอบหมาย"}</span>}
+                    {cardFields.includes("priority")&&t.priority && <span className="badge" style={{ color: "#fff", background: t.priority.color || "#6B7280" }}>{t.priority.name}</span>}
                   </div>
-                  <div style={{ fontSize: 11, color: "#9AA0A6", marginTop: 5 }}>{t.actualHours}/{t.estimatedHours ?? 0} ชม.</div>
+                  {cardFields.includes("hours")&&<div style={{ fontSize: 11, color: "#9AA0A6", marginTop: 5 }}>{t.actualHours}/{t.estimatedHours ?? 0} ชม.</div>}
                 </div>
               ))}
             </div>
@@ -109,6 +103,7 @@ export function BoardClient({ board, projects, users, priorities, features, tags
         ); })}
       </div>
 
+      {showCardSettings&&<div style={{position:"fixed",inset:0,zIndex:95,background:"rgba(0,0,0,.35)",display:"grid",placeItems:"center"}}><div className="card" style={{padding:22,width:"min(420px,92vw)"}}><h3 style={{marginTop:0}}>ตั้งค่าข้อมูลบน Kanban Card</h3>{[["project","Project"],["assignee","ผู้รับผิดชอบ"],["priority","Priority"],["hours","Actual / Estimate Hours"]].map(([k,l])=><label key={k} style={{display:"flex",gap:10,padding:"9px 0"}}><input type="checkbox" checked={cardFields.includes(k)} onChange={()=>toggleField(k)}/>{l}</label>)}<div style={{display:"flex",justifyContent:"flex-end",marginTop:14}}><button className="btn-pink" onClick={()=>setShowCardSettings(false)}>เสร็จ</button></div></div></div>}
       {addTo != null && <AddTaskModal projectId={board.project.id} statusId={addTo} users={users} priorities={priorities}
         onClose={() => setAddTo(null)}
         onOptimistic={(title, assigneeId, priorityId, est) => {

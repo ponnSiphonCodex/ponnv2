@@ -27,7 +27,7 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
   return (
     <AppShell active="board" {...shellProps(a)}>
       <PageHeader title={board ? board.project.name : "กระดานงาน"} subtitle={aggregate ? "รวมงานจากทุกโครงการที่คุณเกี่ยวข้อง · คลิกการ์ดเพื่อดู/แก้" : "ลากการ์ดเปลี่ยนสถานะ · คลิกการ์ดเพื่อดู/แก้รายละเอียด"} />
-      {!board ? <div style={{ padding: 40, color: "#6B7280" }}>ไม่พบโปรเจกต์ที่เข้าถึงได้</div> : <BoardClient board={board} projects={projects} users={users} priorities={priorities} features={features} tags={tags} canWrite={aggregate ? a.scope.isPmo : canWrite} aggregate={aggregate} />}
+      {!board ? <div style={{ padding: 40, color: "#6B7280" }}>ไม่พบโปรเจกต์ที่เข้าถึงได้</div> : <BoardClient board={board} projects={projects} users={users} priorities={priorities} features={features} tags={tags} canWrite={aggregate ? a.scope.isPmo : canWrite} aggregate={aggregate} isAdmin={a.scope.isPmo} />}
     </AppShell>
   );
 }

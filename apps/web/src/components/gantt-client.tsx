@@ -100,6 +100,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `gantt_${ds(Math.floor(Date.now() / 1000))}.csv`; a.click();
   }
 
+  const completedCount=selectedTasks.filter(t=>t.category==="done").length; const droppedCount=selectedTasks.filter(t=>t.category==="drop").length; const progressBase=Math.max(0,selectedTasks.length-droppedCount); const completedPct=progressBase?Math.round(completedCount/progressBase*100):0;
   const chartW = (model?.days ?? 0) * px;
   const chartH = (model?.rows.length ?? 0) * ROW_H;
   const monthBands = useMemo(() => {
@@ -132,7 +133,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
       <div className="gantt-toolbar">
         <div className="seg-group">{(["project","workforce"] as const).map(m=><button key={m} onClick={()=>setMode(m)} style={segBtn(mode===m)}>{m==="project"?"โหมดโครงการ":"Workforce Management"}</button>)}</div>
         <div className="seg-group">{(["day","week","month"] as const).map(v=><button key={v} onClick={()=>setScale(v)} style={segBtn(scale===v)}>{v[0].toUpperCase()+v.slice(1)}</button>)}</div>
-        <button className="btn-ghost" onClick={()=>{if(projectIds.length!==1){alert("กรุณาเลือก Project 1 รายการก่อนเพิ่ม Milestone");return}setMilestoneDraft({projectId:Number(projectIds[0]),target:dayFloor(Math.floor(Date.now()/1000))});}} style={{marginLeft:"auto"}}>◆ เพิ่ม Milestone</button><button className="btn-ghost" onClick={exportCSV}>Export</button>
+        <div style={{display:"flex",alignItems:"center",gap:7,fontSize:12,color:"#6B7280"}}><div style={{width:110,height:7,borderRadius:5,background:"#E5E7EB",overflow:"hidden"}}><div style={{width:`${completedPct}%`,height:"100%",background:PINK}}/></div><b style={{color:NAVY}}>{completedPct}% Completed</b></div><button className="btn-ghost" onClick={()=>{if(projectIds.length!==1){alert("กรุณาเลือก Project 1 รายการก่อนเพิ่ม Milestone");return}setMilestoneDraft({projectId:Number(projectIds[0]),target:dayFloor(Math.floor(Date.now()/1000))});}} style={{marginLeft:"auto"}}>◆ เพิ่ม Milestone</button><button className="btn-ghost" onClick={exportCSV}>Export</button>
       </div>
       {loading && <div className="card" style={{ padding: 20 }}><Skel w="100%" h={200} /></div>}
       {!loading && model && model.rows.length === 0 && <div className="card" style={{ padding: 40, color: "#6B7280" }}>ยังไม่มีงานที่กำหนดวันเริ่ม + วันส่ง</div>}
@@ -165,9 +166,9 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                     const projectRow = model.rows.findIndex((r) => r.sub === "Project" && r.projectId === m.project_id);
                     if (projectRow < 0) return null;
                     const y = projectRow * ROW_H + ROW_H / 2;
-                    return <div key={`milestone-${m.id}`} onClick={(e)=>{e.stopPropagation();setEditMilestone(m);setMilestoneTitle(m.title)}} title={`${m.title} · ${ds(m.target)}`} style={{ position: "absolute", left: x, top: -HEAD_H, height: chartH + HEAD_H, width: 2, background: PINK, opacity: .82, zIndex: 8, pointerEvents: "auto", cursor: "pointer" }}>
-                      <span style={{ position: "absolute", left: -7, top: y + HEAD_H - 7, width: 14, height: 14, background: PINK, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 1px 3px rgba(0,0,0,.18)" }} />
-                      <span style={{ position: "absolute", left: 13, top: y + HEAD_H - 12, padding: "3px 7px", background: "#fff", color: NAVY, border: `1px solid ${PINK}`, borderRadius: 5, fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap", boxShadow: "0 1px 3px rgba(0,0,0,.10)" }}>{m.title} · {ds(m.target)}</span>
+                    return <div key={`milestone-${m.id}`} onClick={(e)=>{e.stopPropagation();setEditMilestone(m);setMilestoneTitle(m.title)}} title={`${m.title} · ${ds(m.target)}`} style={{ position: "absolute", left: x, top: y, bottom: 0, width: 2, background: PINK, opacity: .82, zIndex: 8, pointerEvents: "auto", cursor: "pointer" }}>
+                      <span style={{ position: "absolute", left: -7, top: -7, width: 14, height: 14, background: PINK, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 1px 3px rgba(0,0,0,.18)" }} />
+                      <span style={{ position: "absolute", left: 13, top: -12, padding: "3px 7px", background: "#fff", color: NAVY, border: `1px solid ${PINK}`, borderRadius: 5, fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap", boxShadow: "0 1px 3px rgba(0,0,0,.10)" }}>{m.title} · {ds(m.target)}</span>
                     </div>;
                   })}
                   <svg style={{ position: "absolute", inset: 0, width: chartW, height: chartH, pointerEvents: "none" }}>
@@ -184,8 +185,8 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                   {model.rows.map((r, i) => {
                     if (r.kind === "task" && r.task) {
                       const pos = model.taskPos.get(r.task.id)!; const col = catColor(r.task.category);
-                      return <div key={r.key} data-task="1" onClick={(e)=>{e.stopPropagation();setDrawerTask(r.task!.id)}} title={`${r.task.title}\n${ds(r.task.start)} → ${ds(r.task.due)}`} style={{ position: "absolute", left: pos.left, top: i * ROW_H + 7, height: ROW_H - 14, width: pos.width, background: col, borderRadius: 5, boxShadow: "0 1px 2px rgba(0,0,0,.12)", display: "flex", alignItems: "center", padding: "0 6px", overflow: "hidden" }}>
-                        <span style={{ fontSize: 10.5, color: "#fff", fontWeight: 600, whiteSpace: "nowrap", overflow: "visible", textOverflow: "clip", textShadow: "0 1px 2px rgba(0,0,0,.45)", pointerEvents: "none" }}>{r.task.title}</span>
+                      return <div key={r.key} data-task="1" onClick={(e)=>{e.stopPropagation();setDrawerTask(r.task!.id)}} title={`${r.task.title}\n${ds(r.task.start)} → ${ds(r.task.due)}`} style={{ position: "absolute", left: pos.left, top: i * ROW_H + 7, height: ROW_H - 14, width: pos.width, background: col, borderRadius: 5, boxShadow: "0 1px 2px rgba(0,0,0,.12)", display: "flex", alignItems: "center", padding: "0 6px", overflow: "visible", cursor:"pointer", zIndex:9 }}>
+                        <span style={{ fontSize: 10.5, color: "#fff", fontWeight: 600, whiteSpace: "nowrap", overflow: "visible", textOverflow: "clip", textShadow: "0 1px 2px rgba(0,0,0,.65), 1px 0 1px rgba(0,0,0,.45)", pointerEvents: "none" }}>{r.task.title}</span>
                       </div>;
                     }
                     if (r.kind === "ms" && r.ms) {
