@@ -2,8 +2,6 @@
 import { useEffect, useState } from "react";
 import { apiWrite } from "@/lib/offline";
 import { Icon } from "./icons";
-import { confirmDialog } from "@/lib/confirm";
-import { SkelCards } from "./skeleton";
 
 const NAVY = "#001D58", PINK = "#EC186E";
 const ROLE_COLOR: Record<string, string> = { PMO: "#001D58", "Product Owner": "#EC186E", "Project Manager": "#D4A017", "Project Co-Ordinator": "#2E7D32", "Working Team": "#6B7280" };
@@ -37,7 +35,7 @@ export function WorkingTeam() {
     setHidden((s) => { const n = new Set(s); willHide ? n.add(key) : n.delete(key); return n; });
     await apiWrite("/api/team", "PATCH", { targetKind: kind, targetId: id, hidden: willHide });
   }
-  async function delRoster(id: number) { if (!(await confirmDialog({ message: "ลบคนนี้ออกจากทีม?", danger: true }))) return; setRoster((r) => r.filter((x) => x.id !== id)); await apiWrite(`/api/team?id=${id}`, "DELETE", {}); }
+  async function delRoster(id: number) { if (!confirm("ลบคนนี้ออกจากทีม?")) return; setRoster((r) => r.filter((x) => x.id !== id)); await apiWrite(`/api/team?id=${id}`, "DELETE", {}); }
 
   const visMembers = members.filter((m) => showHidden || !isHidden("user", m.id));
   const visRoster = roster.filter((r) => showHidden || !isHidden("roster", r.id));
@@ -53,7 +51,7 @@ export function WorkingTeam() {
         </div>
       </div>
 
-      {loading && <SkelCards n={6} />}
+      {loading && <div style={{ color: "#6B7280" }}>กำลังโหลด...</div>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))", gap: 16 }}>
         {!loading && visMembers.length === 0 && visRoster.length === 0 && <div className="card" style={{ padding: 20, color: "#6B7280" }}>ยังไม่มีสมาชิกทีมในมุมมองของคุณ</div>}
         {visMembers.map((u) => {

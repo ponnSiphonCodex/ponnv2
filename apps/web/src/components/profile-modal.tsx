@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { cachedFetch, TTL, writeCache } from "@/lib/cache";
 
 const NAVY = "#001D58", PINK = "#EC186E";
 type Profile = { id: string; name: string | null; email: string; company_email: string | null; phone: string | null; telegram_user_id: string | null; telegram_notify: number; image: string | null; avatar_url: string | null; pm_role: string | null; has_password: boolean };
@@ -17,9 +16,8 @@ export function ProfileModal({ isAdmin, impersonating, onClose }: { isAdmin: boo
   const [impSel, setImpSel] = useState("");
 
   useEffect(() => {
-    // โปรไฟล์เปลี่ยนไม่บ่อย → โชว์จาก cache ทันที (เมนู logout ไม่ต้องรอโหลด) แล้วแอบ sync
-    cachedFetch<{ profile: Profile }>("profile", "/api/profile", TTL.profile, (d) => setP(d.profile));
-    if (isAdmin) cachedFetch<{ users: any[] }>("admin_users_min", "/api/admin/users", TTL.medium, (d) => { if (d.users) setUsers(d.users.map((u: any) => ({ id: u.id, name: u.name, email: u.email }))); });
+    fetch("/api/profile").then((r) => r.json()).then((d) => setP(d.profile));
+    if (isAdmin) fetch("/api/admin/users").then((r) => r.json()).then((d) => { if (d.users) setUsers(d.users.map((u: any) => ({ id: u.id, name: u.name, email: u.email }))); });
   }, [isAdmin]);
 
   function set<K extends keyof Profile>(k: K, v: Profile[K]) { setP((s) => (s ? { ...s, [k]: v } : s)); }
@@ -28,7 +26,7 @@ export function ProfileModal({ isAdmin, impersonating, onClose }: { isAdmin: boo
   async function saveProfile() {
     if (!p) return; setSaving(true);
     const res = await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: p.name, companyEmail: p.company_email, phone: p.phone }) });
-    setSaving(false); if (res.ok && p) writeCache("profile", { profile: p }); flash(res.ok ? "ok" : "err", res.ok ? "บันทึกโปรไฟล์แล้ว" : "บันทึกไม่สำเร็จ");
+    setSaving(false); flash(res.ok ? "ok" : "err", res.ok ? "บันทึกโปรไฟล์แล้ว" : "บันทึกไม่สำเร็จ");
   }
   async function saveNotify() {
     if (!p) return; setSaving(true);
@@ -147,7 +145,7 @@ export function ProfileModal({ isAdmin, impersonating, onClose }: { isAdmin: boo
 
         {/* footer (fixed) */}
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, borderTop: "1px solid #F0F1F3", padding: "14px 20px", flexShrink: 0 }}>
-          <a href="/api/logout" onClick={() => { try { Object.keys(localStorage).forEach((k) => { if (k.startsWith("pmcache:") || k.startsWith("meetings:") || k.startsWith("pending_req")) localStorage.removeItem(k); }); } catch {} }} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 8, border: "1px solid #FCA5A5", color: "#DC2626", textDecoration: "none", fontWeight: 600, fontSize: 14 }}>↩︎ ออกจากระบบ</a>
+          <a href="/api/logout" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 8, border: "1px solid #FCA5A5", color: "#DC2626", textDecoration: "none", fontWeight: 600, fontSize: 14 }}>↩︎ ออกจากระบบ</a>
           {tab === "profile" && <button className="btn-primary" onClick={saveProfile} disabled={saving}>{saving ? "กำลังบันทึก..." : "บันทึกโปรไฟล์"}</button>}
           {tab === "notify" && <button className="btn-primary" onClick={saveNotify} disabled={saving}>{saving ? "กำลังบันทึก..." : "บันทึกการแจ้งเตือน"}</button>}
         </div>

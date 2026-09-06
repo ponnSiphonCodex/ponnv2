@@ -24,26 +24,21 @@ export async function GET(req: NextRequest) {
   const allowed = (env.ALLOWED_DOMAINS ?? "").split(",").map((d) => d.trim().toLowerCase()).filter(Boolean);
   const domain = profile.email.split("@")[1]?.toLowerCase() ?? "";
   if (allowed.length && !allowed.includes(domain)) return fail(origin, "OAuthSignin", `domain "${domain}" ไม่ได้รับอนุญาต`);
-  // v28: ครอบ DB ทั้งหมดด้วย try/catch — เดิมถ้า DB error (เช่น schema ไม่ครบ) จะพังเป็นหน้า error ดิบ
-  // ไม่ redirect กลับ /login ให้ผู้ใช้เข้าใจ (ตอนนี้ redirect กลับพร้อม detail ให้ debug ได้ทันที)
-  try {
-    const db = createDb(env.DB);
-    let [user] = await db.select().from(users).where(eq(users.email, profile.email));
-    const isNew = !user;
-    if (!user) { const id = crypto.randomUUID(); await db.insert(users).values({ id, email: profile.email, name: profile.name ?? null, image: profile.picture ?? null }); user = { id, email: profile.email, name: profile.name ?? null } as typeof user; }
-    else if (profile.picture) { await env.DB.prepare(`UPDATE users SET image = ? WHERE id = ?`).bind(profile.picture, user.id).run(); }
-    if (!user.active && !isNew) return fail(origin, "OAuthSignin", "บัญชีถูกปิดใช้งาน");
-    if (isNew) { const [g] = await db.select().from(systemRoles).where(eq(systemRoles.roleName, "Guest")); if (g) await db.insert(userRoles).values({ userId: user.id, roleId: g.id }).onConflictDoNothing(); }
-    await db.insert(loginLogs).values({ userId: user.id, email: user.email, authProvider: "Google", deviceInfo: req.headers.get("user-agent")?.slice(0, 180) ?? null, ipAddress: req.headers.get("cf-connecting-ip") ?? null, success: 1 });
-    await env.DB.prepare(`UPDATE users SET last_login_at = unixepoch() WHERE id = ?`).bind(user.id).run();
-    const when = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Bangkok" }).slice(0, 16) + " น.";
-    if (isNew) await notifyAdminChat(env, `🆕 <b>ผู้ใช้ใหม่เข้าระบบ</b>\n${profile.name ?? profile.email}\n${profile.email}\nGoogle · ${when}\n→ รอเปิดสิทธิ์ที่เมนู จัดการผู้ใช้งาน`);
-    else await notifyAdminChat(env, `🔑 <b>เข้าสู่ระบบ</b>\n${user.name ?? user.email} (Google)\n${when}`);
-    const token = await createSessionToken(env.AUTH_SECRET, { sub: user.id, email: user.email, name: user.name });
-    const res = new Response(null, { status: 302, headers: { Location: `${origin}/` } });
-    res.headers.append("Set-Cookie", buildSessionCookie(token));
-    return res;
-  } catch (e) {
-    return fail(origin, "OAuthSignin", `db: ${e instanceof Error ? e.message : String(e)}`);
-  }
+  const db = createDb(env.DB);
+  let [user] = await db.select().from(users).where(eq(users.email, profile.email));
+  const isNew = !user;
+  if (!user) { const id = crypto.randomUUID(); await db.insert(users).values({ id, email: profile.email, name: profile.name ?? null, image: profile.picture ?? null }); user = { id, email: profile.email, name: profile.name ?? null } as typeof user; }
+  else if (profile.picture) { await env.DB.prepare(`UPDATE users SET image = ? WHERE id = ?`).bind(profile.picture, user.id).run(); }
+  if (!user.active && !isNew) return fail(origin, "OAuthSignin", "บัญชีถูกปิดใช้งาน");
+  // user ใหม่ = Guest (role 3) รอ admin เพิ่มสิทธิ์
+  if (isNew) { const [g] = await db.select().from(systemRoles).where(eq(systemRoles.roleName, "Guest")); if (g) await db.insert(userRoles).values({ userId: user.id, roleId: g.id }).onConflictDoNothing(); }
+  await db.insert(loginLogs).values({ userId: user.id, email: user.email, authProvider: "Google", deviceInfo: req.headers.get("user-agent")?.slice(0, 180) ?? null, ipAddress: req.headers.get("cf-connecting-ip") ?? null, success: 1 });
+  await env.DB.prepare(`UPDATE users SET last_login_at = unixepoch() WHERE id = ?`).bind(user.id).run();
+  const when = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Bangkok" }).slice(0, 16) + " น.";
+  if (isNew) await notifyAdminChat(env, `🆕 <b>ผู้ใช้ใหม่เข้าระบบ</b>\n${profile.name ?? profile.email}\n${profile.email}\nGoogle · ${when}\n→ รอเปิดสิทธิ์ที่เมนู จัดการผู้ใช้งาน`);
+  else await notifyAdminChat(env, `🔑 <b>เข้าสู่ระบบ</b>\n${user.name ?? user.email} (Google)\n${when}`);
+  const token = await createSessionToken(env.AUTH_SECRET, { sub: user.id, email: user.email, name: user.name });
+  const res = new Response(null, { status: 302, headers: { Location: `${origin}/` } });
+  res.headers.append("Set-Cookie", buildSessionCookie(token));
+  return res;
 }

@@ -18,7 +18,7 @@ export default async function CalendarPage() {
   for (const t of tasks) { const d = new Date(t.due_date * 1000).getUTCDate(); (byDay[d] ||= []).push({ ...t, kind: "task" }); }
   for (const m of milestones) { const d = new Date(m.target_date * 1000).getUTCDate(); (byDay[d] ||= []).push({ ...m, kind: "milestone" }); }
   const cells: (number | null)[] = []; for (let i = 0; i < startDay; i++) cells.push(null); for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  const monthName = `${y}-${String(m + 1).padStart(2, "0")}`;
+  const monthName = first.toLocaleDateString("th-TH", { month: "long", year: "numeric", timeZone: "UTC" });
   return (
     <AppShell active="calendar" {...shellProps(a)}>
       <PageHeader title="ปฏิทิน — Due Date" subtitle={`งานที่ครบกำหนดในเดือน ${monthName}`} />

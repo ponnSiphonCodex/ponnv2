@@ -1,15 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { RichEditor } from "./rich-editor";
-import { MultiSelect } from "./multi-select";
 import { uploadToGoogleDrive } from "@/lib/upload";
 import { apiWrite, saveDraft, loadDraft, clearDraft } from "@/lib/offline";
-import { confirmDialog } from "@/lib/confirm";
 import { Icon } from "./icons";
 
 const NAVY = "#001D58";
 type FileRow = { id: number; file_name: string; file_type: string; gdrive_web_link: string };
-type Opt = { id: number | string; name: string };
 
 export function MeetingEditor({ meetingId }: { meetingId: number | null }) {
   const draftKey = `meeting:${meetingId ?? "new"}`;
@@ -19,10 +16,7 @@ export function MeetingEditor({ meetingId }: { meetingId: number | null }) {
   const [time, setTime] = useState("09:00");
   const [organizer, setOrganizer] = useState("");
   const [attendees, setAttendees] = useState("");
-  const [productIds, setProductIds] = useState<(number | string)[]>([]);
-  const [projectIds, setProjectIds] = useState<(number | string)[]>([]);
-  const [products, setProducts] = useState<Opt[]>([]);
-  const [projects, setProjects] = useState<Opt[]>([]);
+  const [project, setProject] = useState("");
   const [content, setContent] = useState("");
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<FileRow[]>([]);
@@ -33,91 +27,73 @@ export function MeetingEditor({ meetingId }: { meetingId: number | null }) {
 
   useEffect(() => {
     async function init() {
-      const [pd, pj] = await Promise.all([
-        fetch("/api/ref/products").then((r) => r.json()).then((j) => (j.options ?? []).map((o: any) => ({ id: o.id, name: o.label }))).catch(() => []),
-        fetch("/api/ref/projects").then((r) => r.json()).then((j) => (j.options ?? []).map((o: any) => ({ id: o.id, name: o.label }))).catch(() => []),
-      ]);
-      setProducts(pd); setProjects(pj);
       const draft = loadDraft<any>(draftKey);
       if (meetingId) {
         const r = await fetch(`/api/meetings/detail?id=${meetingId}`);
         if (r.ok) { const d = await r.json(); const m = d.meeting; if (m) {
           setTitle(m.title ?? ""); setDate(m.meeting_date ? new Date(m.meeting_date * 1000).toISOString().slice(0, 10) : date);
-          setTime(m.start_time ?? "09:00"); setOrganizer(m.organizer ?? ""); setAttendees(m.attendees ?? "");
+          setTime(m.start_time ?? "09:00"); setOrganizer(m.organizer ?? ""); setAttendees(m.attendees ?? ""); setProject(m.project_name ?? "");
           setContent(m.minutes_longtext ?? ""); setNotes(m.internal_notes ?? ""); setFiles(d.files ?? []);
-          try { setProjectIds(JSON.parse(m.project_ids ?? "[]")); } catch {}
-          try { setProductIds(JSON.parse(m.product_ids ?? "[]")); } catch {}
         } }
       }
-      if (draft) { if (draft.title) setTitle(draft.title); if (draft.content) setContent(draft.content); if (draft.notes) setNotes(draft.notes); if (draft.organizer) setOrganizer(draft.organizer); if (draft.attendees) setAttendees(draft.attendees); if (draft.projectIds) setProjectIds(draft.projectIds); if (draft.productIds) setProductIds(draft.productIds); }
+      if (draft) { if (draft.title) setTitle(draft.title); if (draft.content) setContent(draft.content); if (draft.notes) setNotes(draft.notes); if (draft.organizer) setOrganizer(draft.organizer); if (draft.attendees) setAttendees(draft.attendees); if (draft.project) setProject(draft.project); }
       setReady(true);
     }
     init();
   }, []);
-  useEffect(() => { if (ready) saveDraft(draftKey, { title, content, notes, organizer, attendees, projectIds, productIds, date, time }); }, [title, content, notes, organizer, attendees, projectIds, productIds, date, time, ready]);
+  useEffect(() => { if (ready) saveDraft(draftKey, { title, content, notes, organizer, attendees, project, date, time }); }, [title, content, notes, organizer, attendees, project, date, time, ready]);
 
-  function flash(ok: boolean, text: string) { setMsg({ ok, text }); if (ok) setTimeout(() => setMsg(null), 3500); }
-  function payload() {
-    const projectName = [...products.filter((o) => productIds.map(String).includes(String(o.id))), ...projects.filter((o) => projectIds.map(String).includes(String(o.id)))].map((o) => o.name).join(", ");
-    return { title, meetingDate: date, startTime: time, organizer, attendees, projectIds, productIds, projectName, content, internalNotes: notes };
-  }
-  // คืนค่า id ถ้าสำเร็จ, null ถ้าไม่สำเร็จ (และ flash error จริงจาก server ให้เห็น ไม่ silent)
-  async function doSave(withId: boolean): Promise<number | null> {
-    const r = await apiWrite("/api/meetings/save", "POST", { id: withId ? id : undefined, ...payload() });
-    if (r.data?.id) { setId(r.data.id); return r.data.id; }
-    if (r.error) flash(false, r.error);
-    return null;
+  function flash(ok: boolean, text: string) { setMsg({ ok, text }); setTimeout(() => setMsg(null), 3500); }
+  async function ensureSaved(): Promise<number | null> {
+    if (id) return id;
+    const r = await apiWrite("/api/meetings/save", "POST", { title: title || "(ไม่มีหัวข้อ)", meetingDate: date, startTime: time, organizer, attendees, projectName: project, content, internalNotes: notes });
+    if (r.data?.id) { setId(r.data.id); return r.data.id; } return null;
   }
   async function save(goBack = false) {
     if (!title.trim()) { flash(false, "กรุณากรอกหัวข้อประชุม"); return; }
-    setSaving(true); const mid = await doSave(true); setSaving(false);
-    if (mid) { clearDraft(draftKey); flash(true, "บันทึกแล้ว"); if (goBack) location.href = "/pm/meetings"; }
+    setSaving(true);
+    const r = await apiWrite("/api/meetings/save", "POST", { id, title, meetingDate: date, startTime: time, organizer, attendees, projectName: project, content, internalNotes: notes });
+    setSaving(false);
+    if (r.ok || r.queued) { clearDraft(draftKey); if (r.data?.id && !id) setId(r.data.id); flash(true, "บันทึกแล้ว"); if (goBack) location.href = "/pm/meetings"; }
+    else flash(false, r.error || "บันทึกไม่สำเร็จ");
   }
-
-  // v28 (10.1): แนบไฟล์ = save-as-step — ถ้ายังไม่เคยบันทึก จะยืนยัน (popup theme ไม่ใช่ browser) แล้วบันทึกให้อัตโนมัติก่อนเปิดเลือกไฟล์
-  async function pickAndUpload(fileType: string) {
-    if (!title.trim()) { flash(false, "กรอกหัวข้อประชุมก่อน"); return; }
-    if (!id) {
-      const ok = await confirmDialog({ title: "บันทึกประชุมก่อนแนบไฟล์", message: "ต้องบันทึกบันทึกประชุมนี้ก่อน จึงจะแนบไฟล์ได้\nระบบจะบันทึกให้อัตโนมัติแล้วเปิดให้เลือกไฟล์ต่อทันที", confirmText: "บันทึก & เลือกไฟล์" });
-      if (!ok) return;
-      setSaving(true); const mid = await doSave(false); setSaving(false);
-      if (!mid) return; // error ถูก flash โดย doSave แล้ว (เห็นสาเหตุจริงจาก server)
-      flash(true, "บันทึกประชุมแล้ว — เลือกไฟล์เพื่อแนบได้เลย");
-    }
-    const inp = document.getElementById("mfile") as any; inp._ftype = fileType; inp.click();
+  // แนบไฟล์แบบตรง — เลือกประเภทจากปุ่ม ไม่ต้อง dropdown (item 7.3)
+  async function pickAndUpload(fileType: string, inputId: string) {
+    const inp = document.getElementById(inputId) as any; (inp as any)._ftype = fileType; inp.click();
   }
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]; const fileType = (e.target as any)._ftype || "Other"; e.target.value = ""; if (!f || !id) return;
+    const f = e.target.files?.[0]; if (!f) return;
+    const fileType = (e.target as any)._ftype || "Other";
+    const mid = await ensureSaved();
+    if (!mid) { flash(false, "บันทึกประชุมก่อนแนบไฟล์"); return; }
     setUploading(fileType);
-    const up = await uploadToGoogleDrive(f); setUploading(null);
+    const up = await uploadToGoogleDrive(f);
+    setUploading(null);
+    e.target.value = "";
     if (up.ok && up.url) {
-      const r = await apiWrite("/api/attachments", "POST", { referenceType: "meeting", referenceId: id, fileName: f.name, gdriveFileId: up.fileId, gdriveWebLink: up.url, fileType });
-      if (!r.ok && !r.queued) { flash(false, r.error || "แนบไฟล์ไม่สำเร็จ"); return; }
-      const d = await (await fetch(`/api/meetings/detail?id=${id}`)).json();
+      await apiWrite("/api/attachments", "POST", { referenceType: "meeting", referenceId: mid, fileName: f.name, gdriveFileId: up.fileId, gdriveWebLink: up.url, fileType });
+      const d = await (await fetch(`/api/meetings/detail?id=${mid}`)).json();
       setFiles(d.files ?? []); flash(true, "แนบไฟล์แล้ว");
     } else flash(false, up.error || "อัปโหลดไม่สำเร็จ");
   }
   async function delFile(fid: number) { setFiles((fs) => fs.filter((f) => f.id !== fid)); await apiWrite(`/api/attachments?id=${fid}`, "DELETE", {}); }
 
   const AttachBtn = ({ type, label, color }: { type: string; label: string; color: string }) => (
-    <button type="button" onClick={() => pickAndUpload(type)} className="btn-ghost" style={{ display: "inline-flex", alignItems: "center", gap: 6, borderColor: color, color }}>
+    <button type="button" onClick={() => pickAndUpload(type, "mfile")} className="btn-ghost" style={{ display: "inline-flex", alignItems: "center", gap: 6, borderColor: color, color }}>
       <Icon name="attach" size={16} />{uploading === type ? "กำลังอัปโหลด..." : label}
     </button>
   );
 
   return (
     <div style={{ padding: 24, maxWidth: 980, margin: "0 auto" }}>
-      {msg && <div style={{ background: msg.ok ? "#ECFDF5" : "#FEF2F2", color: msg.ok ? "#047857" : "#B91C1C", padding: 10, borderRadius: 8, marginBottom: 14, fontSize: 13, whiteSpace: "pre-line" }}>{msg.text}</div>}
+      {msg && <div style={{ background: msg.ok ? "#ECFDF5" : "#FEF2F2", color: msg.ok ? "#047857" : "#B91C1C", padding: 10, borderRadius: 8, marginBottom: 14, fontSize: 13 }}>{msg.text}</div>}
       <div className="card" style={{ padding: 20, marginBottom: 16, display: "grid", gap: 14 }}>
         <F label="หัวข้อประชุม *"><input className="input" placeholder="Xxxxx" value={title} onChange={(e) => setTitle(e.target.value)} /></F>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 }}>
           <F label="วันที่"><input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></F>
           <F label="เวลา"><input className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} /></F>
           <F label="ผู้จัด / Organizer"><input className="input" placeholder="Xxxxx" value={organizer} onChange={(e) => setOrganizer(e.target.value)} /></F>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
-          <F label="Product (เลือกได้หลายรายการ)"><MultiSelect options={products} value={productIds} onChange={setProductIds} placeholder="— เลือก Product —" /></F>
-          <F label="Project (เลือกได้หลายรายการ)"><MultiSelect options={projects} value={projectIds} onChange={setProjectIds} placeholder="— เลือก Project —" /></F>
+          <F label="Project / Product"><input className="input" placeholder="Xxxxx" value={project} onChange={(e) => setProject(e.target.value)} /></F>
         </div>
         <F label="ผู้เข้าร่วม (คั่นด้วย ,)"><input className="input" placeholder="Xxxxx, Xxxxx" value={attendees} onChange={(e) => setAttendees(e.target.value)} /></F>
       </div>
@@ -129,8 +105,7 @@ export function MeetingEditor({ meetingId }: { meetingId: number | null }) {
       <textarea className="input" style={{ height: 90, padding: 12 }} placeholder="Xxxxx" value={notes} onChange={(e) => setNotes(e.target.value)} />
 
       <div className="card" style={{ padding: 18, marginTop: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: NAVY, marginBottom: 4 }}>ไฟล์แนบ</div>
-        <div style={{ fontSize: 12, color: "#9AA0A6", marginBottom: 10 }}>{id ? "แนบได้เลย" : "ยังไม่ได้บันทึก — กดปุ่มด้านล่างเพื่อบันทึก+แนบพร้อมกัน"}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: NAVY, marginBottom: 10 }}>ไฟล์แนบ</div>
         <input id="mfile" type="file" hidden onChange={onFile} />
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
           <AttachBtn type="Minute" label="Meeting Minute" color="#B4185A" />

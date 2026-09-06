@@ -2,8 +2,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiWrite } from "@/lib/offline";
 import { Icon } from "./icons";
-import { confirmDialog } from "@/lib/confirm";
-import { SkelRows } from "./skeleton";
 
 const NAVY = "#001D58", PINK = "#EC186E";
 type Issue = { id: number; title: string; status: string; project_id: number | null; project_name: string | null; product_id: number | null; product_name: string | null; raised_by: string | null; raiser_name: string | null; actioner_name: string | null; updated_at: number };
@@ -33,17 +31,18 @@ export function IssuesView() {
       (!term || (i.title ?? "").toLowerCase().includes(term)));
   }, [issues, fProject, fProduct, fStatus, fRaiser, q]);
 
-  async function del(id: number) { if (!(await confirmDialog({ message: "ลบ Issue นี้?", danger: true }))) return; setIssues((s) => s.filter((x) => x.id !== id)); await apiWrite(`/api/issues/save?id=${id}`, "DELETE", {}); }
+  async function del(id: number) { if (!confirm("ลบ Issue นี้?")) return; setIssues((s) => s.filter((x) => x.id !== id)); await apiWrite(`/api/issues/save?id=${id}`, "DELETE", {}); }
   async function quickStatus(i: Issue, s: string) { setIssues((arr) => arr.map((x) => x.id === i.id ? { ...x, status: s } : x)); await apiWrite("/api/issues/save", "POST", { id: i.id, title: i.title, projectId: i.project_id, status: s }); }
   const clearFilters = () => { setFProject(""); setFProduct(""); setFStatus(""); setFRaiser(""); setQ(""); };
   const active = fProject || fProduct || fStatus || fRaiser || q;
 
   return (
     <div style={{ padding: 20 }}>
-      {/* v28 (ข้อ 4): ปุ่ม Export + เพิ่ม Issue ย้ายไปชิดขวา */}
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-        <button className="btn-ghost" onClick={() => setShowExport(true)} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="table" size={16} /> Export Excel</button>
-        <a href="/pm/issues/edit" className="btn-pink" style={{ textDecoration: "none" }}>+ เพิ่ม Issue</a>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="btn-ghost" onClick={() => setShowExport(true)} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="table" size={16} /> Export Excel</button>
+          <a href="/pm/issues/edit" className="btn-pink" style={{ textDecoration: "none" }}>+ เพิ่ม Issue</a>
+        </div>
       </div>
 
       {/* Filters */}
@@ -61,7 +60,7 @@ export function IssuesView() {
         <table>
           <thead><tr style={{ background: "#F9FAFB", textAlign: "left" }}><th style={th}>หัวข้อปัญหา</th><th style={th}>Project</th><th style={th}>Product</th><th style={th}>ผู้แจ้ง</th><th style={th}>สถานะ</th><th style={th}>อัปเดต</th><th style={th}></th></tr></thead>
           <tbody>
-            {loading && <SkelRows cols={7} />}
+            {loading && <tr><td colSpan={7} style={{ ...td, color: "#6B7280" }}>กำลังโหลด...</td></tr>}
             {!loading && filtered.length === 0 && <tr><td colSpan={7} style={{ ...td, color: "#9AA0A6" }}>ไม่พบ Issue</td></tr>}
             {filtered.map((i) => (
               <tr key={i.id} style={{ borderTop: "1px solid #F0F1F3" }}>

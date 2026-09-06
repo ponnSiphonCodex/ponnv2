@@ -1,37 +1,31 @@
-# Portfolio Workspace — PM Platform (v28)
+# Portfolio Workspace — PM Platform (v27)
 
 Next.js 15 + Cloudflare D1/Workers + Drizzle + @opennextjs/cloudflare
+(v27 = ต่อยอดจาก v26)
 
-## ⚠️ Deploy DB ก่อน — สำคัญมาก (แก้ root cause บั๊คทั้ง SQL + บันทึกประชุมไม่ได้)
-**สาเหตุจริงที่พบ:** ไฟล์ migration เดิมรวมหลาย `ALTER TABLE` ไว้ก้อนเดียว — พอมีคำสั่งซ้ำ (duplicate column)
-**ทั้งก้อนล้มเหลว** ทำให้ `attendees`, `project_name`, ตาราง `team_roster`/`team_hidden` **ไม่ถูกสร้างจริง**
-แม้ Console จะโชว์ "Executed 6/6" ก็ตาม — นี่คือสาเหตุที่บันทึกประชุมพัง (เพราะ INSERT อ้างคอลัมน์ที่ไม่มีจริง)
+## v27 ใหม่ (9 ข้อ)
+1. **Hover Nav Bar** — เอา background hover ออก เหลือแค่ขยับ (translateX) สะอาดขึ้น
+2. **Issues List** — กรองได้ **By Product / Project / สถานะ / ผู้แจ้ง** + ค้นหาหัวข้อ
+   - 2.1 เพิ่ม/แก้ Issue = **เปิดหน้าใหม่เต็มจอ** (`/pm/issues/edit`) แนวเดียวกับ Meeting Minute
+   - 2.2 **Export → Excel (CSV+BOM อ่านไทยได้)** · Popup เลือก filter ก่อนโหลด (ค่าเริ่มต้น = Project, ย้อนหลัง 1 ปี) · PMO/Admin = ทั้งหมด · คนอื่น = เฉพาะที่เกี่ยวข้อง
+3. **Popup สำคัญ** — ฟอร์มกรอกข้อมูล (เพิ่ม/แก้ Master Data, เพิ่มผู้ใช้, เพิ่มงาน, โปรไฟล์) **ไม่ปิดเมื่อคลิกพื้นหลัง** แล้ว (กันปิดพลาด) — ปิดด้วยปุ่มยกเลิก/X เท่านั้น
+4. **Telegram แจ้งเตือน** — ขึ้นต้นทุกข้อความด้วย `🚀 [PM Platform · pm.ponnsth.com]` แยกจากระบบอื่นที่คุณดูแล
+5. **Working Team** — เห็นเฉพาะทีมที่เกี่ยวข้องตาม role (Product Owner เห็น layer Product+Project ที่ดูแล · PM เห็น member เฉพาะ project ตัวเอง · PMO/Admin เห็นหมด) · **เพิ่มคนเองได้** (คนไม่ login ใส่ชื่อ+ความรับผิดชอบ) · **ซ่อน/แสดงรายคน** (มีผลเฉพาะมุมมองของ user นั้น)
+6. **Milestone & ทุกตาราง** — เอา **Project ขึ้นคอลัมน์แรก** · **ค้นหา + เรียงได้ทุกคอลัมน์** (คลิกหัวตาราง ▲▼)
+7. **Master Data** — ตาราง**โชว์สีจริง** (chip สี) · แก้ overflow เกิน 100% (wrap `md-scroll`)
+8. **Nav Sub-Menu** — ปรับ UX: parent ไม่ pink เต็มแล้ว (ใช้จุด accent) · sub-item ใช้เส้น pink ซ้าย + ไอคอน pink — ดูสะอาด ไม่ตลก
+9. **Kanban** — เพิ่มตัวเลือก **"ทุกโครงการ (รวม)"** (aggregate ตาม category) · เลือกทีละ project ที่เกี่ยวข้องได้เหมือนเดิม · **หัว column สีเต็มแถบ** แยกด้วยสีชัด (Backlog เทา · To Do น้ำเงิน · In Progress เหลือง · Done เขียว · Drop แดง) + การ์ดมีเส้นสีซ้ายตาม column
 
-**วิธีแก้ (ต้องทำ):** ไปที่ `database/migrations/v28_run_one_at_a_time/`
-1. เปิดไฟล์ `README.md` ในโฟลเดอร์นั้นอ่านก่อน
-2. รันไฟล์ `01_...` ถึง `08d_...` **ทีละไฟล์** (คัดลอก → วาง → Run → ไปไฟล์ถัดไป) — ห้ามรวมกัน
-3. รัน `09_verify.sql` และ `10_verify_tables.sql` เพื่อเช็คว่าครบจริง
-4. หรือเปิด `/api/debug` บนเว็บ — จะมี `schema_check.migration_complete: true/false` บอกตรงๆ ว่าครบหรือยัง
-
-## v28 ใหม่ (แก้บั๊ค QA รอบ 2)
-1. **SQL Error** — แยก migration เป็นไฟล์ละ 1 คำสั่ง (ดูหัวข้อ Deploy ด้านบน) + เพิ่ม `/api/debug` เช็คสคีมาอัตโนมัติ
-2. **Reject ไม่หาย / badge ไม่หด / รีเฟรชไม่กลับ** — แก้ต้นตอ: เดิม reject เป็น optimistic-only (ลบจอโดยไม่เช็คผลจริงจาก server) และ orphan-reject เป็น React state ล้วนๆ (หายเมื่อ refresh) ➜ ตอนนี้ทุก approve/reject **ตรวจผลจริงจาก server, revert ถ้าล้มเหลว, refetch จาก DB เสมอ**, orphan-reject เก็บ localStorage ให้จำข้าม refresh ได้จริง, และ sidebar badge อัปเดตทันทีผ่าน event (ไม่ต้องรอเปลี่ยนหน้า)
-3. **บันทึกประชุมไม่ได้** — พบ root cause 2 จุด: (1) คอลัมน์ขาดหายจากบั๊ค SQL ข้อ 1 (2) API ไม่มี `try/catch` ทำให้ error ดิบกลายเป็น HTML 500 ที่ฝั่ง client parse JSON ไม่ได้ (error หายเงียบ) ➜ แก้ทั้งคู่ + Popup แจ้งเหตุผลจริงเป็นภาษาที่เข้าใจง่าย (ผ่าน popup theme ไม่ใช่ browser alert)
-4. **Export/เพิ่ม Issue ชิดขวา** + **เพิ่ม Export Excel ให้ Risks ด้วย** (เดิมมีแค่ Issues)
-
-## v28 อื่นๆ (ตามคำขอรอบแรก)
-- Login default = บัญชี Google
-- Popup ยืนยันทุกจุดเป็น theme วิริยะ (เลิก browser confirm/alert ทั้งหมด)
-- โปรไฟล์ preload ตั้งแต่ล็อกอิน + Cache TTL ตามความถี่ข้อมูล (profile 7 วัน, master data 30 วัน, projects/users 14 วัน, งาน/issue realtime แต่โชว์ cache ระหว่างรอ)
-- Skeleton Loading (shimmer) แทน "กำลังโหลด..." ทุกตาราง/การ์ด
-- Date format มาตรฐาน `YYYY-MM-DD` / `YYYY-MM-DD HH:mm น.` ทุกที่
-- To-Day Planning ขยายเต็มความกว้าง 2 คอลัมน์เท่ากัน (แก้บั๊คกว้างไม่เท่ากันเดิม) + แนบไฟล์ได้
-- **Gantt Chart ยกเครื่อง**: Day/Week/Month, แสดง Task จริง, ทุกโครงการเรียง Product→Project, โหมด Workforce Management, Export Excel, เส้นแนวตั้ง subtle + เส้นวันนี้, ลูกศร Dependency (SVG)
-- บันทึกประชุม: Product/Project เป็น Multi-Select dropdown + แนบไฟล์ = save-as-step อัตโนมัติ (มี popup ยืนยัน)
+## Deploy
+1. GitHub Desktop → วางไฟล์ทับ repo → Commit → Push
+2. **DB (Production ปลอดภัย):** รัน `database/migrations/v27_production_safe.sql` ใน D1 Console
+   - เพิ่มตาราง `team_roster`, `team_hidden` (สำหรับ Working Team ข้อ 5) + คอลัมน์ meetings เดิม
+   - ขึ้น `duplicate column/table exists` = มีแล้ว ข้ามได้ · **ห้ามรัน schema.sql บน prod** (DROP ทุกตาราง)
+3. Secret เดิม + `TELEGRAM_ADMIN_CHAT_ID`
 
 ## หมายเหตุ
-- Export = CSV (เปิด Excel ได้ทันที มี BOM ภาษาไทย) ไม่ใช่ .xlsx แท้
-- Gantt "ทุกโครงการ" อ่านอย่างเดียว (ไม่มีการลาก)
+- **Export เป็น CSV** (เปิดใน Excel ได้ทันที มี BOM รองรับภาษาไทย) — ไม่ใช่ .xlsx จริง เพราะ Worker สร้าง binary xlsx ไม่คุ้ม; ถ้าต้องการ .xlsx แท้บอกได้
+- Kanban "ทุกโครงการ" = อ่าน/เปิด drawer แก้ได้ แต่ **ลากข้ามคอลัมน์ไม่ได้** (เพราะแต่ละโครงการมี workflow ของตัวเอง) — ต้องเข้าโครงการนั้นเพื่อลาก
 
 ## Login ทดสอบ
 - ponnsiphon@gmail.com / pn2811qp (System Admin + PMO)

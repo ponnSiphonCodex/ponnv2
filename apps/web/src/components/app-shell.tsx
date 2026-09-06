@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { ProfileModal } from "./profile-modal";
 import { Icon } from "./icons";
+import { DataBootstrap } from "./data-bootstrap";
 
 const NAVY = "#001D58";
 const PINK = "#EC186E";
@@ -54,20 +55,17 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
   useEffect(() => {
     if (localStorage.getItem("sidebar_collapsed") === "1") setCollapsed(true);
     setReady(true);
-    // v28: preload โปรไฟล์ลง cache ตั้งแต่เข้าระบบ → เมนู logout เปิดทันที ไม่ต้องรอโหลด
-    fetch("/api/profile").then((r) => r.ok ? r.json() : null).then((d) => { if (d) { try { localStorage.setItem("pmcache:profile", JSON.stringify({ data: d, at: Date.now(), v: 1 })); } catch {} } }).catch(() => {});
     // badge คำขอผู้ใช้ (admin) — cache localStorage เพื่อไม่กระพริบ
     if (isAdmin) {
-      const cached = Number(localStorage.getItem("pending_req") || 0); if (cached) setReqCount(cached);
-      fetch("/api/admin/pending-count").then((r) => r.ok ? r.json() : null).then((d) => { if (d) { setReqCount(d.count); localStorage.setItem("pending_req", String(d.count)); } }).catch(() => {});
+      const cached = Number(localStorage.getItem("pending_req") || 0); setReqCount(cached);
+      fetch("/api/admin/pending-count", { cache: "no-store" }).then((r) => r.ok ? r.json() : null).then((d) => { if (d) { setReqCount(d.count); localStorage.setItem("pending_req", String(d.count)); } }).catch(() => {});
     }
   }, [isAdmin]);
-  // v28: อัปเดต badge ทันทีเมื่อ approve/reject โดยไม่ต้องรอเปลี่ยนหน้า
   useEffect(() => {
     if (!isAdmin) return;
-    const onChange = (e: any) => setReqCount(Number(e.detail) || 0);
-    window.addEventListener("pending-req-changed", onChange);
-    return () => window.removeEventListener("pending-req-changed", onChange);
+    const onPending = (e: Event) => setReqCount(Number((e as CustomEvent).detail) || 0);
+    window.addEventListener("pending-req-changed", onPending);
+    return () => window.removeEventListener("pending-req-changed", onPending);
   }, [isAdmin]);
   useEffect(() => { if (PROJECT_VIEWS.includes(active)) setProjOpen(true); }, [active]);
   function toggle() { setCollapsed((c) => { const n = !c; localStorage.setItem("sidebar_collapsed", n ? "1" : "0"); return n; }); }
@@ -87,6 +85,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
 
   return (
     <div style={{ display: "flex", minHeight: "100dvh", background: "#F4F4F6" }}>
+      <DataBootstrap />
       {/* mobile topbar */}
       <div className="mobile-topbar" style={{ position: "fixed", top: 0, left: 0, right: 0, height: 54, background: NAVY, zIndex: 60, alignItems: "center", justifyContent: "space-between", padding: "0 14px", gap: 10 }}>
         <button onClick={() => setMobileOpen(true)} aria-label="menu" style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", cursor: "pointer" }}>

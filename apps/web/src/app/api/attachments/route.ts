@@ -1,14 +1,6 @@
 import type { NextRequest } from "next/server";
 import { apiContext } from "@/lib/api-auth";
 export const dynamic = "force-dynamic";
-// v28 (item 9): ดึงรายการไฟล์แนบของ reference ใดๆ (เช่น todo, task, meeting)
-export async function GET(req: NextRequest) {
-  const c = await apiContext(); if (!c) return Response.json({ error: "unauthorized" }, { status: 401 });
-  const u = new URL(req.url); const rt = u.searchParams.get("ref"); const rid = Number(u.searchParams.get("refId"));
-  if (!rt || !rid) return Response.json({ files: [] });
-  const r = await c.d1.prepare(`SELECT id, file_name, file_type, gdrive_web_link, created_at FROM attachments WHERE reference_type=? AND reference_id=? ORDER BY created_at DESC`).bind(rt, rid).all();
-  return Response.json({ files: r.results ?? [] });
-}
 export async function POST(req: NextRequest) {
   const c = await apiContext(); if (!c) return Response.json({ error: "unauthorized" }, { status: 401 });
   if (c.guest) return Response.json({ error: "forbidden" }, { status: 403 });

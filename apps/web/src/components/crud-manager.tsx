@@ -2,9 +2,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { ENTITIES, type Field } from "@/lib/entities";
 import { apiWrite, saveDraft, loadDraft, clearDraft, initOfflineSync } from "@/lib/offline";
-import { confirmDialog, alertDialog } from "@/lib/confirm";
-import { cachedFetch, readCache, invalidate, writeCache, TTL } from "@/lib/cache";
-import { SkelRows } from "./skeleton";
 
 const NAVY = "#001D58";
 type Row = Record<string, any>;
@@ -21,29 +18,34 @@ export function CrudManager({ entity }: { entity: string }) {
   const [creating, setCreating] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
 
-  // reload เฉพาะแถว (ใช้หลัง save/delete) — ล้าง cache แล้วดึงใหม่ให้ตรง DB
+  // reload เฉพาะแถว (ใช้หลัง save/delete) — ไม่ดึง ref ซ้ำ
   const loadRows = useCallback(async () => {
-    invalidate(`crud:${entity}`);
     try {
       const res = await fetch(`/api/crud/${entity}`);
       if (!res.ok) { const j = await res.json().catch(() => ({})); setError(j.error || "โหลดข้อมูลไม่สำเร็จ"); return; }
-      const d = await res.json(); setRows(d.rows || []); setCanWrite(!!d.canWrite); writeCache(`crud:${entity}`, d);
+      const d = await res.json(); setRows(d.rows || []); setCanWrite(!!d.canWrite);
     } catch { setError("เชื่อมต่อไม่สำเร็จ"); }
   }, [entity]);
 
-  // TTL: master data (นิ่ง) เก็บนาน 30 วัน · อื่นๆ realtime แต่โชว์ cache ระหว่างรอ (stale-while-revalidate)
-  const ttl = def.masterOnly ? TTL.long : TTL.realtime;
+  // โหลดครั้งแรก: rows + refs พร้อมกัน
   const load = useCallback(async () => {
-    setError(null);
-    const refFields = def.fields.filter((f) => f.type === "ref");
-    const uniq = Array.from(new Set(refFields.map((f) => f.refEntity!)));
-    Promise.all(uniq.map((re) => new Promise<void>((res) => cachedFetch<{ options: any[] }>(`ref:${re}`, `/api/ref/${re}`, TTL.medium, (d) => { setRefs((m) => ({ ...m, [re]: d.options || [] })); res(); }))));
-    cachedFetch<{ rows: Row[]; canWrite: boolean }>(`crud:${entity}`, `/api/crud/${entity}`, ttl, (d) => {
-      setRows(d.rows || []); setCanWrite(!!d.canWrite); setLoading(false);
-    });
-  }, [entity, def, ttl]);
+    setLoading(true); setError(null);
+    try {
+      const refFields = def.fields.filter((f) => f.type === "ref");
+      const uniq = Array.from(new Set(refFields.map((f) => f.refEntity!)));
+      const [rowsRes, ...refResults] = await Promise.all([
+        fetch(`/api/crud/${entity}`),
+        ...uniq.map((re) => fetch(`/api/ref/${re}`).then((r) => r.ok ? r.json() : { options: [] }).then((j) => ({ re, options: j.options || [] }))),
+      ]);
+      if (!rowsRes.ok) { const j = await rowsRes.json().catch(() => ({})); setError(j.error || "โหลดข้อมูลไม่สำเร็จ"); setLoading(false); return; }
+      const d = await rowsRes.json(); setRows(d.rows || []); setCanWrite(!!d.canWrite);
+      const map: RefMap = {}; for (const r of refResults as any[]) map[r.re] = r.options;
+      setRefs(map);
+    } catch { setError("เชื่อมต่อไม่สำเร็จ"); }
+    setLoading(false);
+  }, [entity, def]);
 
-  useEffect(() => { setLoading(!readCache(`crud:${entity}`)); load(); const cleanup = initOfflineSync((n) => setFlash(`ส่งข้อมูลที่ค้างไว้ ${n} รายการเรียบร้อย`)); return cleanup; }, [load, entity]);
+  useEffect(() => { load(); const cleanup = initOfflineSync((n) => setFlash(`ส่งข้อมูลที่ค้างไว้ ${n} รายการเรียบร้อย`)); return cleanup; }, [load]);
 
   const [q, setQ] = useState("");
   const [sortKey, setSortKey] = useState<string>("id");
@@ -69,9 +71,9 @@ export function CrudManager({ entity }: { entity: string }) {
   }
 
   async function remove(id: number) {
-    if (!(await confirmDialog({ message: "ลบรายการนี้?", danger: true }))) return;
+    if (!confirm("ลบรายการนี้?")) return;
     const r = await apiWrite(`/api/crud/${entity}/${id}`, "DELETE", {});
-    if (!r.ok && !r.queued) { await alertDialog(r.error || "ลบไม่สำเร็จ"); return; }
+    if (!r.ok && !r.queued) { alert(r.error || "ลบไม่สำเร็จ"); return; }
     if (r.queued) setFlash(r.error!); loadRows();
   }
 
@@ -98,7 +100,7 @@ export function CrudManager({ entity }: { entity: string }) {
             {canWrite && <th style={th}></th>}
           </tr></thead>
           <tbody>
-            {loading && <SkelRows cols={listFields.length + (canWrite ? 2 : 1)} />}
+            {loading && <tr><td colSpan={listFields.length + 2} style={{ ...td, color: "#6B7280" }}>กำลังโหลด...</td></tr>}
             {!loading && sorted.length === 0 && <tr><td colSpan={listFields.length + 2} style={{ ...td, color: "#6B7280" }}>{term ? "ไม่พบรายการที่ค้นหา" : "ยังไม่มีข้อมูล"}</td></tr>}
             {sorted.map((r) => (
               <tr key={r.id} style={{ borderTop: "1px solid #F0F1F3" }}>
