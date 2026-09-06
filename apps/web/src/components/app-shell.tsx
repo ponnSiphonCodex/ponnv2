@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { ProfileModal } from "./profile-modal";
 import { NotificationBell } from "./notification-bell";
 import { GlobalSearch } from "./global-search";
-import { Icon, RocketLogo } from "./icons";
+import { Icon } from "./icons";
 
 const NAVY = "#001D58";
 const PINK = "#EC186E";
@@ -64,7 +64,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
     <div style={{ display: "flex", minHeight: "100dvh", background: "#F4F4F6" }}>
       <aside style={{ width, minWidth: width, background: NAVY, color: "#fff", display: "flex", flexDirection: "column", transition: ready ? "width .18s ease, min-width .18s ease" : "none", position: "sticky", top: 0, height: "100dvh" }}>
         <button onClick={toggle} aria-label="menu" style={{ display: "flex", alignItems: "center", gap: 11, padding: "15px 14px", borderBottom: "1px solid rgba(255,255,255,.1)", background: "transparent", border: "none", cursor: "pointer", width: "100%" }}>
-          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: collapsed ? 34 : 32, height: collapsed ? 34 : 32, color: "#fff" }}><RocketLogo size={collapsed ? 30 : 28} /></span>
+          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: collapsed ? 36 : 34, height: collapsed ? 36 : 34, background: "#fff", borderRadius: 9, overflow: "hidden", flexShrink: 0 }}><img src="/rocket-logo.png" alt="logo" style={{ width: "84%", height: "84%", objectFit: "contain" }} /></span>
           {!collapsed && <span style={{ fontWeight: 700, fontSize: 16, color: "#fff", whiteSpace: "nowrap" }}>Portfolio</span>}
         </button>
 
