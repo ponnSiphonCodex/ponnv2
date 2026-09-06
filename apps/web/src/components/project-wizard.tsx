@@ -5,10 +5,13 @@ import {MultiSelect} from "./multi-select";
 import {FileUpload} from "./file-upload";
 const PROJECT_CATEGORIES=["AI-Project","Strategic Project","Product","CR","BAU Project","Process Improvement Project","Cross Function Project Improvement","AIx","TX","Data Project"];
 type Props={products:any[];features:any[];users:any[];initial?:any;projectId?:number};
+type FieldProps={label:string;children:React.ReactNode;wide?:boolean};
+// ต้องอยู่นอก ProjectWizard เพื่อไม่ให้ React สร้าง component type ใหม่ทุกครั้งที่พิมพ์
+// หากประกาศไว้ข้างใน input จะถูก unmount/remount ทุก keystroke ทำให้ focus หลุดและดูเหมือน UI ค้าง
+function F({label,children,wide=false}:FieldProps){return <label className="field-block" style={wide?{gridColumn:"1/-1"}:undefined}><span className="field-label">{label}</span>{children}</label>}
 export function ProjectWizard({products,features,users,initial={},projectId}:Props){
  const r=useRouter(),[b,setB]=useState<any>({featureIds:[],teamIds:[],categories:[],status:"Not Start",...initial}),[saving,setSaving]=useState(false),[files,setFiles]=useState<any[]>(initial.files??[]);
  const S=(k:string,v:any)=>setB((x:any)=>({...x,[k]:v}));
- const F=({label,children,wide=false}:{label:string;children:React.ReactNode;wide?:boolean})=><label className="field-block" style={wide?{gridColumn:"1/-1"}:undefined}><span className="field-label">{label}</span>{children}</label>;
  const opts=users.map(x=>({id:x.id,name:x.name}));
  async function save(){if(!b.name||!b.productId||!b.pmId){alert("กรอกข้อมูลจำเป็นไม่ครบ");return}setSaving(true);const url=projectId?`/api/projects/${projectId}`:"/api/projects/create";const res=await fetch(url,{method:projectId?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...b,files})});const j=await res.json().catch(()=>({}));setSaving(false);if(res.ok){alert(projectId?"บันทึก Project สำเร็จ":`สร้าง Project สำเร็จ ID: PRJ-${String(j.id).padStart(4,"0")}`);r.push("/pm/projects");r.refresh()}else alert(j.error??"บันทึกไม่สำเร็จ")}
  return <div style={{padding:24,maxWidth:1120}}><div style={{display:"grid",gap:18}}>
