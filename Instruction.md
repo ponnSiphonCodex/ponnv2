@@ -207,9 +207,4 @@ Drive upload (Apps Script): https://script.google.com/macros/s/AKfycby.../exec
 → **ลบ Worker `pm-platform-api` ทิ้ง** (Dashboard → Workers → pm-platform-api → Delete)
 เว็บจริงคือ `pm-platform-web` ที่ทำงานปกติ
 
-
-## Database Migration Rule (Non-negotiable)
-- ทุก Release ต้องมี SQL migration แบบรวมทุกการเปลี่ยนแปลงไว้ในไฟล์เดียว
-- Migration ต้องเป็น additive และ idempotent เท่านั้น เช่น ADD COLUMN IF NOT EXISTS, CREATE TABLE/INDEX IF NOT EXISTS
-- ห้าม DROP TABLE, TRUNCATE, DELETE หรือคำสั่งที่ล้าง/เขียนทับข้อมูลเดิมเด็ดขาด
-- การยุบ/ลบคอลัมน์ทำได้เฉพาะเมื่อมีแผนย้ายข้อมูลครบถ้วนและได้รับอนุมัติแล้ว
+- Database release SQL ต้องรวมไฟล์เดียว, additive/idempotent, ห้าม DROP/TRUNCATE/DELETE ข้อมูลเดิม

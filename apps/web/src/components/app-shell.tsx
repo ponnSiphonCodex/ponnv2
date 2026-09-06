@@ -12,32 +12,30 @@ type Child = { key: string; label: string; href: string; icon: string };
 type Item = { key: string; label: string; href: string; icon: string; adminOnly?: boolean; masterOnly?: boolean; children?: Child[]; badgeKey?: string };
 type Group = { title: string; items: Item[] };
 
-const PROJECT_VIEWS = ["task-table", "board", "calendar", "gantt"];
+const PROJECT_VIEWS = ["board", "gantt", "calendar", "task-table"];
 
 const GROUPS: Group[] = [
   { title: "", items: [
     { key: "dashboard", label: "Dashboard", href: "/pm/dashboard", icon: "dashboard" },
-    { key: "todos", label: "To-Day Planning", href: "/pm/todos", icon: "todo" },
+    { key: "todos", label: "Today Planning", href: "/pm/todos", icon: "todo" },
     { key: "milestones", label: "Key Milestone", href: "/pm/manage/milestones", icon: "milestone" },
   ]},
   { title: "PROJECT", items: [
     { key: "product-feature", label: "Product & Feature", href: "/pm/portfolio", icon: "product" },
     { key: "project", label: "Project", href: "/pm/manage/projects", icon: "project", children: [
-      { key: "project-new", label: "+ สร้าง Project ใหม่", href: "/pm/projects/new", icon: "project" },
-      { key: "task-table", label: "Tasks - Table", href: "/pm/tasks", icon: "board" },
-      { key: "board", label: "Tasks - Kanban", href: "/pm/board?id=1", icon: "board" },
-      { key: "calendar", label: "Calendar View", href: "/pm/calendar", icon: "calendar" },
+      { key: "project-new", label: "สร้าง Project", href: "/pm/projects/new", icon: "project" },
+      { key: "board", label: "Task Kanban", href: "/pm/board?id=1", icon: "board" },
       { key: "gantt", label: "Gantt Chart", href: "/pm/gantt?id=1", icon: "gantt" },
+      { key: "calendar", label: "Calendar", href: "/pm/calendar", icon: "calendar" },
+      { key: "task-table", label: "Task Table", href: "/pm/tasks", icon: "board" },
     ]},
     { key: "team", label: "Working Team", href: "/pm/team", icon: "team" },
     { key: "issues", label: "Issues List", href: "/pm/issues", icon: "issue" },
   ]},
-  { title: "", items: [
-    { key: "meetings", label: "Meeting Records", href: "/pm/meetings", icon: "meeting" },
-  ]},
+  { title: "", items: [{ key: "meetings", label: "Meeting Records", href: "/pm/meetings", icon: "meeting" }]},
   { title: "SETTING", items: [
     { key: "settings", label: "Master Data", href: "/pm/settings", icon: "settings", masterOnly: true },
-    { key: "users", label: "จัดการผู้ใช้งาน", href: "/pm/users", icon: "usercog", adminOnly: true, badgeKey: "requests" },
+    { key: "users", label: "จัดการผู้ใช้งาน", href: "/pm/users", icon: "users", adminOnly: true, badgeKey: "pending" },
     { key: "logs", label: "System Log", href: "/pm/logs", icon: "log", adminOnly: true },
   ]},
 ];

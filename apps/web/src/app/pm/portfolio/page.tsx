@@ -8,7 +8,7 @@ export default async function PortfolioPage() {
   const a = await requireAuth(); if (!a) redirect("/login"); if (a.guest) redirect("/pm/waiting");
   return (
     <AppShell active="product-feature" {...shellProps(a)}>
-      <PageHeader title="Product & Feature" subtitle="ลำดับชั้นพอร์ตโฟลิโอ: Theme → Initiative → Requirement → Product → Feature" />
+      <PageHeader title="Product & Feature" subtitle="ลำดับชั้นพอร์ตโฟลิโอ: Theme → Initiative → Requirement → Product → Feature" actions={<a className="btn-pink" href="/pm/products/new" style={{textDecoration:"none"}}>สร้าง Product</a>} />
       <TabbedCrud canMaster={a.scope.isPmo} tabs={[
         { key: "products", label: "Products" },
         { key: "features", label: "Features" },

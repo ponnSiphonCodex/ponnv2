@@ -23,7 +23,6 @@ export const ENTITIES: Record<string, EntityDef> = {
     { key: "description", label: "รายละเอียด", type: "textarea" } ] },
   products: { table: "products", label: "Products", defaultOrder: "id ASC", fields: [
     { key: "name", label: "ชื่อ Product", type: "text", required: true, listShow: true },
-    { key: "owner_id", label: "Product Owner", type: "ref", refEntity: "users", listShow: true },
     { key: "requirement_id", label: "Requirement", type: "ref", refEntity: "requirements" },
     { key: "status", label: "สถานะ", type: "select", options: STATUS, listShow: true },
     { key: "priority_id", label: "Priority", type: "ref", refEntity: "priorities", listShow: true },
@@ -32,8 +31,6 @@ export const ENTITIES: Record<string, EntityDef> = {
   projects: { table: "projects", label: "Projects", defaultOrder: "id ASC", scoped: true, fields: [
     { key: "name", label: "ชื่อโครงการ", type: "text", required: true, listShow: true },
     { key: "status", label: "สถานะ", type: "select", options: STATUS, listShow: true },
-    { key: "start_date", label: "วันเริ่มโครงการ", type: "date", listShow: true },
-    { key: "end_date", label: "วันสิ้นสุดโครงการ", type: "date", listShow: true },
     { key: "priority_id", label: "Priority", type: "ref", refEntity: "priorities", listShow: true },
     { key: "category_id", label: "Category", type: "ref", refEntity: "categories", listShow: true },
     { key: "product_id", label: "Product", type: "ref", refEntity: "products", listShow: true },

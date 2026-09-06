@@ -43,7 +43,7 @@ function persist() { try { localStorage.setItem(LS_KEY, JSON.stringify(BUFFER.sl
 function shorten(url: string) { try { const u = new URL(url, location.origin); return u.pathname.replace(/^\/api\//, "") + (u.search || ""); } catch { return url; } }
 function clip(v: any): string | undefined { if (v == null) return undefined; try { const s = typeof v === "string" ? v : JSON.stringify(v); return s.length > 2000 ? s.slice(0, 2000) + "…" : s; } catch { return undefined; } }
 
-function install() {
+export function installApiTelemetry() {
   if (installed || typeof window === "undefined") return;
   installed = true;
   try { const saved = JSON.parse(localStorage.getItem(LS_KEY) || "[]"); if (Array.isArray(saved)) { BUFFER = saved; SEQ = saved.reduce((m: number, x: any) => Math.max(m, x.id || 0), 0); } } catch {}
@@ -78,7 +78,7 @@ export function LogViewer() {
   const [, force] = useState(0);
   const [filter, setFilter] = useState<"all" | "error" | "slow">("all");
   const [open, setOpen] = useState<number | null>(null);
-  useEffect(() => { install(); const l = () => force((x) => x + 1); listeners.add(l); force((x) => x + 1); return () => { listeners.delete(l); }; }, []);
+  useEffect(() => { installApiTelemetry(); const l = () => force((x) => x + 1); listeners.add(l); force((x) => x + 1); return () => { listeners.delete(l); }; }, []);
   const rows = BUFFER.filter((r) => filter === "all" ? true : filter === "error" ? (r.status === 0 || r.status >= 400) : r.ms >= 500);
   return (
     <div style={{ padding: 24 }}>

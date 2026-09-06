@@ -1,0 +1,1 @@
+"use client";import {useEffect} from "react";import {installApiTelemetry} from "./log-viewer";export function ApiTelemetry(){useEffect(()=>{installApiTelemetry()},[]);return null}
