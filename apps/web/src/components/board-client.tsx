@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { BoardData, BoardColumn, BoardTask } from "@/lib/board-data";
 import { apiWrite } from "@/lib/offline";
 import { TaskDrawer } from "./task-drawer";
+import { MultiSelect } from "./multi-select";
 
 const NAVY = "#001D58", PINK = "#EC186E";
 type Ref = { id: string | number; label: string };
@@ -20,11 +21,13 @@ export function BoardClient({ board, projects, users, priorities, features, tags
   const [addTo, setAddTo] = useState<number | null>(null);
   const [drawerTask, setDrawerTask] = useState<number | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [projectIds,setProjectIds]=useState<(number|string)[]>([]); const [productIds,setProductIds]=useState<(number|string)[]>([]); const [featureIds,setFeatureIds]=useState<(number|string)[]>([]);
   const seq = useRef(-1); // id ชั่วคราวสำหรับการ์ดใหม่ (ก่อน server ตอบ)
   const statusRefs: Ref[] = columns.map((c) => ({ id: c.id, label: c.name }));
 
   // progress คำนวณสดจาก state
-  const allTasks = columns.flatMap((c) => c.tasks);
+  const matches=(t:BoardTask)=>(!projectIds.length||projectIds.map(String).includes(String(t.projectId)))&&(!productIds.length||productIds.map(String).includes(String(t.productId)))&&(!featureIds.length||featureIds.map(String).includes(String(t.featureId)));
+  const allTasks = columns.flatMap((c) => c.tasks).filter(matches);
   const catById = new Map(columns.map((c) => [c.id, c.category]));
   const doneCount = allTasks.filter((t) => catById.get(t.workflowStatusId ?? -1) === "done").length;
   const dropCount = allTasks.filter((t) => catById.get(t.workflowStatusId ?? -1) === "drop").length;
@@ -70,6 +73,11 @@ export function BoardClient({ board, projects, users, priorities, features, tags
         </div>
       </div>
 
+      {aggregate && <div className="gantt-filters" style={{marginBottom:14}}>
+        <div><span className="field-hint">Product</span><MultiSelect placeholder="ทุก Product" options={Array.from(new Map(columns.flatMap(c=>c.tasks).filter(t=>t.productId).map(t=>[String(t.productId),{id:t.productId!,name:t.productName??`Product #${t.productId}`}])).values())} value={productIds} onChange={setProductIds}/></div>
+        <div><span className="field-hint">Project</span><MultiSelect placeholder="ทุก Project" options={projects} value={projectIds} onChange={setProjectIds}/></div>
+        <div><span className="field-hint">Feature</span><MultiSelect placeholder="ทุก Feature" options={Array.from(new Map(columns.flatMap(c=>c.tasks).filter(t=>t.featureId).map(t=>[String(t.featureId),{id:t.featureId!,name:t.featureName??`Feature #${t.featureId}`}])).values())} value={featureIds} onChange={setFeatureIds}/></div>
+      </div>}
       <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 8 }}>
         {columns.map((col) => { const overWip = col.category === "doing" && col.tasks.length > 5; return (
           <div key={col.id}
@@ -84,7 +92,7 @@ export function BoardClient({ board, projects, users, priorities, features, tags
             </div>
             <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 9, overflowY: "auto", minHeight: 60 }}>
               {col.tasks.length === 0 && <div style={{ color: "#C7CCD4", fontSize: 13, textAlign: "center", padding: "14px 0" }}>ว่าง</div>}
-              {col.tasks.map((t) => (
+              {col.tasks.filter(matches).map((t) => (
                 <div key={t.id} draggable={canWrite} onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setOverCol(null); }} onClick={() => t.id > 0 && setDrawerTask(t.id)}
                   style={{ border: dragId === t.id ? `1.5px solid ${PINK}` : "1px solid #ECEEF1", borderLeft: `3px solid ${col.color || "#ECEEF1"}`, borderRadius: 10, padding: 11, cursor: aggregate ? "pointer" : (canWrite ? "grab" : "default"), background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.03)", opacity: dragId === t.id ? 0.5 : (t.id < 0 ? 0.6 : 1) }}>
                   {aggregate && (t as any).projectName && <div style={{ fontSize: 10.5, fontWeight: 700, color: NAVY, background: "#EEF1F6", display: "inline-block", padding: "1px 7px", borderRadius: 5, marginBottom: 5 }}>{(t as any).projectName}</div>}

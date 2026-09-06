@@ -8,9 +8,9 @@ export async function POST(req: NextRequest) {
   let b: { taskId?: number; statusId?: number; order?: number[] }; try { b = await req.json(); } catch { return Response.json({ error: "bad request" }, { status: 400 }); }
   if (!b.taskId || !b.statusId) return Response.json({ error: "invalid params" }, { status: 400 });
   const before = await c.d1.prepare(`SELECT t.title, t.assignee_id, ws.name AS old_status FROM tasks t LEFT JOIN workflow_statuses ws ON t.workflow_status_id=ws.id WHERE t.id=?`).bind(b.taskId).first<any>();
-  const st = await c.d1.prepare(`SELECT name, category FROM workflow_statuses WHERE id=?`).bind(b.statusId).first<any>();
+  let statusId=b.statusId; if(statusId<0){const category=["backlog","todo","doing","done","drop"][Math.abs(statusId)-1];const task=await c.d1.prepare(`SELECT project_id FROM tasks WHERE id=?`).bind(b.taskId).first<any>();const mapped=await c.d1.prepare(`SELECT id FROM workflow_statuses WHERE project_id=? AND category=? ORDER BY sort_order LIMIT 1`).bind(task?.project_id,category).first<any>();if(!mapped?.id)return Response.json({error:"ไม่พบสถานะปลายทาง"},{status:400});statusId=Number(mapped.id)} const st = await c.d1.prepare(`SELECT name, category FROM workflow_statuses WHERE id=?`).bind(statusId).first<any>();
   const completed = st?.category === "done" ? "unixepoch()" : "NULL";
-  await c.d1.prepare(`UPDATE tasks SET workflow_status_id=?, completed_datetime=${completed}, updated_by=?, updated_at=unixepoch() WHERE id=?`).bind(b.statusId, c.me.sub, b.taskId).run();
+  await c.d1.prepare(`UPDATE tasks SET workflow_status_id=?, completed_datetime=${completed}, updated_by=?, updated_at=unixepoch() WHERE id=?`).bind(statusId, c.me.sub, b.taskId).run();
   if (Array.isArray(b.order)) { for (let i = 0; i < b.order.length; i++) await c.d1.prepare(`UPDATE tasks SET sort_order=? WHERE id=?`).bind(i, b.order[i]).run(); }
   await logActivity(c.d1, { referenceType: "task", referenceId: b.taskId, userId: c.me.sub, action: "Status_Changed", fieldChanged: "status", oldValue: before?.old_status ?? null, newValue: st?.name ?? String(b.statusId) });
   if (before?.assignee_id) await notify({ d1: c.d1, env: c.env, targetUserId: before.assignee_id, actorId: c.me.sub, actionType: "Status_Changed", referenceType: "task", referenceId: b.taskId, message: `งาน "${before.title}" เปลี่ยนสถานะเป็น ${st?.name ?? ""}` });
