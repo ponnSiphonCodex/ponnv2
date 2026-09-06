@@ -127,17 +127,18 @@ export function BoardClient({ board, projects, users, priorities, features, tags
 }
 
 function AddTaskModal({ projectId, statusId, users, priorities, onClose, onOptimistic, onSaved }: { projectId: number; statusId: number; users: Ref[]; priorities: Ref[]; onClose: () => void; onOptimistic: (title: string, assigneeId: string, priorityId: string, est: number | null) => void; onSaved: (q?: string) => void }) {
-  const [title, setTitle] = useState(""); const [assignee, setAssignee] = useState(""); const [priority, setPriority] = useState(""); const [est, setEst] = useState("");
+  const [title, setTitle] = useState(""); const [note, setNote] = useState(""); const [assignee, setAssignee] = useState(""); const [priority, setPriority] = useState(""); const [est, setEst] = useState("");
   const [err, setErr] = useState<string | null>(null);
   async function submit() {
     if (!title.trim()) { setErr("กรุณากรอกชื่องาน"); return; }
     onOptimistic(title, assignee, priority, est ? Number(est) : null); // การ์ดโผล่ทันที
     onClose();
-    const r = await apiWrite("/api/tasks/create", "POST", { title, projectId, statusId, assigneeId: assignee || null, priorityId: priority ? Number(priority) : null, estimatedHours: est ? Number(est) : null });
+    const r = await apiWrite("/api/tasks/create", "POST", { title, note, projectId, statusId, assigneeId: assignee || null, priorityId: priority ? Number(priority) : null, estimatedHours: est ? Number(est) : null });
     onSaved(r.queued ? r.error! : undefined); // sync จริงเบื้องหลัง
   }
   return <Modal title="เพิ่มงาน" onClose={onClose} err={err}>
     <F label="ชื่องาน *"><input className="input" autoFocus value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} /></F>
+    <F label="รายละเอียด Task"><textarea className="input" rows={5} value={note} onChange={(e)=>setNote(e.target.value)} placeholder="ระบุรายละเอียด ขอบเขต หรือผลลัพธ์ที่ต้องการ" /></F>
     <F label="ผู้รับผิดชอบ"><select className="input" value={assignee} onChange={(e) => setAssignee(e.target.value)}><option value="">— เลือก —</option>{users.map((u) => <option key={String(u.id)} value={String(u.id)}>{u.label}</option>)}</select></F>
     <F label="Priority"><select className="input" value={priority} onChange={(e) => setPriority(e.target.value)}><option value="">— เลือก —</option>{priorities.map((p) => <option key={String(p.id)} value={String(p.id)}>{p.label}</option>)}</select></F>
     <F label="ชั่วโมงประเมิน"><input className="input" type="number" value={est} onChange={(e) => setEst(e.target.value)} /></F>
