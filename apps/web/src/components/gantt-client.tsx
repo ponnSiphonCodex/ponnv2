@@ -7,7 +7,7 @@ import { TaskDrawer } from "./task-drawer";
 
 const NAVY = "#001D58", PINK = "#EC186E";
 const DAY = 86400;
-type Task = { id: number; title: string; start: number; due: number; project_id: number; project_name: string; product_name: string | null; product_id: number | null; assignee_id: string | null; assignee: string | null; category: string | null; feature_id:number|null; feature_name:string|null; actual_start:number|null; actual_end:number|null; project_categories?: string[] };
+type Task = { id: number; title: string; start: number; due: number; project_id: number; project_name: string; product_name: string | null; product_id: number | null; assignee_id: string | null; assignee: string | null; category: string | null; feature_id:number|null; feature_name:string|null; actual_start:number|null; actual_end:number|null; gantt_health:string|null; actual_progress:number|null; project_categories?: string[] };
 type Milestone = { id: number; title: string; target: number; project_id: number; project_name: string };
 type Dep = { pre: number; suc: number; type: string };
 type Member = { id: string; name: string };
@@ -218,20 +218,22 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                       const pos = model.taskPos.get(r.task.id)!;
                       const now = Math.floor(Date.now() / 1000);
                       const aStart = r.task.actual_start, aEnd = r.task.actual_end;
-                      const actualColor = r.task.category === "done" ? "#16A34A" : (aEnd && aEnd < now) || r.task.due < now ? "#DC2626" : (r.task.category === "doing" || r.task.due <= now + 3 * DAY) ? "#D4A017" : null;
+                      const actualColor = r.task.gantt_health === "green" ? "#16A34A" : r.task.gantt_health === "yellow" ? "#D4A017" : r.task.gantt_health === "red" ? "#DC2626" : null;
                       const aLeft = aStart != null ? ((aStart - model.min) / DAY) * px : pos.left;
-                      const aWidth = aStart != null && aEnd != null ? Math.max(px * 0.5, ((aEnd - aStart) / DAY) * px) : pos.width;
+                      const progress = Math.max(0, Math.min(100, Number(r.task.actual_progress ?? 0)));
+                      const actualDurationWidth = aStart != null && aEnd != null ? Math.max(px * 0.5, ((aEnd - aStart) / DAY) * px) : pos.width;
+                      const aWidth = Math.max(progress > 0 ? px * .35 : 0, actualDurationWidth * progress / 100);
                       return <div key={r.key} data-task="1" onClick={(e)=>{e.stopPropagation();setDrawerTask(r.task!.id)}} title={`${r.task.title}\nPlan: ${ds(r.task.start)} → ${ds(r.task.due)}${aStart!=null?`\nActual: ${ds(aStart)}${aEnd!=null?` → ${ds(aEnd)}`:""}`:""}`} style={{ position: "absolute", left: 0, top: i * ROW_H + 9, height: ROW_H - 18, width: "100%", cursor: "pointer", zIndex: 6 }}>
                         <div style={{ position: "absolute", left: pos.left, width: pos.width, minWidth: 10, top: 1, height: 9, background: "#D1D5DB", borderRadius: 4 }} />
                         {actualColor && <div style={{ position: "absolute", left: aLeft, width: aWidth, minWidth: 10, bottom: 1, height: 9, background: actualColor, borderRadius: 4 }} />}
-                        <span style={{ position: "absolute", left: pos.left + pos.width + 8, top: "50%", transform: "translateY(-50%)", whiteSpace: "nowrap", color: "#4B5563", pointerEvents: "none" }}>{r.task.title}</span>
+                        <span style={{ position: "absolute", left: pos.left + pos.width + 8, top: "50%", transform: "translateY(-50%)", whiteSpace: "nowrap", color: "#4B5563", pointerEvents: "none" }}>{r.task.title}{r.task.actual_progress!=null?` · ${progress}%`:""}</span>
                       </div>;
                     }
                     return null;
                   })}
 
                   {/* milestones: เพชรอยู่แถว Project ลากเส้นลงถึงงานสุดท้ายของ Project */}
-                  {model.milestones.map((m) => {
+                  {model.milestones.map((m, milestoneIndex) => {
                     const x = ((m.target - model.min) / DAY) * px;
                     const projectRow = model.rows.findIndex((r) => r.sub === "Project" && r.projectId === m.project_id);
                     if (projectRow < 0) return null;
@@ -239,9 +241,16 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                     const projectEndRow = nextBoundary < 0 ? model.rows.length : nextBoundary;
                     const y = projectRow * ROW_H + ROW_H / 2;
                     const height = Math.max(ROW_H / 2, projectEndRow * ROW_H - y);
+                    // Auto Stack 3 ชั้น: Milestone ที่อยู่ใกล้กันภายใน ~160px จะสลับระดับ Label 0/1/2
+                    const nearbyBefore = model.milestones.slice(0, milestoneIndex).filter(prev => {
+                      const prevX = ((prev.target - model.min) / DAY) * px;
+                      return prev.project_id === m.project_id && Math.abs(x - prevX) < 160;
+                    }).length;
+                    const stackLevel = nearbyBefore % 3;
+                    const labelTop = -12 + stackLevel * 28;
                     return <div key={`milestone-${m.id}`} onClick={(e)=>{e.stopPropagation();setEditMilestone(m);setMilestoneTitle(m.title)}} title={`${m.title} · ${ds(m.target)}`} style={{ position: "absolute", left: x, top: y, height, width: 2, background: PINK, opacity: .85, zIndex: 8, cursor: "pointer" }}>
                       <span style={{ position: "absolute", left: -7, top: -7, width: 14, height: 14, background: PINK, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 1px 3px rgba(0,0,0,.18)" }} />
-                      <span style={{ position: "absolute", left: 13, top: -12, padding: "3px 8px", background: "#fff", color: NAVY, border: `1px solid ${PINK}`, borderRadius: 5, fontWeight: 700, whiteSpace: "nowrap", boxShadow: "0 1px 3px rgba(0,0,0,.10)" }}>{m.title} · {ds(m.target)}</span>
+                      <span style={{ position: "absolute", left: 13, top: labelTop, padding: "3px 8px", background: "#fff", color: NAVY, border: `1px solid ${PINK}`, borderRadius: 5, fontWeight: 700, whiteSpace: "nowrap", boxShadow: "0 1px 3px rgba(0,0,0,.10)" }}>{m.title} · {ds(m.target)}</span>
                     </div>;
                   })}
                 </div>

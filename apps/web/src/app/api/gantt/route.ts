@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       `SELECT t.id, t.title, t.start_date AS start, t.due_date AS due, t.project_id,
          pj.name AS project_name, pd.name AS product_name, pj.product_id, t.feature_id, f.name AS feature_name,
          t.assignee_id, u.name AS assignee, ws.category AS category, t.estimated_hours,
-         t.actual_start_date AS actual_start, t.actual_end_date AS actual_end
+         t.actual_start_date AS actual_start, t.actual_end_date AS actual_end, t.gantt_health, t.actual_progress
        FROM tasks t
        LEFT JOIN projects pj ON t.project_id=pj.id
        LEFT JOIN products pd ON pj.product_id=pd.id

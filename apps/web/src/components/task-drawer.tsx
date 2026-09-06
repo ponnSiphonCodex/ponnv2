@@ -46,7 +46,7 @@ export function TaskDrawer({ taskId, users, priorities, statuses, features, tags
     if (!r.ok && !r.queued) setMsg("บันทึกไม่สำเร็จ");
   }
   function toSnake(b: any) {
-    const m: Record<string, string> = { workflowStatusId: "workflow_status_id", assigneeId: "assignee_id", priorityId: "priority_id", featureId: "feature_id", sprintId: "sprint_id", estimatedHours: "estimated_hours", budgetCost: "budget_cost", startDate: "start_date", dueDate: "due_date", actualStartDate: "actual_start_date", actualEndDate: "actual_end_date", title: "title", note: "note" };
+    const m: Record<string, string> = { workflowStatusId: "workflow_status_id", assigneeId: "assignee_id", priorityId: "priority_id", featureId: "feature_id", sprintId: "sprint_id", estimatedHours: "estimated_hours", budgetCost: "budget_cost", startDate: "start_date", dueDate: "due_date", actualStartDate: "actual_start_date", actualEndDate: "actual_end_date", ganttHealth: "gantt_health", actualProgress: "actual_progress", title: "title", note: "note" };
     const o: any = {}; for (const k in b) o[m[k] ?? k] = b[k]; return o;
   }
 
@@ -85,6 +85,10 @@ export function TaskDrawer({ taskId, users, priorities, statuses, features, tags
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <Row label="วันเริ่มจริง (Actual)"><input className="input" type="date" defaultValue={u2d(t.actual_start_date)} onBlur={(e) => patch({ actualStartDate: e.target.value || null })} /></Row>
                 <Row label="วันเสร็จจริง (Actual)"><input className="input" type="date" defaultValue={u2d(t.actual_end_date)} onBlur={(e) => patch({ actualEndDate: e.target.value || null })} /></Row>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <Row label="สีสถานะบน Gantt"><select className="input" value={t.gantt_health??""} onChange={(e)=>patch({ganttHealth:e.target.value||null})}><option value="">— ยังไม่เลือก —</option><option value="green">เขียว</option><option value="yellow">เหลือง</option><option value="red">แดง</option></select></Row>
+                <Row label="ความคืบหน้าจริง (%)"><input className="input" type="number" min={0} max={100} step={1} value={t.actual_progress??0} onChange={(e)=>setData((d:any)=>({...d,task:{...d.task,actual_progress:Math.max(0,Math.min(100,Number(e.target.value)))}}))} onBlur={(e)=>patch({actualProgress:Math.max(0,Math.min(100,Number(e.target.value)))})}/></Row>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <Row label="ชม.ประเมิน"><input className="input" type="number" defaultValue={t.estimated_hours ?? ""} onBlur={(e) => patch({ estimatedHours: e.target.value || null })} /></Row>
