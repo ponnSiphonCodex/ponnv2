@@ -170,8 +170,11 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                     const x = ((m.target - model.min) / DAY) * px;
                     const projectRow = model.rows.findIndex((r) => r.sub === "Project" && r.projectId === m.project_id);
                     if (projectRow < 0) return null;
+                    const nextBoundary = model.rows.findIndex((r, index) => index > projectRow && r.kind === "group");
+                    const projectEndRow = nextBoundary < 0 ? model.rows.length : nextBoundary;
                     const y = projectRow * ROW_H + ROW_H / 2;
-                    return <div key={`milestone-${m.id}`} onClick={(e)=>{e.stopPropagation();setEditMilestone(m);setMilestoneTitle(m.title)}} title={`${m.title} · ${ds(m.target)}`} style={{ position: "absolute", left: x, top: y, bottom: 0, width: 2, background: PINK, opacity: .82, zIndex: 8, pointerEvents: "auto", cursor: "pointer" }}>
+                    const milestoneHeight = Math.max(ROW_H / 2, projectEndRow * ROW_H - y);
+                    return <div key={`milestone-${m.id}`} onClick={(e)=>{e.stopPropagation();setEditMilestone(m);setMilestoneTitle(m.title)}} title={`${m.title} · ${ds(m.target)}`} style={{ position: "absolute", left: x, top: y, height: milestoneHeight, width: 2, background: PINK, opacity: .82, zIndex: 8, pointerEvents: "auto", cursor: "pointer" }}>
                       <span style={{ position: "absolute", left: -7, top: -7, width: 14, height: 14, background: PINK, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 1px 3px rgba(0,0,0,.18)" }} />
                       <span style={{ position: "absolute", left: 13, top: -12, padding: "3px 7px", background: "#fff", color: NAVY, border: `1px solid ${PINK}`, borderRadius: 5, fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap", boxShadow: "0 1px 3px rgba(0,0,0,.10)" }}>{m.title} · {ds(m.target)}</span>
                     </div>;
