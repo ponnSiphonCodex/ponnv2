@@ -131,7 +131,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
                             {m.children.map((c) => {
                               const ca = active === c.key;
                               return (
-                                <a key={c.key} href={c.href} className="nav-link" style={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 10px", borderRadius: 7, textDecoration: "none", color: ca ? "#fff" : "rgba(255,255,255,.6)", background: "transparent", borderLeft: ca ? `2px solid ${PINK}` : "2px solid transparent", marginLeft: -10, paddingLeft: 12, fontSize: 12.5, fontWeight: ca ? 600 : 500, marginBottom: 1 }}>
+                                <a key={c.key} href={c.href} className={`nav-link nav-sub-link ${ca ? "active" : ""}`} style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 8, textDecoration: "none", color: ca ? "#fff" : "rgba(255,255,255,.72)", background: ca ? PINK : "transparent", marginLeft: -8, paddingLeft: 12, fontSize: 13, fontWeight: ca ? 600 : 500, marginBottom: 2 }}>
                                   <span style={{ display: "flex", opacity: ca ? 1 : .7, color: ca ? PINK : "inherit" }}><Icon name={c.icon} size={15} /></span>{c.label}
                                 </a>
                               );

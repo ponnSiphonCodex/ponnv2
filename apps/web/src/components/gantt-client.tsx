@@ -2,10 +2,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cachedFetch, TTL } from "@/lib/cache";
 import { Skel } from "./skeleton";
+import { MultiSelect } from "./multi-select";
 
 const NAVY = "#001D58", PINK = "#EC186E";
 const DAY = 86400;
-type Task = { id: number; title: string; start: number; due: number; project_id: number; project_name: string; product_name: string | null; product_id: number | null; assignee_id: string | null; assignee: string | null; category: string | null };
+type Task = { id: number; title: string; start: number; due: number; project_id: number; project_name: string; product_name: string | null; product_id: number | null; assignee_id: string | null; assignee: string | null; category: string | null; feature_id: number | null; feature_name: string | null };
 type Milestone = { id: number; title: string; target: number; project_id: number; project_name: string };
 type Dep = { pre: number; suc: number; type: string };
 type Member = { id: string; name: string };
@@ -19,7 +20,9 @@ const dayFloor = (u: number) => Math.floor(u / DAY) * DAY;
 const ROW_H = 34, LABEL_W = 240, HEAD_H = 46;
 
 export function GanttClient({ projects }: { projects: { id: number; name: string }[] }) {
-  const [pid, setPid] = useState("all");
+  const [selectedProjects, setSelectedProjects] = useState<(number | string)[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<(number | string)[]>([]);
+  const [selectedFeatures, setSelectedFeatures] = useState<(number | string)[]>([]);
   const [mode, setMode] = useState<"project" | "workforce">("project");
   const [scale, setScale] = useState<Scale>("day");
   const [data, setData] = useState<Data | null>(null);
@@ -28,13 +31,16 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
 
   useEffect(() => {
     setLoading(!data);
-    cachedFetch<Data>(`gantt:${pid}`, `/api/gantt?id=${pid}`, TTL.realtime, (d) => { setData(d); setLoading(false); });
-  }, [pid]);
+    cachedFetch<Data>(`gantt:all`, `/api/gantt?id=all`, TTL.realtime, (d) => { setData(d); setLoading(false); });
+  }, []);
 
   const px = SCALE_PX[scale];
   const model = useMemo(() => {
     if (!data) return null;
-    const items = [...data.tasks.map((t) => t.start), ...data.tasks.map((t) => t.due), ...data.milestones.map((m) => m.target)];
+    const filteredTasks = data.tasks.filter((t) => (!selectedProjects.length || selectedProjects.map(String).includes(String(t.project_id))) && (!selectedProducts.length || selectedProducts.map(String).includes(String(t.product_id))) && (!selectedFeatures.length || selectedFeatures.map(String).includes(String(t.feature_id))));
+    const visibleProjectIds = new Set(filteredTasks.map((t) => t.project_id));
+    const filteredMilestones = data.milestones.filter((m) => (!selectedProjects.length || selectedProjects.map(String).includes(String(m.project_id))) && (!selectedProducts.length || visibleProjectIds.has(m.project_id)));
+    const items = [...filteredTasks.map((t) => t.start), ...filteredTasks.map((t) => t.due), ...filteredMilestones.map((m) => m.target)];
     if (!items.length) return { rows: [], min: 0, max: 0, days: 0, taskPos: new Map() };
     let min = dayFloor(Math.min(...items)) - DAY * 2;
     let max = dayFloor(Math.max(...items)) + DAY * 3;
@@ -44,7 +50,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
     const rows: Row[] = [];
     if (mode === "project") {
       const byProduct = new Map<string, Task[]>();
-      for (const t of data.tasks) { const k = t.product_name || "— ไม่มี Product —"; (byProduct.get(k) ?? byProduct.set(k, []).get(k)!).push(t); }
+      for (const t of filteredTasks) { const k = t.product_name || "— ไม่มี Product —"; (byProduct.get(k) ?? byProduct.set(k, []).get(k)!).push(t); }
       for (const [prod, ts] of byProduct) {
         rows.push({ key: `prod:${prod}`, label: prod, kind: "group", sub: "Product" });
         const byProj = new Map<string, Task[]>();
@@ -52,22 +58,22 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
         for (const [proj, pts] of byProj) {
           rows.push({ key: `proj:${prod}:${proj}`, label: proj, kind: "group", sub: "Project" });
           for (const t of pts) rows.push({ key: `t${t.id}`, label: t.title, sub: t.assignee ?? "—", kind: "task", task: t });
-          for (const m of data.milestones.filter((mm) => mm.project_name === proj)) rows.push({ key: `m${m.id}`, label: m.title, sub: "Milestone", kind: "ms", ms: m });
+          for (const m of filteredMilestones.filter((mm) => mm.project_name === proj)) rows.push({ key: `m${m.id}`, label: m.title, sub: "Milestone", kind: "ms", ms: m });
         }
       }
     } else {
       for (const mem of data.members) {
-        const ts = data.tasks.filter((t) => t.assignee_id === mem.id);
+        const ts = filteredTasks.filter((t) => t.assignee_id === mem.id);
         rows.push({ key: `mem:${mem.id}`, label: mem.name || "—", kind: "group", sub: `${ts.length} งาน` });
         for (const t of ts) rows.push({ key: `t${t.id}`, label: t.title, sub: t.project_name, kind: "task", task: t });
       }
-      const un = data.tasks.filter((t) => !t.assignee_id);
+      const un = filteredTasks.filter((t) => !t.assignee_id);
       if (un.length) { rows.push({ key: "mem:none", label: "ยังไม่มอบหมาย", kind: "group", sub: `${un.length} งาน` }); for (const t of un) rows.push({ key: `t${t.id}`, label: t.title, sub: t.project_name, kind: "task", task: t }); }
     }
     const taskPos = new Map<number, { row: number; left: number; width: number }>();
     rows.forEach((r, i) => { if (r.kind === "task" && r.task) { const left = ((r.task.start - min) / DAY) * px; const width = Math.max(px * 0.6, ((r.task.due - r.task.start) / DAY) * px); taskPos.set(r.task.id, { row: i, left, width }); } });
     return { rows, min, max, days, taskPos };
-  }, [data, mode, px]);
+  }, [data, mode, px, selectedProjects, selectedProducts, selectedFeatures]);
 
   const ticks = useMemo(() => {
     if (!model || !model.days) return [];
@@ -86,7 +92,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
     if (!data) return;
     const esc = (v: any) => `"${(v ?? "").toString().replace(/"/g, '""')}"`;
     const rows = [["ID", "Task", "Product", "Project", "ผู้รับผิดชอบ", "เริ่ม", "กำหนดส่ง", "สถานะ", "จำนวนวัน"].map(esc).join(",")];
-    for (const t of data.tasks) rows.push([t.id, t.title, t.product_name, t.project_name, t.assignee, ds(t.start), ds(t.due), t.category, Math.round((t.due - t.start) / DAY)].map(esc).join(","));
+    for (const t of data.tasks.filter((t) => (!selectedProjects.length || selectedProjects.map(String).includes(String(t.project_id))) && (!selectedProducts.length || selectedProducts.map(String).includes(String(t.product_id))) && (!selectedFeatures.length || selectedFeatures.map(String).includes(String(t.feature_id))))) rows.push([t.id, t.title, t.product_name, t.project_name, t.assignee, ds(t.start), ds(t.due), t.category, Math.round((t.due - t.start) / DAY)].map(esc).join(","));
     const csv = "\uFEFF" + rows.join("\r\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `gantt_${ds(Math.floor(Date.now() / 1000))}.csv`; a.click();
   }
@@ -98,10 +104,9 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
   return (
     <div style={{ padding: 20 }}>
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
-        <select className="input" style={{ width: "auto", minWidth: 200 }} value={pid} onChange={(e) => setPid(e.target.value)}>
-          <option value="all">📊 ทุกโครงการ (เรียงตาม Product/Project)</option>
-          {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+        <div style={{ width: 260 }}><MultiSelect options={projects} value={selectedProjects} onChange={setSelectedProjects} placeholder="ทุก Project" /></div>
+        <div style={{ width: 230 }}><MultiSelect options={Array.from(new Map((data?.tasks ?? []).filter(t => t.product_id).map(t => [String(t.product_id), { id: t.product_id!, name: t.product_name ?? `Product #${t.product_id}` }])).values())} value={selectedProducts} onChange={setSelectedProducts} placeholder="ทุก Product" /></div>
+        <div style={{ width: 230 }}><MultiSelect options={Array.from(new Map((data?.tasks ?? []).filter(t => t.feature_id).map(t => [String(t.feature_id), { id: t.feature_id!, name: t.feature_name ?? `Feature #${t.feature_id}` }])).values())} value={selectedFeatures} onChange={setSelectedFeatures} placeholder="ทุก Feature" /></div>
         <div style={{ display: "flex", gap: 4, background: "#fff", borderRadius: 8, padding: 3, boxShadow: "0 0 0 1px #E5E7EB inset" }}>
           {(["project", "workforce"] as const).map((m) => <button key={m} onClick={() => setMode(m)} style={segBtn(mode === m)}>{m === "project" ? "โหมดโครงการ" : "Workforce Management"}</button>)}
         </div>
@@ -149,8 +154,8 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                   {model.rows.map((r, i) => {
                     if (r.kind === "task" && r.task) {
                       const pos = model.taskPos.get(r.task.id)!; const col = catColor(r.task.category);
-                      return <div key={r.key} title={`${r.task.title}\n${ds(r.task.start)} → ${ds(r.task.due)}`} style={{ position: "absolute", left: pos.left, top: i * ROW_H + 7, height: ROW_H - 14, width: pos.width, background: col, borderRadius: 5, boxShadow: "0 1px 2px rgba(0,0,0,.12)", display: "flex", alignItems: "center", padding: "0 6px", overflow: "hidden" }}>
-                        <span style={{ fontSize: 10.5, color: "#fff", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.task.title}</span>
+                      return <div key={r.key} title={`${r.task.title}\n${ds(r.task.start)} → ${ds(r.task.due)}`} style={{ position: "absolute", left: pos.left, top: i * ROW_H + 7, height: ROW_H - 14, width: pos.width, background: col, borderRadius: 5, boxShadow: "0 1px 2px rgba(0,0,0,.12)", display: "flex", alignItems: "center", padding: "0 6px", overflow: "visible" }}>
+                        <span style={{ fontSize: 10.5, color: "#fff", fontWeight: 600, whiteSpace: "nowrap", textShadow: "0 1px 2px rgba(0,0,0,.55)" }}>{r.task.title}</span>
                       </div>;
                     }
                     if (r.kind === "ms" && r.ms) {

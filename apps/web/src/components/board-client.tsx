@@ -20,7 +20,9 @@ export function BoardClient({ board, projects, users, priorities, features, tags
   const [addTo, setAddTo] = useState<number | null>(null);
   const [drawerTask, setDrawerTask] = useState<number | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
-  const seq = useRef(-1); // id ชั่วคราวสำหรับการ์ดใหม่ (ก่อน server ตอบ)
+  const seq = useRef(-1);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [touchMoveId, setTouchMoveId] = useState<number | null>(null); // id ชั่วคราวสำหรับการ์ดใหม่ (ก่อน server ตอบ)
   const statusRefs: Ref[] = columns.map((c) => ({ id: c.id, label: c.name }));
 
   // progress คำนวณสดจาก state
@@ -41,9 +43,10 @@ export function BoardClient({ board, projects, users, priorities, features, tags
   }
 
   async function dropTo(colId: number) {
-    if (dragId == null) return;
-    const id = dragId;
-    setDragId(null); setOverCol(null);
+    const movingId = dragId ?? touchMoveId;
+    if (movingId == null) return;
+    const id = movingId;
+    setDragId(null); setTouchMoveId(null); setOverCol(null);
     optimisticMove(id, colId); // แก้ทันที
     const order = (columns.find((c) => c.id === colId)?.tasks.map((t) => t.id).filter((x) => x !== id) ?? []).concat(id);
     const r = await apiWrite("/api/tasks/move", "POST", { taskId: id, statusId: colId, order }); // ยิงเบื้องหลัง
@@ -76,6 +79,7 @@ export function BoardClient({ board, projects, users, priorities, features, tags
             onDragOver={(e) => { if (canWrite) { e.preventDefault(); setOverCol(col.id); } }}
             onDragLeave={() => setOverCol((c) => (c === col.id ? null : c))}
             onDrop={() => canWrite && dropTo(col.id)}
+            onClick={(e) => { if (canWrite && touchMoveId != null && (e.target as HTMLElement).closest(".kanban-card") == null) dropTo(col.id); }}
             style={{ minWidth: 272, width: 272, background: overCol === col.id ? "#FFF5F9" : "#fff", border: overCol === col.id ? `1.5px dashed ${PINK}` : "1px solid #E5E7EB", borderRadius: 12, display: "flex", flexDirection: "column", maxHeight: "calc(100dvh - 250px)", transition: "background .1s", overflow: "hidden" }}>
             {/* v27: หัว column สีเต็มแถบตาม category — แยกด้วยสีชัดเจน อ่านง่าย */}
             <div style={{ padding: "10px 14px", background: col.color || "#9AA0A6", display: "flex", justifyContent: "space-between", alignItems: "center", borderTopLeftRadius: 11, borderTopRightRadius: 11 }}>
@@ -85,7 +89,10 @@ export function BoardClient({ board, projects, users, priorities, features, tags
             <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 9, overflowY: "auto", minHeight: 60 }}>
               {col.tasks.length === 0 && <div style={{ color: "#C7CCD4", fontSize: 13, textAlign: "center", padding: "14px 0" }}>ว่าง</div>}
               {col.tasks.map((t) => (
-                <div key={t.id} draggable={canWrite} onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setOverCol(null); }} onClick={() => t.id > 0 && setDrawerTask(t.id)}
+                <div key={t.id} className={`kanban-card ${touchMoveId === t.id ? "touch-armed" : ""}`} draggable={canWrite} onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setOverCol(null); }}
+                  onPointerDown={(e) => { if (!canWrite || e.pointerType === "mouse") return; longPressTimer.current = setTimeout(() => { setTouchMoveId(t.id); setFlash("เลือกงานแล้ว แตะพื้นที่ว่างในคอลัมน์ปลายทางเพื่อย้าย"); navigator.vibrate?.(35); }, 450); }}
+                  onPointerUp={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }} onPointerCancel={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }} onPointerMove={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }}
+                  onClick={(e) => { if (touchMoveId === t.id) { e.stopPropagation(); return; } if (touchMoveId != null) { e.stopPropagation(); return; } if (t.id > 0) setDrawerTask(t.id); }}
                   style={{ border: dragId === t.id ? `1.5px solid ${PINK}` : "1px solid #ECEEF1", borderLeft: `3px solid ${col.color || "#ECEEF1"}`, borderRadius: 10, padding: 11, cursor: aggregate ? "pointer" : (canWrite ? "grab" : "default"), background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.03)", opacity: dragId === t.id ? 0.5 : (t.id < 0 ? 0.6 : 1) }}>
                   {aggregate && (t as any).projectName && <div style={{ fontSize: 10.5, fontWeight: 700, color: NAVY, background: "#EEF1F6", display: "inline-block", padding: "1px 7px", borderRadius: 5, marginBottom: 5 }}>{(t as any).projectName}</div>}
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: "#1F2937", marginBottom: 6 }}>{t.title}</div>
@@ -141,7 +148,7 @@ function AddTaskModal({ projectId, statusId, users, priorities, onClose, onOptim
   </Modal>;
 }
 function Modal({ title, children, onClose, err }: { title: string; children: React.ReactNode; onClose: () => void; err: string | null }) {
-  return <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 16 }}><div className="card" style={{ width: "min(460px,94vw)", padding: 22 }} onClick={(e) => e.stopPropagation()}><h3 style={{ marginTop: 0, color: NAVY }}>{title}</h3>{err && <div style={{ background: "#FEF2F2", color: "#B91C1C", padding: 10, borderRadius: 8, marginBottom: 10 }}>{err}</div>}<div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{children}</div></div></div>;
+  return <div className="motion-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 16 }}><div className="card motion-modal" style={{ width: "min(460px,94vw)", padding: 22 }} onClick={(e) => e.stopPropagation()}><h3 style={{ marginTop: 0, color: NAVY }}>{title}</h3>{err && <div style={{ background: "#FEF2F2", color: "#B91C1C", padding: 10, borderRadius: 8, marginBottom: 10 }}>{err}</div>}<div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{children}</div></div></div>;
 }
 function F({ label, children }: { label: string; children: React.ReactNode }) { return <label style={{ display: "flex", flexDirection: "column", gap: 5 }}><span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{label}</span>{children}</label>; }
 function A({ onClose, onSave, saving }: { onClose: () => void; onSave: () => void; saving: boolean }) { return <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}><button className="btn-ghost" onClick={onClose}>ยกเลิก</button><button className="btn-primary" onClick={onSave} disabled={saving}>บันทึก</button></div>; }

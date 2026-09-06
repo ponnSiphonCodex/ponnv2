@@ -26,10 +26,12 @@ export async function GET(req: NextRequest) {
     const tasks = ((await c.d1.prepare(
       `SELECT t.id, t.title, t.start_date AS start, t.due_date AS due, t.project_id,
          pj.name AS project_name, pd.name AS product_name, pj.product_id,
+         t.feature_id, f.name AS feature_name,
          t.assignee_id, u.name AS assignee, ws.category AS category, t.estimated_hours
        FROM tasks t
        LEFT JOIN projects pj ON t.project_id=pj.id
        LEFT JOIN products pd ON pj.product_id=pd.id
+       LEFT JOIN features f ON t.feature_id=f.id
        LEFT JOIN users u ON t.assignee_id=u.id
        LEFT JOIN workflow_statuses ws ON t.workflow_status_id=ws.id
        WHERE (t.project_id IN (${ph}) OR t.feature_id IN (SELECT id FROM features WHERE project_id IN (${ph})))
