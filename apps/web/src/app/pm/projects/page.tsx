@@ -1,24 +1,14 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/page-auth";
-import { listProjects } from "@/lib/board-data";
+import { visibleProjectIds } from "@/lib/access";
 import { AppShell, PageHeader } from "@/components/app-shell";
+import { shellProps } from "@/lib/shell-props";
 export const dynamic = "force-dynamic";
-export default async function ProjectsPage() {
-  const auth = await requireAuth();
-  if (!auth) redirect("/login");
-  const projects = await listProjects(auth.db);
-  return (
-    <AppShell active="projects" user={auth.user} isAdmin={auth.admin} roleLabel={auth.roleLabel}>
-      <PageHeader title="โครงการ" subtitle={`ทั้งหมด ${projects.length} โครงการ`} />
-      <div style={{ padding: 28 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-          <thead><tr style={{ background: "#F4F4F6", textAlign: "left" }}><th style={{ padding: 14, fontSize: 13, color: "#6B7280" }}>ID</th><th style={{ padding: 14, fontSize: 13, color: "#6B7280" }}>ชื่อโครงการ</th><th style={{ padding: 14, fontSize: 13, color: "#6B7280" }}>สถานะ</th><th style={{ padding: 14 }}></th></tr></thead>
-          <tbody>
-            {projects.map((p) => (<tr key={p.id} style={{ borderTop: "1px solid #E5E7EB" }}><td style={{ padding: 14, color: "#9AA0A6" }}>{p.id}</td><td style={{ padding: 14, fontWeight: 600 }}>{p.name}</td><td style={{ padding: 14 }}><span style={{ fontSize: 12, background: "#F4F4F6", padding: "4px 10px", borderRadius: 20 }}>{p.status ?? "-"}</span></td><td style={{ padding: 14, textAlign: "right" }}><a href={`/pm/board?id=${p.id}`} style={{ color: "#EC186E", textDecoration: "none", fontSize: 13 }}>เปิดกระดาน →</a></td></tr>))}
-            {projects.length === 0 && <tr><td colSpan={4} style={{ padding: 20, color: "#9AA0A6", textAlign: "center" }}>ยังไม่มีโครงการ</td></tr>}
-          </tbody>
-        </table>
-      </div>
-    </AppShell>
-  );
+const fmt=(v:number|null)=>v?new Date(v*1000).toLocaleDateString("sv-SE",{timeZone:"Asia/Bangkok"}):"-";
+export default async function ProjectsPage(){
+ const a=await requireAuth(); if(!a)redirect("/login"); if(a.guest)redirect("/pm/waiting");
+ const ids=await visibleProjectIds(a.d1,a.scope); let where=`LOWER(COALESCE(p.status,'active')) NOT IN ('done','completed','closed','cancelled','drop','inactive')`; const binds:any[]=[];
+ if(ids){if(!ids.length)where+=' AND 0=1';else{where+=` AND p.id IN (${ids.map(()=>'?').join(',')})`;binds.push(...ids)}}
+ const q=await a.d1.prepare(`SELECT p.id,p.name,p.status,p.start_date,p.end_date,pd.name product_name,COALESCE(u.name,u.email) pm_name,(SELECT COUNT(*) FROM tasks t WHERE t.project_id=p.id) task_count FROM projects p LEFT JOIN products pd ON p.product_id=pd.id LEFT JOIN project_managers pm ON pm.project_id=p.id LEFT JOIN users u ON u.id=pm.user_id WHERE ${where} ORDER BY pd.name,p.name`).bind(...binds).all(); const rows=(q.results??[]) as any[];
+ return <AppShell active="project" {...shellProps(a)}><PageHeader title="Project" subtitle={`Active ${rows.length} Project`} actions={a.scope.isPmo?<a className="btn-pink" href="/pm/projects/new" style={{textDecoration:"none"}}>เพิ่ม Project ใหม่</a>:undefined}/><div style={{padding:24,overflowX:"auto"}}><table className="data-table"><thead><tr>{["ID","Product","Project","Project Manager","Timeline","Status","Tasks",""].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{rows.map(p=><tr key={p.id}><td>PRJ-{String(p.id).padStart(4,'0')}</td><td>{p.product_name??'-'}</td><td><b>{p.name}</b></td><td>{p.pm_name??'-'}</td><td>{fmt(p.start_date)} ถึง {fmt(p.end_date)}</td><td><span className="badge">{p.status??'Active'}</span></td><td>{p.task_count}</td><td><a href={`/pm/board?id=${p.id}`} style={{color:'#EC186E',fontWeight:600}}>เปิด Project</a></td></tr>)}{!rows.length&&<tr><td colSpan={8} style={{padding:32,textAlign:'center',color:'#6B7280'}}>ยังไม่มี Active Project</td></tr>}</tbody></table></div></AppShell>
 }

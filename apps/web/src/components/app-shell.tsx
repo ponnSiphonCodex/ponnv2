@@ -22,7 +22,7 @@ const GROUPS: Group[] = [
   ]},
   { title: "PROJECT", items: [
     { key: "product-feature", label: "Product & Feature", href: "/pm/portfolio", icon: "product" },
-    { key: "project", label: "Project", href: "/pm/manage/projects", icon: "project", children: [
+    { key: "project", label: "Project", href: "/pm/projects", icon: "project", children: [
       { key: "project-new", label: "สร้าง Project", href: "/pm/projects/new", icon: "project" },
       { key: "board", label: "Task Kanban", href: "/pm/board?id=1", icon: "board" },
       { key: "gantt", label: "Gantt Chart", href: "/pm/gantt?id=1", icon: "gantt" },

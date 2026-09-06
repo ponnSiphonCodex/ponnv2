@@ -95,7 +95,7 @@ export function BoardClient({ board, projects, users, priorities, features, tags
                   </div>
                   <div style={{ fontSize: 11, color: "#9AA0A6", marginTop: 5 }}>{t.actualHours}/{t.estimatedHours ?? 0} ชม.</div>
                 </div>
-              );})}
+              ))}
             </div>
           </div>
         ))}
