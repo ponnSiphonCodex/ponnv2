@@ -7,7 +7,7 @@ import { TaskDrawer } from "./task-drawer";
 
 const NAVY = "#001D58", PINK = "#EC186E";
 const DAY = 86400;
-type Task = { id: number; title: string; start: number; due: number; project_id: number; project_name: string; product_name: string | null; product_id: number | null; assignee_id: string | null; assignee: string | null; category: string | null; feature_id:number|null; feature_name:string|null };
+type Task = { id: number; title: string; start: number; due: number; project_id: number; project_name: string; product_name: string | null; product_id: number | null; assignee_id: string | null; assignee: string | null; category: string | null; feature_id:number|null; feature_name:string|null; actual_start:number|null; actual_end:number|null; project_categories?: string[] };
 type Milestone = { id: number; title: string; target: number; project_id: number; project_name: string };
 type Dep = { pre: number; suc: number; type: string };
 type Member = { id: string; name: string };
@@ -17,13 +17,15 @@ const SCALE_PX: Record<Scale, number> = { day: 34, week: 15, month: 6 };
 const ds = (u: number) => new Date(u * 1000).toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" }); // YYYY-MM-DD เสมอ
 const dayFloor = (u: number) => Math.floor(u / DAY) * DAY;
 
-const ROW_H = 44, LABEL_W = 250, HEAD_H = 30;
+const ROW_H = 50, LABEL_W = 260, HEAD_H = 30;
+const PROJECT_CATEGORIES = ["AI-Project","Strategic Project","Product","CR","BAU Project","Process Improvement Project","Cross Function Project Improvement","AIx","TX","Data Project"];
 
 type Row = { key: string; label: string; sub?: string; kind: "group" | "task" | "ms"; task?: Task; ms?: Milestone; projectId?: number; progress?: number; spanStart?: number; spanEnd?: number };
 
 export function GanttClient({ projects }: { projects: { id: number; name: string }[] }) {
-  const [productIds,setProductIds]=useState<(number|string)[]>([]); const [featureIds,setFeatureIds]=useState<(number|string)[]>([]); const [projectIds,setProjectIds]=useState<(number|string)[]>([]);
+  const [productIds,setProductIds]=useState<(number|string)[]>([]); const [featureIds,setFeatureIds]=useState<(number|string)[]>([]); const [projectIds,setProjectIds]=useState<(number|string)[]>([]); const [categoryVals,setCategoryVals]=useState<(number|string)[]>([]);
   const [mode, setMode] = useState<"project" | "workforce">("project");
+  const [showProductRows, setShowProductRows] = useState(true);
   const [scale, setScale] = useState<Scale>("week");
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,8 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
   const model = useMemo(() => {
     if (!data) return null;
     const inRange=(a:number,b:number)=>(!rangeStart||b>=Date.parse(rangeStart)/1000)&&(!rangeEnd||a<=Date.parse(rangeEnd)/1000+DAY-1);
-    const selectedTasks=data.tasks.filter(t=>t.category!=="drop"&&(!productIds.length||productIds.map(String).includes(String(t.product_id)))&&(!featureIds.length||featureIds.map(String).includes(String(t.feature_id)))&&(!projectIds.length||projectIds.map(String).includes(String(t.project_id)))&&inRange(t.start,t.due));
+    const catMatch=(t:Task)=>!categoryVals.length||(t.project_categories??[]).some(c=>categoryVals.map(String).includes(c));
+    const selectedTasks=data.tasks.filter(t=>t.category!=="drop"&&catMatch(t)&&(!productIds.length||productIds.map(String).includes(String(t.product_id)))&&(!featureIds.length||featureIds.map(String).includes(String(t.feature_id)))&&(!projectIds.length||projectIds.map(String).includes(String(t.project_id)))&&inRange(t.start,t.due));
     const selectedMilestones=data.milestones.filter(m=>(!projectIds.length||projectIds.map(String).includes(String(m.project_id)))&&inRange(m.target,m.target));
     const items=[...selectedTasks.map(t=>t.start),...selectedTasks.map(t=>t.due),...selectedMilestones.map(m=>m.target)];
     if (!items.length) return { rows: [] as Row[], min: 0, max: 0, days: 0, taskPos:new Map(), milestones:[] as Milestone[] };
@@ -57,7 +60,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
       const byProduct = new Map<string, Task[]>();
       for (const t of selectedTasks) { const k = t.product_name || "— ไม่มี Product —"; (byProduct.get(k) ?? byProduct.set(k, []).get(k)!).push(t); }
       for (const [prod, ts] of byProduct) {
-        rows.push({ key: `prod:${prod}`, label: prod, kind: "group", sub: "Product", spanStart: Math.min(...ts.map(t=>t.start)), spanEnd: Math.max(...ts.map(t=>t.due)) });
+        if (showProductRows) rows.push({ key: `prod:${prod}`, label: prod, kind: "group", sub: "Product", spanStart: Math.min(...ts.map(t=>t.start)), spanEnd: Math.max(...ts.map(t=>t.due)) });
         const byProj = new Map<string, Task[]>();
         for (const t of ts) { const k = t.project_name; (byProj.get(k) ?? byProj.set(k, []).get(k)!).push(t); }
         for (const [proj, pts] of byProj) {
@@ -81,7 +84,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
     const taskPos = new Map<number, { row: number; left: number; width: number }>();
     rows.forEach((r, i) => { if (r.kind === "task" && r.task) { const left = ((r.task.start - min) / DAY) * px; const width = Math.max(px * 0.6, ((r.task.due - r.task.start) / DAY) * px); taskPos.set(r.task.id, { row: i, left, width }); } });
     return { rows, min, max, days, taskPos, milestones:selectedMilestones };
-  }, [data, mode, px, rangeStart, rangeEnd, productIds, featureIds, projectIds]);
+  }, [data, mode, px, rangeStart, rangeEnd, productIds, featureIds, projectIds, categoryVals, showProductRows]);
 
   // ป้ายกำกับหัวตาราง จัดกึ่งกลางในแต่ละช่วง (วัน = ตัวเลขวันที่, สัปดาห์ = วันจันทร์, เดือน = ไม่แสดง เพราะมี month band ด้านบนแล้ว)
   const ticks = useMemo(() => {
@@ -132,7 +135,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
       if (nextKey !== key || d === model.days) {
         const end = d === model.days ? d + 1 : d;
         const first = new Date((model.min + start * DAY) * 1000);
-        bands.push({ key, label: first.toLocaleDateString("th-TH", { month: "long", year: "numeric", timeZone: "UTC" }), left: start * px, width: Math.max(px, (end - start) * px) });
+        bands.push({ key, label: first.toISOString().slice(0, 7), left: start * px, width: Math.max(px, (end - start) * px) });
         start = d; key = nextKey;
       }
     }
@@ -142,13 +145,14 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
 
   return (
     <div style={{ padding: 20 }}>
-      <div className="gantt-filters">
+      <div className="gantt-filters gantt-filters-4">
         <div><span className="field-hint">Project</span><MultiSelect placeholder="ทุก Project" options={projects} value={projectIds} onChange={setProjectIds}/></div>
+        <div><span className="field-hint">Category</span><MultiSelect placeholder="ทุก Category" options={PROJECT_CATEGORIES.map(c=>({id:c,name:c}))} value={categoryVals} onChange={setCategoryVals}/></div>
         <div><span className="field-hint">Product</span><MultiSelect placeholder="ทุก Product" options={Array.from(new Map((data?.tasks??[]).filter(x=>x.product_id).map(x=>[String(x.product_id),{id:x.product_id!,name:x.product_name??`Product #${x.product_id}`}])).values())} value={productIds} onChange={setProductIds}/></div>
         <div><span className="field-hint">Feature</span><MultiSelect placeholder="ทุก Feature" options={Array.from(new Map((data?.tasks??[]).filter(x=>x.feature_id).map(x=>[String(x.feature_id),{id:x.feature_id!,name:x.feature_name??`Feature #${x.feature_id}`}])).values())} value={featureIds} onChange={setFeatureIds}/></div>
       </div>
       <div className="gantt-toolbar">
-        <div className="seg-group">{(["project","workforce"] as const).map(m=><button key={m} onClick={()=>setMode(m)} style={segBtn(mode===m)}>{m==="project"?"โหมดโครงการ":"Workforce Management"}</button>)}</div>
+        <div className="seg-group">{(["project","workforce"] as const).map(m=><button key={m} onClick={()=>setMode(m)} style={segBtn(mode===m)}>{m==="project"?"โหมดโครงการ":"Workforce Management"}</button>)}</div><button className="btn-ghost" onClick={()=>setShowProductRows(v=>!v)} style={{background:showProductRows?"#fff":"#F4F4F6",color:showProductRows?NAVY:"#6B7280"}}>{showProductRows?"✓ แสดง Product":"แสดง Product"}</button>
         <div className="seg-group">{(["day","week","month"] as const).map(v=><button key={v} onClick={()=>setScale(v)} style={segBtn(scale===v)}>{v[0].toUpperCase()+v.slice(1)}</button>)}</div>
         <button className="btn-ghost" onClick={()=>{setMilestoneDraft({projectId:Number(projectIds[0]??projects[0]?.id??0),target:dayFloor(Math.floor(Date.now()/1000))});}} style={{marginLeft:"auto"}}>◆ เพิ่ม Milestone</button><button className="btn-ghost" onClick={exportCSV}>Export</button>
       </div>
@@ -189,12 +193,12 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                 {/* body */}
                 <div onClick={(e)=>{if((e.target as HTMLElement).closest("[data-task]"))return;const rect=e.currentTarget.getBoundingClientRect();const rowIndex=Math.floor((e.clientY-rect.top)/ROW_H);const row=model.rows[rowIndex];const targetProjectId=row?.projectId??row?.task?.project_id;if(!row||!targetProjectId||(row.kind==="group"&&row.sub!=="Project"))return;let u=model.min+Math.floor((e.clientX-rect.left)/px)*DAY;if(scale==="week"){const d=new Date(u*1000),day=d.getUTCDay()||7;u-=(day-1)*DAY}setDraft({start:u,due:u+7*DAY,projectId:targetProjectId})}} style={{ position: "relative", height: chartH, cursor: "default" }}>
                   {/* weekend shading เฉพาะ day/week */}
-                  {scale!=="month" && Array.from({length:model.days+1},(_,d)=>{const dt=new Date((model.min+d*DAY)*1000),we=dt.getUTCDay()===0||dt.getUTCDay()===6;return we?<div key={`we-${d}`} style={{position:"absolute",left:d*px,top:0,bottom:0,width:px,background:"rgba(107,114,128,.05)",pointerEvents:"none"}}/>:null})}
+                  {scale==="day" && Array.from({length:model.days+1},(_,d)=>{const dt=new Date((model.min+d*DAY)*1000),we=dt.getUTCDay()===0||dt.getUTCDay()===6;return we?<div key={`we-${d}`} style={{position:"absolute",left:d*px,top:0,bottom:0,width:px,background:"rgba(107,114,128,.05)",pointerEvents:"none"}}/>:null})}
 
-                  {todayX >= 0 && todayX <= chartW && (<><div style={{ position: "absolute", left: todayX, top: 0, bottom: 0, width: 2, background: PINK, opacity: .45 }} title="Today" /><div style={{position:"absolute",left:todayX+4,top:2,color:PINK,fontWeight:700,fontSize:12}}>TODAY</div></>)}
+                  {todayX >= 0 && todayX <= chartW && <div style={{ position: "absolute", left: todayX, top: 0, bottom: 0, width: 2, background: PINK, opacity: .45 }} />}
 
-                  {/* row backgrounds */}
-                  {model.rows.map((r, i) => <div key={r.key} style={{ position: "absolute", left: 0, right: 0, top: i * ROW_H, height: ROW_H, borderBottom: "1px solid #F4F4F6", background: r.kind === "group" ? (r.sub === "Product" ? "rgba(0,29,88,.03)" : r.sub === "Overall" ? "rgba(236,24,110,.04)" : "rgba(0,29,88,.015)") : "transparent", cursor: (r.sub === "Project" || r.kind === "task") ? "copy" : "default" }} />)}
+                  {/* row backgrounds — Product/Project/Overall เป็นสีทึบเพื่อบังเส้นแนวตั้งของวันที่ */}
+                  {model.rows.map((r, i) => <div key={r.key} style={{ position: "absolute", left: 0, right: 0, top: i * ROW_H, height: ROW_H, borderBottom: "1px solid #F4F4F6", background: r.kind === "group" ? (r.sub === "Product" ? "#E9EDF4" : r.sub === "Overall" ? "#FDECF3" : "#F5F7FA") : "transparent", cursor: (r.sub === "Project" || r.kind === "task") ? "copy" : "default" }} />)}
 
                   {/* dependency arrows */}
                   <svg style={{ position: "absolute", inset: 0, width: chartW, height: chartH, pointerEvents: "none" }}>
@@ -208,26 +212,19 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                     })}
                   </svg>
 
-                  {/* summary bars (Product / Project) แบบ MS Project + task bars */}
+                  {/* task bars — Plan (บน) + Actual (ล่าง) ไม่มี Summary bar แล้ว */}
                   {model.rows.map((r, i) => {
-                    if (r.kind === "group" && r.spanStart != null && r.spanEnd != null) {
-                      const left = ((r.spanStart - model.min) / DAY) * px;
-                      const width = Math.max(8, ((r.spanEnd - r.spanStart) / DAY) * px);
-                      const color = r.sub === "Product" ? NAVY : "#3A4E77";
-                      const cy = i * ROW_H + ROW_H / 2;
-                      return <div key={`sum-${r.key}`} style={{ position: "absolute", left, top: cy - 3, width, height: 6, background: color, pointerEvents: "none" }}>
-                        <span style={{ position: "absolute", left: -1, top: 5, width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: `7px solid ${color}` }} />
-                        <span style={{ position: "absolute", right: -1, top: 5, width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: `7px solid ${color}` }} />
-                      </div>;
-                    }
                     if (r.kind === "task" && r.task) {
                       const pos = model.taskPos.get(r.task.id)!;
                       const now = Math.floor(Date.now() / 1000);
-                      const actualColor = r.task.category === "done" ? "#16A34A" : r.task.due < now ? "#DC2626" : (r.task.category === "doing" || r.task.due <= now + 3 * DAY) ? "#D4A017" : null;
-                      return <div key={r.key} data-task="1" onClick={(e)=>{e.stopPropagation();setDrawerTask(r.task!.id)}} title={`${r.task.title}\n${ds(r.task.start)} → ${ds(r.task.due)}`} style={{ position: "absolute", left: pos.left, top: i * ROW_H + 9, height: ROW_H - 18, width: pos.width, minWidth: 10, cursor: "pointer", zIndex: 6 }}>
-                        <div style={{ position: "absolute", left: 0, right: 0, top: 1, height: 8, background: "#D1D5DB", borderRadius: 4 }} />
-                        {actualColor && <div style={{ position: "absolute", left: 0, right: 0, bottom: 1, height: 8, background: actualColor, borderRadius: 4 }} />}
-                        <span style={{ position: "absolute", left: pos.width + 8, top: "50%", transform: "translateY(-50%)", whiteSpace: "nowrap", color: "#4B5563", pointerEvents: "none" }}>{r.task.title}</span>
+                      const aStart = r.task.actual_start, aEnd = r.task.actual_end;
+                      const actualColor = r.task.category === "done" ? "#16A34A" : (aEnd && aEnd < now) || r.task.due < now ? "#DC2626" : (r.task.category === "doing" || r.task.due <= now + 3 * DAY) ? "#D4A017" : null;
+                      const aLeft = aStart != null ? ((aStart - model.min) / DAY) * px : pos.left;
+                      const aWidth = aStart != null && aEnd != null ? Math.max(px * 0.5, ((aEnd - aStart) / DAY) * px) : pos.width;
+                      return <div key={r.key} data-task="1" onClick={(e)=>{e.stopPropagation();setDrawerTask(r.task!.id)}} title={`${r.task.title}\nPlan: ${ds(r.task.start)} → ${ds(r.task.due)}${aStart!=null?`\nActual: ${ds(aStart)}${aEnd!=null?` → ${ds(aEnd)}`:""}`:""}`} style={{ position: "absolute", left: 0, top: i * ROW_H + 9, height: ROW_H - 18, width: "100%", cursor: "pointer", zIndex: 6 }}>
+                        <div style={{ position: "absolute", left: pos.left, width: pos.width, minWidth: 10, top: 1, height: 9, background: "#D1D5DB", borderRadius: 4 }} />
+                        {actualColor && <div style={{ position: "absolute", left: aLeft, width: aWidth, minWidth: 10, bottom: 1, height: 9, background: actualColor, borderRadius: 4 }} />}
+                        <span style={{ position: "absolute", left: pos.left + pos.width + 8, top: "50%", transform: "translateY(-50%)", whiteSpace: "nowrap", color: "#4B5563", pointerEvents: "none" }}>{r.task.title}</span>
                       </div>;
                     }
                     return null;
@@ -262,7 +259,6 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
       <div style={{ display: "flex", gap: 16, marginTop: 12, color: "#6B7280", flexWrap: "wrap", alignItems: "center" }}>
         {[["#D1D5DB", "Plan"], ["#16A34A", "Actual · Done"], ["#D4A017", "Actual · เสี่ยง Delay"], ["#DC2626", "Actual · Delay"]].map(([c, l]) => <span key={l} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 14, height: 8, borderRadius: 3, background: c as string }} />{l}</span>)}
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 12, height: 12, background: PINK, transform: "rotate(45deg)", borderRadius: 2 }} /> Milestone</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 22, height: 6, background: NAVY }} /> Summary (Product/Project)</span>
       </div>
     </div>
   );

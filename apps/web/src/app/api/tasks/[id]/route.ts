@@ -8,6 +8,7 @@ const FIELD_MAP: Record<string, { col: string; type: "text"|"num"|"date"|"user" 
   workflowStatusId: { col: "workflow_status_id", type: "num" }, featureId: { col: "feature_id", type: "num" },
   sprintId: { col: "sprint_id", type: "num" }, estimatedHours: { col: "estimated_hours", type: "num" },
   budgetCost: { col: "budget_cost", type: "num" }, startDate: { col: "start_date", type: "date" }, dueDate: { col: "due_date", type: "date" },
+  actualStartDate: { col: "actual_start_date", type: "date" }, actualEndDate: { col: "actual_end_date", type: "date" },
 };
 function d2u(v: any) { if (!v) return null; const ms = Date.parse(String(v).length === 10 ? v + "T00:00:00Z" : v); return Number.isNaN(ms) ? null : Math.floor(ms/1000); }
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

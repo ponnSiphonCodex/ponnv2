@@ -12,6 +12,7 @@ export default async function Page({params}:{params:Promise<{id:string}>}){
   a.d1.prepare(`SELECT file_name,gdrive_file_id,gdrive_web_link FROM attachments WHERE reference_type='project' AND reference_id=?`).bind(pid).all()
  ]);
  if(!pr)redirect("/pm/projects");
- const initial={name:pr.name,description:pr.description,status:pr.status,productId:pr.product_id,pmId:pm?.user_id??"",featureIds:(f.results??[]).filter((x:any)=>x.project_id===pid).map((x:any)=>x.id),teamIds:(team.results??[]).map((x:any)=>x.owner_user_id),files:(att.results??[]).map((x:any)=>({fileId:x.gdrive_file_id,url:x.gdrive_web_link,fileName:x.file_name}))};
+ let cats:string[]=[];try{const cr=await a.d1.prepare(`SELECT category FROM project_category_tags WHERE project_id=?`).bind(pid).all();cats=(cr.results??[]).map((x:any)=>String(x.category))}catch{}
+ const initial={name:pr.name,description:pr.description,status:pr.status,productId:pr.product_id,pmId:pm?.user_id??"",categories:cats,featureIds:(f.results??[]).filter((x:any)=>x.project_id===pid).map((x:any)=>x.id),teamIds:(team.results??[]).map((x:any)=>x.owner_user_id),files:(att.results??[]).map((x:any)=>({fileId:x.gdrive_file_id,url:x.gdrive_web_link,fileName:x.file_name}))};
  return <AppShell active="project" {...shellProps(a)}><PageHeader title={`แก้ไข Project · ${pr.name}`}/><ProjectWizard products={p.results??[]} features={f.results??[]} users={u.results??[]} initial={initial} projectId={pid}/></AppShell>
 }

@@ -26,7 +26,8 @@ export async function GET(req: NextRequest) {
     const tasks = ((await c.d1.prepare(
       `SELECT t.id, t.title, t.start_date AS start, t.due_date AS due, t.project_id,
          pj.name AS project_name, pd.name AS product_name, pj.product_id, t.feature_id, f.name AS feature_name,
-         t.assignee_id, u.name AS assignee, ws.category AS category, t.estimated_hours
+         t.assignee_id, u.name AS assignee, ws.category AS category, t.estimated_hours,
+         t.actual_start_date AS actual_start, t.actual_end_date AS actual_end
        FROM tasks t
        LEFT JOIN projects pj ON t.project_id=pj.id
        LEFT JOIN products pd ON pj.product_id=pd.id
@@ -37,6 +38,16 @@ export async function GET(req: NextRequest) {
          AND t.start_date IS NOT NULL AND t.due_date IS NOT NULL
        ORDER BY t.start_date`
     ).bind(...pjIds, ...pjIds).all()).results ?? []) as any[];
+
+    // Project categories (multi) → map ให้แต่ละ task (graceful ถ้ายังไม่ได้ migrate)
+    const catMap = new Map<number, string[]>();
+    try {
+      const catRows = ((await c.d1.prepare(
+        `SELECT project_id, category FROM project_category_tags WHERE project_id IN (${ph})`
+      ).bind(...pjIds).all()).results ?? []) as any[];
+      for (const r of catRows) { const l = catMap.get(Number(r.project_id)) ?? []; l.push(String(r.category)); catMap.set(Number(r.project_id), l); }
+    } catch {}
+    for (const t of tasks) t.project_categories = catMap.get(Number(t.project_id)) ?? [];
 
     const milestones = ((await c.d1.prepare(
       `SELECT m.id, m.title, m.target_date AS target, m.project_id, pj.name AS project_name FROM project_milestones m JOIN projects pj ON m.project_id=pj.id WHERE m.project_id IN (${ph}) AND m.target_date IS NOT NULL ORDER BY m.target_date`

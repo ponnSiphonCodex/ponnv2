@@ -46,7 +46,7 @@ export function TaskDrawer({ taskId, users, priorities, statuses, features, tags
     if (!r.ok && !r.queued) setMsg("บันทึกไม่สำเร็จ");
   }
   function toSnake(b: any) {
-    const m: Record<string, string> = { workflowStatusId: "workflow_status_id", assigneeId: "assignee_id", priorityId: "priority_id", featureId: "feature_id", sprintId: "sprint_id", estimatedHours: "estimated_hours", budgetCost: "budget_cost", startDate: "start_date", dueDate: "due_date", title: "title", note: "note" };
+    const m: Record<string, string> = { workflowStatusId: "workflow_status_id", assigneeId: "assignee_id", priorityId: "priority_id", featureId: "feature_id", sprintId: "sprint_id", estimatedHours: "estimated_hours", budgetCost: "budget_cost", startDate: "start_date", dueDate: "due_date", actualStartDate: "actual_start_date", actualEndDate: "actual_end_date", title: "title", note: "note" };
     const o: any = {}; for (const k in b) o[m[k] ?? k] = b[k]; return o;
   }
 
@@ -76,9 +76,15 @@ export function TaskDrawer({ taskId, users, priorities, statuses, features, tags
               <Row label="ผู้รับผิดชอบ"><select className="input" value={t.assignee_id ?? ""} onChange={(e) => patch({ assigneeId: e.target.value || null })}><option value="">— ไม่มี —</option>{users.map((u) => <option key={String(u.id)} value={String(u.id)}>{u.label}</option>)}</select></Row>
               <Row label="Priority"><select className="input" value={t.priority_id ?? ""} onChange={(e) => patch({ priorityId: e.target.value || null })}><option value="">—</option>{priorities.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</select></Row>
               <Row label="Feature"><select className="input" value={t.feature_id ?? ""} onChange={(e) => patch({ featureId: e.target.value || null })}><option value="">—</option>{features.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}</select></Row>
+              <div style={{fontSize:12,fontWeight:700,color:NAVY,marginTop:4}}>Plan (แผน)</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <Row label="วันเริ่ม"><input className="input" type="date" defaultValue={u2d(t.start_date)} onBlur={(e) => patch({ startDate: e.target.value || null })} /></Row>
-                <Row label="กำหนดส่ง"><input className="input" type="date" defaultValue={u2d(t.due_date)} onBlur={(e) => patch({ dueDate: e.target.value || null })} /></Row>
+                <Row label="วันเริ่ม (Plan)"><input className="input" type="date" defaultValue={u2d(t.start_date)} onBlur={(e) => patch({ startDate: e.target.value || null })} /></Row>
+                <Row label="กำหนดส่ง (Plan)"><input className="input" type="date" defaultValue={u2d(t.due_date)} onBlur={(e) => patch({ dueDate: e.target.value || null })} /></Row>
+              </div>
+              <div style={{fontSize:12,fontWeight:700,color:"#16A34A",marginTop:4}}>Actual (ทำจริง)</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <Row label="วันเริ่มจริง (Actual)"><input className="input" type="date" defaultValue={u2d(t.actual_start_date)} onBlur={(e) => patch({ actualStartDate: e.target.value || null })} /></Row>
+                <Row label="วันเสร็จจริง (Actual)"><input className="input" type="date" defaultValue={u2d(t.actual_end_date)} onBlur={(e) => patch({ actualEndDate: e.target.value || null })} /></Row>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <Row label="ชม.ประเมิน"><input className="input" type="number" defaultValue={t.estimated_hours ?? ""} onBlur={(e) => patch({ estimatedHours: e.target.value || null })} /></Row>
@@ -119,7 +125,7 @@ function CommentTab({ taskId, comments, onPost }: { taskId: number; comments: an
       {comments.map((c) => (
         <div key={c.id} style={{ borderLeft: `3px solid ${PINK}`, paddingLeft: 12 }}>
           <div style={{ fontSize: 13 }}>{c.content}</div>
-          <div style={{ fontSize: 11, color: "#9AA0A6" }}>{c.author ?? "—"} · {new Date(c.created_at * 1000).toLocaleString("th-TH")}</div>
+          <div style={{ fontSize: 11, color: "#9AA0A6" }}>{c.author ?? "—"} · {new Date(c.created_at*1000).toLocaleString("sv-SE",{timeZone:"Asia/Bangkok"}).slice(0,16)}</div>
         </div>
       ))}
     </div>
@@ -216,7 +222,7 @@ function ActivityTab({ activity }: { activity: any[] }) {
       {activity.map((a) => (
         <div key={a.id} style={{ fontSize: 12.5, display: "flex", gap: 8 }}>
           <span style={{ color: PINK }}>●</span>
-          <div><b>{a.actor ?? "—"}</b> {a.action}{a.new_value ? ` → ${a.new_value}` : ""}<div style={{ color: "#9AA0A6", fontSize: 11 }}>{new Date(a.created_at * 1000).toLocaleString("th-TH")}</div></div>
+          <div><b>{a.actor ?? "—"}</b> {a.action}{a.new_value ? ` → ${a.new_value}` : ""}<div style={{ color: "#9AA0A6", fontSize: 11 }}>{new Date(a.created_at*1000).toLocaleString("sv-SE",{timeZone:"Asia/Bangkok"}).slice(0,16)}</div></div>
         </div>
       ))}
     </div>

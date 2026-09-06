@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ProfileModal } from "./profile-modal";
 import { Icon } from "./icons";
 import { DataBootstrap } from "./data-bootstrap";
+import { APP_NAME, APP_VERSION } from "@/lib/version";
 
 const NAVY = "#001D58";
 const PINK = "#EC186E";
@@ -88,7 +89,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
       <div className="mobile-topbar" style={{ position: "fixed", top: 0, left: 0, right: 0, height: 54, background: NAVY, zIndex: 60, alignItems: "center", justifyContent: "space-between", padding: "0 14px", gap: 10 }}>
         <button onClick={() => setMobileOpen(true)} aria-label="menu" style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", cursor: "pointer" }}>
           <span className="nav-logo" style={{ width: 32, height: 32, background: "#fff", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}><img src="/rocket-logo.png" alt="logo" style={{ width: "84%", height: "84%", objectFit: "contain" }} /></span>
-          <span className="brand-copy"><span>Portfolio</span><small>v58.2609070130</small></span>
+          <span className="brand-copy"><span>{APP_NAME}</span><small>{APP_VERSION}</small></span>
         </button>
         <button onClick={() => setShowProfile(true)} aria-label="profile" style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex" }}><Avatar size={32} /></button>
       </div>
@@ -97,7 +98,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
       <aside className={`app-sidebar ${mobileOpen ? "open" : ""}`} style={{ width, minWidth: width, background: NAVY, color: "#fff", display: "flex", flexDirection: "column", transition: ready ? "width .18s ease, min-width .18s ease" : "none", position: "sticky", top: 0, height: "100dvh" }}>
         <button onClick={() => { if (window.innerWidth <= 820) setMobileOpen(false); else toggle(); }} aria-label="menu" style={{ display: "flex", alignItems: "center", gap: 11, padding: "15px 14px", borderBottom: "1px solid rgba(255,255,255,.1)", background: "transparent", border: "none", cursor: "pointer", width: "100%" }}>
           <span className="nav-logo" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: collapsed ? 36 : 34, height: collapsed ? 36 : 34, background: "#fff", borderRadius: 9, overflow: "hidden", flexShrink: 0 }}><img src="/rocket-logo.png" alt="logo" style={{ width: "84%", height: "84%", objectFit: "contain" }} /></span>
-          {!collapsed && <span className="brand-copy"><span>Portfolio</span><small>v58.2609070130</small></span>}
+          {!collapsed && <span className="brand-copy"><span>{APP_NAME}</span><small>{APP_VERSION}</small></span>}
         </button>
 
         <nav style={{ flex: 1, padding: "8px 8px", overflowY: "auto" }}>

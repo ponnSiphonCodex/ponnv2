@@ -29,7 +29,7 @@ export function NotificationBell() {
             {items.map((n) => (
               <div key={n.id} style={{ padding: "11px 16px", borderBottom: "1px solid #F6F7F8", background: n.is_read ? "#fff" : "#FFF5F9" }}>
                 <div style={{ fontSize: 13, color: "#1F2937" }}>{n.message}</div>
-                <div style={{ fontSize: 11, color: "#9AA0A6", marginTop: 3 }}>{new Date(n.created_at * 1000).toLocaleString("th-TH")}</div>
+                <div style={{ fontSize: 11, color: "#9AA0A6", marginTop: 3 }}>{new Date(n.created_at*1000).toLocaleString("sv-SE",{timeZone:"Asia/Bangkok"}).slice(0,16)}</div>
               </div>
             ))}
           </div>
