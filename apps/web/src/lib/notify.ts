@@ -1,3 +1,4 @@
+import type { DbClient } from "@/db";
 /**
  * notify.ts — ศูนย์กลางการแจ้งเตือน (in-app notifications + Telegram)
  * ใช้จากทุก API route: assign งาน, เปลี่ยนสถานะ, comment, ใกล้ due ฯลฯ
@@ -5,7 +6,7 @@
 import { sendTelegram } from "./telegram";
 
 export type NotifyInput = {
-  d1: D1Database;
+  d1: DbClient;
   env: CloudflareEnv;
   targetUserId: string;          // ผู้รับ
   actorId?: string | null;       // ผู้กระทำ
@@ -45,7 +46,7 @@ export async function notifyAdminChat(env: CloudflareEnv, message: string): Prom
 }
 
 // บันทึก activity log (audit trail)
-export async function logActivity(d1: D1Database, p: { referenceType: string; referenceId: number; userId: string | null; action: string; fieldChanged?: string | null; oldValue?: string | null; newValue?: string | null }): Promise<void> {
+export async function logActivity(d1: DbClient, p: { referenceType: string; referenceId: number; userId: string | null; action: string; fieldChanged?: string | null; oldValue?: string | null; newValue?: string | null }): Promise<void> {
   try {
     await d1.prepare(
       `INSERT INTO activity_logs (reference_type, reference_id, user_id, action, field_changed, old_value, new_value) VALUES (?,?,?,?,?,?,?)`

@@ -1,8 +1,9 @@
+import type { DbClient } from "@/db";
 export type BoardTask = { id: number; title: string; workflowStatusId: number | null; sortOrder: number; assignee: { id: string; name: string | null } | null; priority: { name: string; color: string | null } | null; estimatedHours: number | null; actualHours: number; dueDate: number | null; projectName?: string | null };
 export type BoardColumn = { id: number; name: string; color: string | null; category: string; tasks: BoardTask[] };
 export type Progress = { total: number; done: number; drop: number; percent: number };
 export type BoardData = { project: { id: number; name: string; status: string | null; progress: Progress }; columns: BoardColumn[] };
-export async function getBoardData(db: D1Database, projectId: number): Promise<BoardData | null> {
+export async function getBoardData(db: DbClient, projectId: number): Promise<BoardData | null> {
   const proj = await db.prepare(`SELECT id, name, status FROM projects WHERE id = ?`).bind(projectId).first<any>();
   if (!proj) return null;
   const st = await db.prepare(`SELECT id, name, color, category, sort_order FROM workflow_statuses WHERE project_id = ? ORDER BY sort_order`).bind(projectId).all();
@@ -35,7 +36,7 @@ const CANON: { key: string; name: string; color: string }[] = [
   { key: "done", name: "Done", color: "#16A34A" },
   { key: "drop", name: "Drop", color: "#DC2626" },
 ];
-export async function getAllProjectsBoard(db: D1Database, ids: number[] | null): Promise<BoardData> {
+export async function getAllProjectsBoard(db: DbClient, ids: number[] | null): Promise<BoardData> {
   let where = "1=1"; const binds: any[] = [];
   if (ids && ids.length >= 0) { if (ids.length === 0) where = "0"; else { where = `t.project_id IN (${ids.map(() => "?").join(",")})`; binds.push(...ids); } }
   const tk = await db.prepare(
@@ -65,18 +66,18 @@ export async function getAllProjectsBoard(db: D1Database, ids: number[] | null):
   const total = rows.length; const denom = total - drop;
   return { project: { id: 0, name: "ทุกโครงการ", status: null, progress: { total, done, drop, percent: denom <= 0 ? 0 : Math.round((done / denom) * 1000) / 10 } }, columns };
 }
-export async function listProjects(db: D1Database, ids?: number[] | null): Promise<{ id: number; name: string; status: string | null }[]> {
+export async function listProjects(db: DbClient, ids?: number[] | null): Promise<{ id: number; name: string; status: string | null }[]> {
   let sql = `SELECT id, name, status FROM projects`; const binds: any[] = [];
   if (ids && ids.length >= 0) { if (ids.length === 0) return []; sql += ` WHERE id IN (${ids.map(() => "?").join(",")})`; binds.push(...ids); }
   sql += ` ORDER BY id`;
   const r = await db.prepare(sql).bind(...binds).all(); return (r.results ?? []) as any;
 }
 export type GanttRow = { id: number; title: string; start: number | null; due: number | null; category: string | null; assignee: string | null };
-export async function getGanttRows(db: D1Database, projectId: number): Promise<GanttRow[]> {
+export async function getGanttRows(db: DbClient, projectId: number): Promise<GanttRow[]> {
   const tk = await db.prepare(`SELECT t.id, t.title, t.start_date AS start, t.due_date AS due, ws.category AS category, u.name AS assignee FROM tasks t LEFT JOIN workflow_statuses ws ON t.workflow_status_id=ws.id LEFT JOIN users u ON t.assignee_id=u.id WHERE (t.project_id=? OR t.feature_id IN (SELECT id FROM features WHERE project_id=?)) AND t.start_date IS NOT NULL AND t.due_date IS NOT NULL ORDER BY t.start_date`).bind(projectId, projectId).all();
   return (tk.results ?? []) as any;
 }
-export async function dashboardStats(db: D1Database, ids?: number[] | null) {
+export async function dashboardStats(db: DbClient, ids?: number[] | null) {
   const scopeCond = ids && ids.length >= 0 ? (ids.length ? ` WHERE project_id IN (${ids.map(()=>"?").join(",")})` : ` WHERE 0`) : "";
   const one = async (sql: string, b: any[] = []) => Number((await db.prepare(sql).bind(...b).first<any>())?.c ?? 0);
   const pid = ids && ids.length ? ids : [];
@@ -88,18 +89,18 @@ export async function dashboardStats(db: D1Database, ids?: number[] | null) {
   };
 }
 
-export async function getMilestones(db: D1Database, projectId: number): Promise<{ id: number; title: string; target_date: number | null; status: string | null }[]> {
+export async function getMilestones(db: DbClient, projectId: number): Promise<{ id: number; title: string; target_date: number | null; status: string | null }[]> {
   const r = await db.prepare(`SELECT id, title, target_date, status FROM project_milestones WHERE project_id=? AND target_date IS NOT NULL ORDER BY target_date`).bind(projectId).all();
   return (r.results ?? []) as any;
 }
-export async function statusBreakdown(db: D1Database, ids?: number[] | null): Promise<{ category: string; c: number }[]> {
+export async function statusBreakdown(db: DbClient, ids?: number[] | null): Promise<{ category: string; c: number }[]> {
   let sql = `SELECT ws.category AS category, COUNT(*) AS c FROM tasks t JOIN workflow_statuses ws ON t.workflow_status_id=ws.id`;
   const binds: any[] = [];
   if (ids && ids.length >= 0) { if (ids.length === 0) return []; sql += ` WHERE t.project_id IN (${ids.map(()=>"?").join(",")})`; binds.push(...ids); }
   sql += ` GROUP BY ws.category`;
   const r = await db.prepare(sql).bind(...binds).all(); return (r.results ?? []) as any;
 }
-export async function workloadByUser(db: D1Database, ids?: number[] | null): Promise<{ name: string; c: number }[]> {
+export async function workloadByUser(db: DbClient, ids?: number[] | null): Promise<{ name: string; c: number }[]> {
   let sql = `SELECT COALESCE(u.name,u.email,'ยังไม่มอบหมาย') AS name, COUNT(*) AS c FROM tasks t LEFT JOIN users u ON t.assignee_id=u.id LEFT JOIN workflow_statuses ws ON t.workflow_status_id=ws.id WHERE (ws.category IS NULL OR ws.category NOT IN ('done','drop'))`;
   const binds: any[] = [];
   if (ids && ids.length >= 0) { if (ids.length === 0) return []; sql += ` AND t.project_id IN (${ids.map(()=>"?").join(",")})`; binds.push(...ids); }
