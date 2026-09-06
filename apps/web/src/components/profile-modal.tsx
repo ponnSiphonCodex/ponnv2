@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
+import { MultiSelect } from "./multi-select";
 
 const NAVY = "#001D58", PINK = "#EC186E";
-type Profile = { id: string; name: string | null; email: string; company_email: string | null; phone: string | null; telegram_user_id: string | null; telegram_notify: number; image: string | null; avatar_url: string | null; pm_role: string | null; has_password: boolean };
+type Profile = { id: string; name: string | null; email: string; company_email: string | null; phone: string | null; telegram_user_id: string | null; telegram_notify: number; image: string | null; avatar_url: string | null; pm_role: string | null; availability_status:string|null; has_password: boolean };
 type ImpUser = { id: string; name: string | null; email: string };
 type TabKey = "profile" | "notify" | "password" | "admin";
 
@@ -13,10 +14,10 @@ export function ProfileModal({ isAdmin, impersonating, onClose }: { isAdmin: boo
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [pw1, setPw1] = useState(""); const [pw2, setPw2] = useState("");
   const [users, setUsers] = useState<ImpUser[]>([]);
-  const [impSel, setImpSel] = useState("");
+  const [impSel, setImpSel] = useState(""); const [roles,setRoles]=useState<any[]>([]); const [workload,setWorkload]=useState<any>({total:0,overdue:0});
 
   useEffect(() => {
-    fetch("/api/profile").then((r) => r.json()).then((d) => setP(d.profile));
+    fetch("/api/profile").then((r) => r.json()).then((d) => {setP(d.profile);setRoles(d.roles??[]);setWorkload(d.workload??{total:0,overdue:0})});
     if (isAdmin) fetch("/api/admin/users").then((r) => r.json()).then((d) => { if (d.users) setUsers(d.users.map((u: any) => ({ id: u.id, name: u.name, email: u.email }))); });
   }, [isAdmin]);
 
@@ -25,7 +26,7 @@ export function ProfileModal({ isAdmin, impersonating, onClose }: { isAdmin: boo
 
   async function saveProfile() {
     if (!p) return; setSaving(true);
-    const res = await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: p.name, companyEmail: p.company_email, phone: p.phone }) });
+    const res = await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: p.name, companyEmail: p.company_email, phone: p.phone, pmRole:p.pm_role, availabilityStatus:p.availability_status }) });
     setSaving(false); flash(res.ok ? "ok" : "err", res.ok ? "บันทึกโปรไฟล์แล้ว" : "บันทึกไม่สำเร็จ");
   }
   async function saveNotify() {
@@ -92,6 +93,9 @@ export function ProfileModal({ isAdmin, impersonating, onClose }: { isAdmin: boo
         
           {p && tab === "profile" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div className="card" style={{padding:12}}><b>My Workload</b><div>{workload.total} งานเปิดอยู่</div></div><div className="card" style={{padding:12,background:workload.overdue?"#FEF2F2":"#F0FDF4"}}><b>Overdue</b><div>{workload.overdue} งาน</div></div></div>
+              <Row label="สถานะการทำงาน"><div style={{display:"flex",gap:8}}>{["Active","Busy","On Leave"].map(x=><button key={x} type="button" className={p.availability_status===x?"btn-primary":"btn-ghost"} onClick={()=>set("availability_status",x)}>{x}</button>)}</div></Row>
+              <Row label="Role / Skills"><MultiSelect options={roles} value={(p.pm_role??"").split(",").filter(Boolean)} onChange={(v)=>set("pm_role",v.join(","))} placeholder="เลือก Role / Skills" /></Row>
               <Row label="ชื่อที่แสดง (Display Name)"><input className="input" value={p.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="ตั้งชื่อที่ต้องการแสดง" /></Row>
               <Row label="เบอร์โทรติดต่อ"><input className="input" value={p.phone ?? ""} onChange={(e) => set("phone", e.target.value)} placeholder="เช่น 081-234-5678" /></Row>
               <Row label="อีเมลบริษัท"><input className="input" value={p.company_email ?? ""} onChange={(e) => set("company_email", e.target.value)} placeholder="name@viriyah.co.th" /></Row>

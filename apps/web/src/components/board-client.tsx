@@ -71,14 +71,14 @@ export function BoardClient({ board, projects, users, priorities, features, tags
       </div>
 
       <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 8 }}>
-        {columns.map((col) => (
+        {columns.map((col) => { const overWip = col.category === "doing" && col.tasks.length > 5; return (
           <div key={col.id}
             onDragOver={(e) => { if (canWrite) { e.preventDefault(); setOverCol(col.id); } }}
             onDragLeave={() => setOverCol((c) => (c === col.id ? null : c))}
             onDrop={() => canWrite && dropTo(col.id)}
             style={{ minWidth: 272, width: 272, background: overCol === col.id ? "#FFF5F9" : "#fff", border: overCol === col.id ? `1.5px dashed ${PINK}` : "1px solid #E5E7EB", borderRadius: 12, display: "flex", flexDirection: "column", maxHeight: "calc(100dvh - 250px)", transition: "background .1s", overflow: "hidden" }}>
             {/* v27: หัว column สีเต็มแถบตาม category — แยกด้วยสีชัดเจน อ่านง่าย */}
-            <div style={{ padding: "10px 14px", background: col.color || "#9AA0A6", display: "flex", justifyContent: "space-between", alignItems: "center", borderTopLeftRadius: 11, borderTopRightRadius: 11 }}>
+            <div style={{ padding: "10px 14px", background: overWip ? "#DC2626" : (col.color || "#9AA0A6"), display: "flex", justifyContent: "space-between", alignItems: "center", borderTopLeftRadius: 11, borderTopRightRadius: 11 }}>
               <span style={{ fontWeight: 700, fontSize: 13.5, color: "#fff", display: "flex", alignItems: "center", gap: 7 }}>{col.name}<span style={{ background: "rgba(255,255,255,.28)", color: "#fff", fontSize: 11.5, fontWeight: 700, minWidth: 20, height: 20, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>{col.tasks.length}</span></span>
               {canWrite && <button onClick={() => setAddTo(col.id)} title="เพิ่มงาน" style={{ border: "none", background: "rgba(255,255,255,.25)", color: "#fff", width: 24, height: 24, borderRadius: 6, fontSize: 17, cursor: "pointer", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>}
             </div>
@@ -95,7 +95,7 @@ export function BoardClient({ board, projects, users, priorities, features, tags
                   </div>
                   <div style={{ fontSize: 11, color: "#9AA0A6", marginTop: 5 }}>{t.actualHours}/{t.estimatedHours ?? 0} ชม.</div>
                 </div>
-              ))}
+              );})}
             </div>
           </div>
         ))}
