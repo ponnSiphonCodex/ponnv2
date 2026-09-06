@@ -13,12 +13,13 @@ type Dep = { pre: number; suc: number; type: string };
 type Member = { id: string; name: string };
 type Data = { tasks: Task[]; projects: any[]; milestones: Milestone[]; deps: Dep[]; members: Member[] };
 type Scale = "day" | "week" | "month";
-const SCALE_PX: Record<Scale, number> = { day: 34, week: 14, month: 5 };
-const catColor = (c: string | null) => c === "done" ? "#16A34A" : c === "doing" ? "#D4A017" : c === "drop" ? "#DC2626" : c === "todo" ? "#0284C7" : "#64748B";
+const SCALE_PX: Record<Scale, number> = { day: 34, week: 15, month: 6 };
 const ds = (u: number) => new Date(u * 1000).toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" }); // YYYY-MM-DD เสมอ
 const dayFloor = (u: number) => Math.floor(u / DAY) * DAY;
 
-const ROW_H = 34, LABEL_W = 240, HEAD_H = 46;
+const ROW_H = 44, LABEL_W = 250, HEAD_H = 30;
+
+type Row = { key: string; label: string; sub?: string; kind: "group" | "task" | "ms"; task?: Task; ms?: Milestone; projectId?: number; progress?: number; spanStart?: number; spanEnd?: number };
 
 export function GanttClient({ projects }: { projects: { id: number; name: string }[] }) {
   const [productIds,setProductIds]=useState<(number|string)[]>([]); const [featureIds,setFeatureIds]=useState<(number|string)[]>([]); const [projectIds,setProjectIds]=useState<(number|string)[]>([]);
@@ -42,56 +43,69 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
   const px = SCALE_PX[scale];
   const model = useMemo(() => {
     if (!data) return null;
-    const selectedTasks=data.tasks.filter(t=>t.category!=="drop"&&(!productIds.length||productIds.map(String).includes(String(t.product_id)))&&(!featureIds.length||featureIds.map(String).includes(String(t.feature_id)))&&(!projectIds.length||projectIds.map(String).includes(String(t.project_id)))&&(!rangeStart||t.due>=Date.parse(rangeStart)/1000)&&(!rangeEnd||t.start<=Date.parse(rangeEnd)/1000+DAY-1));
-    const selectedMilestones=data.milestones.filter(m=>(!projectIds.length||projectIds.map(String).includes(String(m.project_id)))&&(!rangeStart||m.target>=Date.parse(rangeStart)/1000)&&(!rangeEnd||m.target<=Date.parse(rangeEnd)/1000+DAY-1));
+    const inRange=(a:number,b:number)=>(!rangeStart||b>=Date.parse(rangeStart)/1000)&&(!rangeEnd||a<=Date.parse(rangeEnd)/1000+DAY-1);
+    const selectedTasks=data.tasks.filter(t=>t.category!=="drop"&&(!productIds.length||productIds.map(String).includes(String(t.product_id)))&&(!featureIds.length||featureIds.map(String).includes(String(t.feature_id)))&&(!projectIds.length||projectIds.map(String).includes(String(t.project_id)))&&inRange(t.start,t.due));
+    const selectedMilestones=data.milestones.filter(m=>(!projectIds.length||projectIds.map(String).includes(String(m.project_id)))&&inRange(m.target,m.target));
     const items=[...selectedTasks.map(t=>t.start),...selectedTasks.map(t=>t.due),...selectedMilestones.map(m=>m.target)];
-    if (!items.length) return { rows: [], min: 0, max: 0, days: 0, taskPos:new Map(), milestones:[] as Milestone[] };
-    let min = dayFloor(Math.min(...items)) - DAY * 2;
-    let max = dayFloor(Math.max(...items)) + DAY * 3;
+    if (!items.length) return { rows: [] as Row[], min: 0, max: 0, days: 0, taskPos:new Map(), milestones:[] as Milestone[] };
+    const min = dayFloor(Math.min(...items)) - DAY * 2;
+    const max = dayFloor(Math.max(...items)) + DAY * 3;
     const days = Math.round((max - min) / DAY);
 
-    type Row = { key: string; label: string; sub?: string; kind: "group" | "task" | "ms"; task?: Task; ms?: Milestone; projectId?: number; progress?: number };
     const rows: Row[] = [];
     if (mode === "project") {
       const byProduct = new Map<string, Task[]>();
       for (const t of selectedTasks) { const k = t.product_name || "— ไม่มี Product —"; (byProduct.get(k) ?? byProduct.set(k, []).get(k)!).push(t); }
       for (const [prod, ts] of byProduct) {
-        rows.push({ key: `prod:${prod}`, label: prod, kind: "group", sub: "Product" });
+        rows.push({ key: `prod:${prod}`, label: prod, kind: "group", sub: "Product", spanStart: Math.min(...ts.map(t=>t.start)), spanEnd: Math.max(...ts.map(t=>t.due)) });
         const byProj = new Map<string, Task[]>();
         for (const t of ts) { const k = t.project_name; (byProj.get(k) ?? byProj.set(k, []).get(k)!).push(t); }
         for (const [proj, pts] of byProj) {
-          const activePts=pts.filter(t=>t.category!=="drop"), donePts=activePts.filter(t=>t.category==="done").length; const projectProgress=activePts.length?Math.round(donePts/activePts.length*100):0;
-          rows.push({ key: `proj:${prod}:${proj}`, label: proj, kind: "group", sub: "Project", projectId: pts[0]?.project_id, progress: projectProgress });
+          const done=pts.filter(t=>t.category==="done").length; const progress=pts.length?Math.round(done/pts.length*100):0;
+          rows.push({ key: `proj:${prod}:${proj}`, label: proj, kind: "group", sub: "Project", projectId: pts[0]?.project_id, progress, spanStart: Math.min(...pts.map(t=>t.start)), spanEnd: Math.max(...pts.map(t=>t.due)) });
           for (const t of pts) rows.push({ key: `t${t.id}`, label: t.title, sub: t.assignee ?? "—", kind: "task", task: t });
         }
       }
-      const overallActive=selectedTasks.filter(t=>t.category!=="drop"), overallDone=overallActive.filter(t=>t.category==="done").length;
-      rows.push({key:"overall-progress",label:"รวมทุก Project",kind:"group",sub:"Overall",progress:overallActive.length?Math.round(overallDone/overallActive.length*100):0});
+      const overallDone=selectedTasks.filter(t=>t.category==="done").length;
+      rows.push({ key:"overall-progress", label:"รวมทุก Project", kind:"group", sub:"Overall", progress:selectedTasks.length?Math.round(overallDone/selectedTasks.length*100):0 });
     } else {
       for (const mem of data.members) {
-        const ts = data.tasks.filter((t) => t.assignee_id === mem.id);
-        rows.push({ key: `mem:${mem.id}`, label: mem.name || "—", kind: "group", sub: `${ts.length} งาน` });
+        const ts = selectedTasks.filter((t) => t.assignee_id === mem.id);
+        if (!ts.length) continue;
+        rows.push({ key: `mem:${mem.id}`, label: mem.name || "—", kind: "group", sub: `${ts.length} งาน`, spanStart: Math.min(...ts.map(t=>t.start)), spanEnd: Math.max(...ts.map(t=>t.due)) });
         for (const t of ts) rows.push({ key: `t${t.id}`, label: t.title, sub: t.project_name, kind: "task", task: t });
       }
-      const un = data.tasks.filter((t) => !t.assignee_id);
-      if (un.length) { rows.push({ key: "mem:none", label: "ยังไม่มอบหมาย", kind: "group", sub: `${un.length} งาน` }); for (const t of un) rows.push({ key: `t${t.id}`, label: t.title, sub: t.project_name, kind: "task", task: t }); }
+      const un = selectedTasks.filter((t) => !t.assignee_id);
+      if (un.length) { rows.push({ key: "mem:none", label: "ยังไม่มอบหมาย", kind: "group", sub: `${un.length} งาน`, spanStart: Math.min(...un.map(t=>t.start)), spanEnd: Math.max(...un.map(t=>t.due)) }); for (const t of un) rows.push({ key: `t${t.id}`, label: t.title, sub: t.project_name, kind: "task", task: t }); }
     }
     const taskPos = new Map<number, { row: number; left: number; width: number }>();
     rows.forEach((r, i) => { if (r.kind === "task" && r.task) { const left = ((r.task.start - min) / DAY) * px; const width = Math.max(px * 0.6, ((r.task.due - r.task.start) / DAY) * px); taskPos.set(r.task.id, { row: i, left, width }); } });
     return { rows, min, max, days, taskPos, milestones:selectedMilestones };
   }, [data, mode, px, rangeStart, rangeEnd, productIds, featureIds, projectIds]);
 
+  // ป้ายกำกับหัวตาราง จัดกึ่งกลางในแต่ละช่วง (วัน = ตัวเลขวันที่, สัปดาห์ = วันจันทร์, เดือน = ไม่แสดง เพราะมี month band ด้านบนแล้ว)
   const ticks = useMemo(() => {
-    if (!model || !model.days) return [];
-    const out: { x: number; label: string; major: boolean }[] = [];
+    if (!model || !model.days) return [] as { x: number; width: number; label: string; major: boolean }[];
+    const out: { x: number; width: number; label: string; major: boolean }[] = [];
     for (let d = 0; d <= model.days; d++) {
-      const t = model.min + d * DAY; const dt = new Date(t * 1000);
-      const x = d * px;
-      if (scale === "day") out.push({ x, label: `${dt.getUTCDate()}`, major: dt.getUTCDay() === 1 });
-      else if (scale === "week") { if (dt.getUTCDay() === 1) out.push({ x, label: ds(t).slice(5), major: dt.getUTCDate() <= 7 }); }
-      else { if (dt.getUTCDate() === 1) out.push({ x, label: ds(t).slice(0, 7), major: true }); }
+      const t = model.min + d * DAY; const dt = new Date(t * 1000); const x = d * px;
+      if (scale === "day") out.push({ x, width: px, label: `${dt.getUTCDate()}`, major: dt.getUTCDay() === 1 });
+      else if (scale === "week") { if (dt.getUTCDay() === 1) out.push({ x, width: 7 * px, label: ds(t).slice(5), major: dt.getUTCDate() <= 7 }); }
     }
     return out;
+  }, [model, px, scale]);
+
+  // เส้นแนวตั้ง เฉพาะขอบของช่วง (วัน=ทุกวัน, สัปดาห์=จันทร์, เดือน=วันที่1)
+  const gridLines = useMemo(() => {
+    if (!model || !model.days) return [] as number[];
+    const xs: number[] = [];
+    for (let d = 0; d <= model.days; d++) {
+      const dt = new Date((model.min + d * DAY) * 1000); const x = d * px;
+      if (scale === "day") xs.push(x);
+      else if (scale === "week") { if (dt.getUTCDay() === 1) xs.push(x); }
+      else { if (dt.getUTCDate() === 1) xs.push(x); }
+    }
+    return xs;
   }, [model, px, scale]);
 
   const visibleTasks = useMemo(() => (data?.tasks ?? []).filter(t=>t.category!=="drop"&&(!productIds.length||productIds.map(String).includes(String(t.product_id)))&&(!featureIds.length||featureIds.map(String).includes(String(t.feature_id)))&&(!projectIds.length||projectIds.map(String).includes(String(t.project_id)))&&(!rangeStart||t.due>=Date.parse(rangeStart)/1000)&&(!rangeEnd||t.start<=Date.parse(rangeEnd)/1000+DAY-1)), [data,productIds,featureIds,projectIds,rangeStart,rangeEnd]);
@@ -105,14 +119,12 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `gantt_${ds(Math.floor(Date.now() / 1000))}.csv`; a.click();
   }
 
-  const completedCount=visibleTasks.filter(t=>t.category==="done").length; const droppedCount=visibleTasks.filter(t=>t.category==="drop").length; const progressBase=Math.max(0,visibleTasks.length-droppedCount); const completedPct=progressBase?Math.round(completedCount/progressBase*100):0;
   const chartW = (model?.days ?? 0) * px;
   const chartH = (model?.rows.length ?? 0) * ROW_H;
   const monthBands = useMemo(() => {
-    if (!model?.days) return [];
+    if (!model?.days) return [] as { key: string; label: string; left: number; width: number }[];
     const bands: { key: string; label: string; left: number; width: number }[] = [];
-    let start = 0;
-    let key = "";
+    let start = 0; let key = "";
     for (let d = 0; d <= model.days; d++) {
       const dt = new Date((model.min + d * DAY) * 1000);
       const nextKey = `${dt.getUTCFullYear()}-${dt.getUTCMonth()}`;
@@ -144,41 +156,47 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
       {!loading && model && model.rows.length === 0 && <div className="card" style={{ padding: 40, color: "#6B7280" }}>ยังไม่มีงานที่กำหนดวันเริ่ม + วันส่ง</div>}
 
       {!loading && model && model.rows.length > 0 && (
-        <div className="card" style={{ overflow: "visible", cursor: "pointer", zIndex: 7 }}>
+        <div className="card" style={{ overflow: "hidden" }}>
           <div style={{ display: "flex" }}>
+            {/* ---------- Left label panel ---------- */}
             <div style={{ width: LABEL_W, minWidth: LABEL_W, borderRight: "2px solid #E5E7EB", background: "#fff", zIndex: 3 }}>
-              <div className="month-band" /><div style={{ height: HEAD_H, borderBottom: "1px solid #E5E7EB", display: "flex", alignItems: "center", padding: "0 14px", fontWeight: 700, fontSize: 12.5, color: NAVY, background: "#F9FAFB" }}>{mode === "project" ? "Product / Project / Task" : "ทีม / งาน"}</div>
+              <div className="month-band" />
+              <div style={{ height: HEAD_H, display: "flex", alignItems: "center", padding: "0 14px", fontWeight: 700, color: NAVY, background: "#F9FAFB", borderBottom: "1px solid #E5E7EB" }}>{mode === "project" ? "Product / Project / Task" : "ทีม / งาน"}</div>
               {model.rows.map((r) => (
-                <div key={r.key} style={{ height: ROW_H, display: "flex", alignItems: "center", padding: r.kind === "group" ? "0 12px" : "0 12px 0 24px", borderBottom: "1px solid #F4F4F6", background: r.kind === "group" ? (r.sub === "Product" ? "#EEF1F6" : "#F7F8FA") : "#fff", fontWeight: r.kind === "group" ? 700 : 500, fontSize: 12.5, color: r.kind === "group" ? NAVY : "#374151", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={r.label}>
-                  <div style={{width:"100%",minWidth:0}}><div>{r.kind === "ms" ? <span style={{ color: PINK }}>◆ </span> : null}{r.label}{r.kind !== "group" && r.sub && <span style={{ color: "#AEB4C0", fontWeight: 400, marginLeft: 6 }}>· {r.sub}</span>}</div>{r.progress!=null&&<div style={{display:"flex",alignItems:"center",gap:7,marginTop:2}}><div style={{height:4,background:"#E5E7EB",borderRadius:3,flex:1,overflow:"hidden"}}><div style={{height:"100%",width:`${r.progress}%`,background:PINK}}/></div><span style={{fontSize:12,color:NAVY}}>{r.progress}%</span></div>}</div>
+                <div key={r.key} style={{ height: ROW_H, display: "flex", alignItems: "center", padding: r.kind === "group" ? "0 12px" : "0 12px 0 26px", borderBottom: "1px solid #F4F4F6", background: r.kind === "group" ? (r.sub === "Product" ? "#E9EDF4" : r.sub === "Overall" ? "#FDECF3" : "#F5F7FA") : "#fff" }} title={r.label}>
+                  <div style={{ width:"100%", minWidth:0 }}>
+                    <div style={{ fontWeight: r.kind === "group" ? 700 : 500, color: r.kind === "group" ? NAVY : "#374151", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.label}{r.kind === "task" && r.sub && <span style={{ color: "#AEB4C0", fontWeight: 400, marginLeft: 6 }}>· {r.sub}</span>}</div>
+                    {r.progress!=null && <div style={{display:"flex",alignItems:"center",gap:7,marginTop:3}}><div style={{height:5,background:"#E5E7EB",borderRadius:3,flex:1,overflow:"hidden"}}><div style={{height:"100%",width:`${r.progress}%`,background:r.sub==="Overall"?NAVY:PINK}}/></div><span style={{color:r.sub==="Overall"?NAVY:PINK,fontWeight:700}}>{r.progress}%</span></div>}
+                  </div>
                 </div>
               ))}
             </div>
-            <div ref={scrollRef} style={{ overflowX: "auto", flex: 1 }}>
-              <div onClick={(e)=>{if((e.target as HTMLElement).closest("[data-task]"))return;const rect=e.currentTarget.getBoundingClientRect();const rowIndex=Math.floor((e.clientY-rect.top-monthBands.length*0-24-HEAD_H)/ROW_H);const row=model.rows[rowIndex];const targetProjectId=row?.projectId??row?.task?.project_id;if(!row||!targetProjectId||row.kind==="group"&&row.sub!=="Project")return;let u=model.min+Math.floor((e.clientX-rect.left)/px)*DAY;if(scale==="week"){const d=new Date(u*1000),day=d.getUTCDay()||7;u-=(day-1)*DAY}setDraft({start:u,due:u+7*DAY,projectId:targetProjectId})}} style={{ position: "relative", width: chartW, minWidth: "100%", cursor:"default" }}>
-                <div className="month-band">{monthBands.map(b=><span key={b.key} style={{position:"absolute",left:b.left,width:b.width}}>{b.label}</span>)}</div>
-                <div style={{ height: HEAD_H, position: "relative", background: "#F9FAFB" }}>
-                  {Array.from({length:model.days+1},(_,d)=><span key={`hg-${d}`} style={{position:"absolute",left:d*px,top:0,bottom:0,width:1,background:"#E5E7EB",opacity:.55}}/>)}{ticks.map((t, i) => <div key={i} style={{ position: "absolute", left: t.x, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 15, color: t.major ? NAVY : "#9AA0A6", fontWeight: t.major ? 700 : 400, paddingLeft: 5, whiteSpace: "nowrap",zIndex:2 }}>{t.label}</div>)}
-                </div>
-                <div style={{ position: "relative", height: chartH }}>
-                  {Array.from({length:model.days+1},(_,d)=>{const dt=new Date((model.min+d*DAY)*1000),we=dt.getUTCDay()===0||dt.getUTCDay()===6;return we?<div key={`we-${d}`} style={{position:"absolute",left:d*px,top:0,bottom:0,width:px,background:"rgba(107,114,128,.045)",pointerEvents:"none"}}/>:null})}
-                  {ticks.map((t, i) => <div key={i} style={{ position: "absolute", left: t.x, top: 0, bottom: 0, width: 1, background: t.major ? "#E5E7EB" : "#F1F3F5" }} />)}
-                  {todayX >= 0 && todayX <= chartW && (<><div style={{ position: "absolute", left: todayX, top: 0, bottom: 0, width: 2, background: PINK, opacity: .5 }} title="Today" /><div style={{position:"absolute",left:todayX+4,top:2,color:PINK,fontWeight:700,fontSize:12}}>TODAY</div></>)}
-                  {model.rows.map((r, i) => <div key={r.key} style={{ position: "absolute", left: 0, right: 0, top: i * ROW_H, height: ROW_H, borderBottom: "1px solid #F4F4F6", background: r.kind === "group" ? (r.sub === "Product" ? "#EEF1F6" : "#F7F8FA") : "transparent", cursor: (r.sub === "Project" || r.kind === "task") ? "copy" : "default" }} />)}
 
-                  {model.milestones.map((m) => {
-                    const x = ((m.target - model.min) / DAY) * px;
-                    const projectRow = model.rows.findIndex((r) => r.sub === "Project" && r.projectId === m.project_id);
-                    if (projectRow < 0) return null;
-                    const nextBoundary = model.rows.findIndex((r, index) => index > projectRow && r.kind === "group");
-                    const projectEndRow = nextBoundary < 0 ? model.rows.length : nextBoundary;
-                    const y = projectRow * ROW_H + ROW_H / 2;
-                    const milestoneHeight = Math.max(ROW_H / 2, projectEndRow * ROW_H - y);
-                    return <div key={`milestone-${m.id}`} onClick={(e)=>{e.stopPropagation();setEditMilestone(m);setMilestoneTitle(m.title)}} title={`${m.title} · ${ds(m.target)}`} style={{ position: "absolute", left: x, top: y, height: milestoneHeight, width: 2, background: PINK, opacity: .82, zIndex: 8, pointerEvents: "auto", cursor: "pointer" }}>
-                      <span style={{ position: "absolute", left: -7, top: -7, width: 14, height: 14, background: PINK, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 1px 3px rgba(0,0,0,.18)" }} />
-                      <span style={{ position: "absolute", left: 13, top: -12, padding: "3px 7px", background: "#fff", color: NAVY, border: `1px solid ${PINK}`, borderRadius: 5, fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap", boxShadow: "0 1px 3px rgba(0,0,0,.10)" }}>{m.title} · {ds(m.target)}</span>
-                    </div>;
-                  })}
+            {/* ---------- Right timeline ---------- */}
+            <div ref={scrollRef} style={{ overflowX: "auto", flex: 1 }}>
+              <div style={{ position: "relative", width: chartW, minWidth: "100%" }}>
+                {/* gridlines ครอบทั้งหัววันที่ + ตัวกราฟ */}
+                {gridLines.map((x, i) => <div key={`grid-${i}`} style={{ position: "absolute", left: x, top: 24, bottom: 0, width: 1, background: "#E5E7EB", opacity: .7, pointerEvents: "none" }} />)}
+
+                {/* month band */}
+                <div className="month-band">{monthBands.map(b=><span key={b.key} style={{position:"absolute",left:b.left,width:b.width,textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",height:"100%"}}>{b.label}</span>)}</div>
+
+                {/* header วัน/สัปดาห์ จัดกึ่งกลาง */}
+                <div style={{ height: HEAD_H, position: "relative", background: "transparent", borderBottom: "1px solid #E5E7EB" }}>
+                  {ticks.map((t, i) => <div key={i} style={{ position: "absolute", left: t.x, width: t.width, top: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", color: t.major ? NAVY : "#9AA0A6", fontWeight: t.major ? 700 : 500, zIndex: 2 }}>{t.label}</div>)}
+                </div>
+
+                {/* body */}
+                <div onClick={(e)=>{if((e.target as HTMLElement).closest("[data-task]"))return;const rect=e.currentTarget.getBoundingClientRect();const rowIndex=Math.floor((e.clientY-rect.top)/ROW_H);const row=model.rows[rowIndex];const targetProjectId=row?.projectId??row?.task?.project_id;if(!row||!targetProjectId||(row.kind==="group"&&row.sub!=="Project"))return;let u=model.min+Math.floor((e.clientX-rect.left)/px)*DAY;if(scale==="week"){const d=new Date(u*1000),day=d.getUTCDay()||7;u-=(day-1)*DAY}setDraft({start:u,due:u+7*DAY,projectId:targetProjectId})}} style={{ position: "relative", height: chartH, cursor: "default" }}>
+                  {/* weekend shading เฉพาะ day/week */}
+                  {scale!=="month" && Array.from({length:model.days+1},(_,d)=>{const dt=new Date((model.min+d*DAY)*1000),we=dt.getUTCDay()===0||dt.getUTCDay()===6;return we?<div key={`we-${d}`} style={{position:"absolute",left:d*px,top:0,bottom:0,width:px,background:"rgba(107,114,128,.05)",pointerEvents:"none"}}/>:null})}
+
+                  {todayX >= 0 && todayX <= chartW && (<><div style={{ position: "absolute", left: todayX, top: 0, bottom: 0, width: 2, background: PINK, opacity: .45 }} title="Today" /><div style={{position:"absolute",left:todayX+4,top:2,color:PINK,fontWeight:700,fontSize:12}}>TODAY</div></>)}
+
+                  {/* row backgrounds */}
+                  {model.rows.map((r, i) => <div key={r.key} style={{ position: "absolute", left: 0, right: 0, top: i * ROW_H, height: ROW_H, borderBottom: "1px solid #F4F4F6", background: r.kind === "group" ? (r.sub === "Product" ? "rgba(0,29,88,.03)" : r.sub === "Overall" ? "rgba(236,24,110,.04)" : "rgba(0,29,88,.015)") : "transparent", cursor: (r.sub === "Project" || r.kind === "task") ? "copy" : "default" }} />)}
+
+                  {/* dependency arrows */}
                   <svg style={{ position: "absolute", inset: 0, width: chartW, height: chartH, pointerEvents: "none" }}>
                     <defs><marker id="arr" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9AA0A6" /></marker></defs>
                     {data && data.deps.map((d, i) => {
@@ -190,21 +208,44 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                     })}
                   </svg>
 
+                  {/* summary bars (Product / Project) แบบ MS Project + task bars */}
                   {model.rows.map((r, i) => {
-                    if (r.kind === "task" && r.task) {
-                      const pos = model.taskPos.get(r.task.id)!; const col = catColor(r.task.category);
-                      const now=Math.floor(Date.now()/1000); const actualColor=r.task.category==="done"?"#16A34A":r.task.due<now?"#DC2626":r.task.due<=now+3*DAY?"#D4A017":r.task.category==="doing"?"#D4A017":null;
-                      return <div key={r.key} data-task="1" onClick={(e)=>{e.stopPropagation();setDrawerTask(r.task!.id)}} title={`${r.task.title}\n${ds(r.task.start)} → ${ds(r.task.due)}`} style={{ position: "absolute", left: pos.left, top: i * ROW_H + 5, height: ROW_H - 10, width: pos.width, minWidth:38, cursor:"pointer",zIndex:9,overflow:"visible" }}>
-                        <div style={{position:"absolute",left:0,right:0,top:2,height:7,background:"#D1D5DB",borderRadius:4}} />
-                        {actualColor&&<div style={{position:"absolute",left:0,right:0,bottom:2,height:7,background:actualColor,borderRadius:4}} />}
-                        <span style={{position:"absolute",left:6,top:-15,padding:"2px 6px",fontSize:15,color:"#1F2937",fontWeight:600,whiteSpace:"nowrap",background:"rgba(255,255,255,.94)",border:"1px solid #E5E7EB",borderRadius:4,boxShadow:"0 1px 2px rgba(0,0,0,.08)",pointerEvents:"none"}}>{r.task.title}</span>
+                    if (r.kind === "group" && r.spanStart != null && r.spanEnd != null) {
+                      const left = ((r.spanStart - model.min) / DAY) * px;
+                      const width = Math.max(8, ((r.spanEnd - r.spanStart) / DAY) * px);
+                      const color = r.sub === "Product" ? NAVY : "#3A4E77";
+                      const cy = i * ROW_H + ROW_H / 2;
+                      return <div key={`sum-${r.key}`} style={{ position: "absolute", left, top: cy - 3, width, height: 6, background: color, pointerEvents: "none" }}>
+                        <span style={{ position: "absolute", left: -1, top: 5, width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: `7px solid ${color}` }} />
+                        <span style={{ position: "absolute", right: -1, top: 5, width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: `7px solid ${color}` }} />
                       </div>;
                     }
-                    if (r.kind === "ms" && r.ms) {
-                      const x = ((r.ms.target - model.min) / DAY) * px;
-                      return <div key={r.key} title={`${r.ms.title}\n${ds(r.ms.target)}`} style={{ position: "absolute", left: x - 8, top: i * ROW_H + ROW_H / 2 - 8, width: 16, height: 16, background: PINK, transform: "rotate(45deg)", borderRadius: 3 }} />;
+                    if (r.kind === "task" && r.task) {
+                      const pos = model.taskPos.get(r.task.id)!;
+                      const now = Math.floor(Date.now() / 1000);
+                      const actualColor = r.task.category === "done" ? "#16A34A" : r.task.due < now ? "#DC2626" : (r.task.category === "doing" || r.task.due <= now + 3 * DAY) ? "#D4A017" : null;
+                      return <div key={r.key} data-task="1" onClick={(e)=>{e.stopPropagation();setDrawerTask(r.task!.id)}} title={`${r.task.title}\n${ds(r.task.start)} → ${ds(r.task.due)}`} style={{ position: "absolute", left: pos.left, top: i * ROW_H + 9, height: ROW_H - 18, width: pos.width, minWidth: 10, cursor: "pointer", zIndex: 6 }}>
+                        <div style={{ position: "absolute", left: 0, right: 0, top: 1, height: 8, background: "#D1D5DB", borderRadius: 4 }} />
+                        {actualColor && <div style={{ position: "absolute", left: 0, right: 0, bottom: 1, height: 8, background: actualColor, borderRadius: 4 }} />}
+                        <span style={{ position: "absolute", left: pos.width + 8, top: "50%", transform: "translateY(-50%)", whiteSpace: "nowrap", color: "#4B5563", pointerEvents: "none" }}>{r.task.title}</span>
+                      </div>;
                     }
                     return null;
+                  })}
+
+                  {/* milestones: เพชรอยู่แถว Project ลากเส้นลงถึงงานสุดท้ายของ Project */}
+                  {model.milestones.map((m) => {
+                    const x = ((m.target - model.min) / DAY) * px;
+                    const projectRow = model.rows.findIndex((r) => r.sub === "Project" && r.projectId === m.project_id);
+                    if (projectRow < 0) return null;
+                    const nextBoundary = model.rows.findIndex((r, index) => index > projectRow && r.kind === "group");
+                    const projectEndRow = nextBoundary < 0 ? model.rows.length : nextBoundary;
+                    const y = projectRow * ROW_H + ROW_H / 2;
+                    const height = Math.max(ROW_H / 2, projectEndRow * ROW_H - y);
+                    return <div key={`milestone-${m.id}`} onClick={(e)=>{e.stopPropagation();setEditMilestone(m);setMilestoneTitle(m.title)}} title={`${m.title} · ${ds(m.target)}`} style={{ position: "absolute", left: x, top: y, height, width: 2, background: PINK, opacity: .85, zIndex: 8, cursor: "pointer" }}>
+                      <span style={{ position: "absolute", left: -7, top: -7, width: 14, height: 14, background: PINK, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 1px 3px rgba(0,0,0,.18)" }} />
+                      <span style={{ position: "absolute", left: 13, top: -12, padding: "3px 8px", background: "#fff", color: NAVY, border: `1px solid ${PINK}`, borderRadius: 5, fontWeight: 700, whiteSpace: "nowrap", boxShadow: "0 1px 3px rgba(0,0,0,.10)" }}>{m.title} · {ds(m.target)}</span>
+                    </div>;
                   })}
                 </div>
               </div>
@@ -212,15 +253,18 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
           </div>
         </div>
       )}
+
       {editMilestone&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",zIndex:92,display:"grid",placeItems:"center"}}><div className="card" style={{padding:22,width:"min(480px,94vw)"}}><h3 style={{marginTop:0}}>แก้ไข Milestone</h3><label className="field-block"><span className="field-label">ชื่อ Milestone</span><input className="input" value={milestoneTitle} onChange={e=>setMilestoneTitle(e.target.value)}/></label><label className="field-block" style={{marginTop:12}}><span className="field-label">วันที่เป้าหมาย</span><input type="date" className="input" value={ds(editMilestone.target)} onChange={e=>setEditMilestone({...editMilestone,target:Date.parse(e.target.value)/1000})}/></label><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}><button className="btn-ghost" onClick={()=>setEditMilestone(null)}>ยกเลิก</button><button className="btn-pink" onClick={async()=>{const r=await fetch(`/api/milestones/${editMilestone.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:milestoneTitle,targetDate:editMilestone.target})});if(r.ok)location.reload();else alert("บันทึกไม่สำเร็จ")}}>บันทึก</button></div></div></div>}
       {milestoneDraft&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",zIndex:91,display:"grid",placeItems:"center"}}><div className="card" style={{padding:22,width:"min(480px,94vw)"}}><h3 style={{marginTop:0}}>เพิ่ม Milestone</h3><label className="field-block"><span className="field-label">Project</span><select className="input" value={milestoneDraft.projectId} onChange={e=>setMilestoneDraft({...milestoneDraft,projectId:Number(e.target.value)})}><option value="">เลือก Project</option>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label className="field-block" style={{marginTop:12}}><span className="field-label">ชื่อ Milestone</span><input autoFocus className="input" value={milestoneTitle} onChange={e=>setMilestoneTitle(e.target.value)}/></label><label className="field-block" style={{marginTop:12}}><span className="field-label">วันที่เป้าหมาย</span><input type="date" className="input" value={ds(milestoneDraft.target)} onChange={e=>setMilestoneDraft({...milestoneDraft,target:Date.parse(e.target.value)/1000})}/></label><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}><button className="btn-ghost" onClick={()=>setMilestoneDraft(null)}>ยกเลิก</button><button className="btn-pink" onClick={async()=>{if(!milestoneDraft.projectId){alert("กรุณาเลือก Project");return}if(!milestoneTitle.trim())return;const res=await fetch("/api/milestones/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({projectId:milestoneDraft.projectId,title:milestoneTitle.trim(),targetDate:milestoneDraft.target})});if(res.ok){setMilestoneDraft(null);setMilestoneTitle("");location.reload()}else alert((await res.json()).error||"สร้าง Milestone ไม่สำเร็จ")}}>สร้าง Milestone</button></div></div></div>}
       {draft&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",zIndex:90,display:"grid",placeItems:"center"}}><div className="card" style={{padding:22,width:"min(480px,94vw)"}}><h3 style={{marginTop:0}}>เพิ่ม Task จาก Gantt</h3><label className="field-block"><span className="field-label">ชื่อ Task</span><input autoFocus className="input" value={title} onChange={e=>setTitle(e.target.value)}/></label><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:12}}><label className="field-block"><span className="field-label">วันเริ่ม</span><input type="date" className="input" value={ds(draft.start)} onChange={e=>setDraft({...draft,start:Date.parse(e.target.value)/1000})}/></label><label className="field-block"><span className="field-label">วันสิ้นสุด</span><input type="date" className="input" value={ds(draft.due)} onChange={e=>setDraft({...draft,due:Date.parse(e.target.value)/1000})}/></label></div><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}><button className="btn-ghost" onClick={()=>setDraft(null)}>ยกเลิก</button><button className="btn-pink" onClick={async()=>{const projectId=draft.projectId;const statusId=data?.projects?.find((x:any)=>x.id===projectId)?.first_status_id??1;const res=await fetch("/api/tasks/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title,projectId,statusId,startDate:draft.start,dueDate:draft.due})});const j=await res.json();if(res.ok){alert(`สร้าง Task สำเร็จ ID: ${j.id}`);setDraft(null);setTitle("");location.reload()}else alert(j.error) }}>สร้าง Task</button></div></div></div>}
       {drawerTask != null && <TaskDrawer taskId={drawerTask} users={[]} priorities={[]} statuses={[]} features={[]} tags={[]} onClose={()=>setDrawerTask(null)} onChanged={()=>{}} onNeedsReload={()=>location.reload()} />}
-      <div style={{ display: "flex", gap: 14, marginTop: 12, fontSize: 12, color: "#6B7280", flexWrap: "wrap" }}>
-        {[["#D1D5DB", "Plan"], ["#16A34A", "Actual - Done"], ["#D4A017", "Actual - เสี่ยง Delay"], ["#DC2626", "Actual - Delay"]].map(([c, l]) => <span key={l} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 12, borderRadius: 3, background: c as string }} />{l}</span>)}
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 12, background: PINK, transform: "rotate(45deg)", borderRadius: 2 }} /> Milestone</span>
+
+      <div style={{ display: "flex", gap: 16, marginTop: 12, color: "#6B7280", flexWrap: "wrap", alignItems: "center" }}>
+        {[["#D1D5DB", "Plan"], ["#16A34A", "Actual · Done"], ["#D4A017", "Actual · เสี่ยง Delay"], ["#DC2626", "Actual · Delay"]].map(([c, l]) => <span key={l} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 14, height: 8, borderRadius: 3, background: c as string }} />{l}</span>)}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 12, height: 12, background: PINK, transform: "rotate(45deg)", borderRadius: 2 }} /> Milestone</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 22, height: 6, background: NAVY }} /> Summary (Product/Project)</span>
       </div>
     </div>
   );
 }
-function segBtn(active: boolean): React.CSSProperties { return { padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 12.5, background: active ? NAVY : "transparent", color: active ? "#fff" : "#6B7280" }; }
+function segBtn(active: boolean): React.CSSProperties { return { padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer", fontWeight: 600, background: active ? NAVY : "transparent", color: active ? "#fff" : "#6B7280" }; }
