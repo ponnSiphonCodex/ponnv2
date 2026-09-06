@@ -57,7 +57,6 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
         for (const [proj, pts] of byProj) {
           rows.push({ key: `proj:${prod}:${proj}`, label: proj, kind: "group", sub: "Project" });
           for (const t of pts) rows.push({ key: `t${t.id}`, label: t.title, sub: t.assignee ?? "—", kind: "task", task: t });
-          for (const m of selectedMilestones.filter((x) => x.project_name === proj)) rows.push({ key: `ms${m.id}`, label: m.title, sub: "Milestone", kind: "ms", ms: m });
         }
       }
     } else {
@@ -156,7 +155,14 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                   {todayX >= 0 && todayX <= chartW && (<><div style={{ position: "absolute", left: todayX, top: 0, bottom: 0, width: 2, background: PINK, opacity: .5 }} title="Today" /><div style={{position:"absolute",left:todayX+4,top:2,color:PINK,fontWeight:700,fontSize:12}}>TODAY</div></>)}
                   {model.rows.map((r, i) => <div key={r.key} style={{ position: "absolute", left: 0, right: 0, top: i * ROW_H, height: ROW_H, borderBottom: "1px solid #F4F4F6", background: r.kind === "group" ? (r.sub === "Product" ? "#EEF1F6" : "#F7F8FA") : "transparent" }} />)}
 
-                  
+                  {model.milestones.map((m, mi) => {
+                    const x = ((m.target - model.min) / DAY) * px;
+                    const top = 8 + (mi % 3) * 26;
+                    return <div key={`milestone-${m.id}`} title={`${m.title} · ${ds(m.target)}`} style={{ position: "absolute", left: x, top: 0, bottom: 0, width: 2, background: PINK, opacity: .78, zIndex: 5, pointerEvents: "none" }}>
+                      <span style={{ position: "absolute", left: -7, top, width: 14, height: 14, background: PINK, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 1px 3px rgba(0,0,0,.18)" }} />
+                      <span style={{ position: "absolute", left: 13, top: top - 4, padding: "3px 7px", background: "#fff", color: NAVY, border: `1px solid ${PINK}`, borderRadius: 5, fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap", boxShadow: "0 1px 3px rgba(0,0,0,.10)" }}>{m.title} · {ds(m.target)}</span>
+                    </div>;
+                  })}
                   <svg style={{ position: "absolute", inset: 0, width: chartW, height: chartH, pointerEvents: "none" }}>
                     <defs><marker id="arr" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9AA0A6" /></marker></defs>
                     {data && data.deps.map((d, i) => {
