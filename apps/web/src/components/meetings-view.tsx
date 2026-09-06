@@ -153,9 +153,9 @@ function MeetingCard({ e, canWrite }: { e: Meeting; canWrite: boolean }) {
       </div>
       {e.organizer && <div style={{ fontSize: 12, color: "#6B7280", marginTop: 4 }}>{e.organizer}</div>}
       <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
-        {e.has_note ? <span className="badge" style={{ background: "#ECFDF5", color: "#047857" }}>มีบันทึก</span> : null}
         {e.min_cnt ? <span className="badge" style={{ background: "#FDE7F0", color: "#B4185A" }}>Minute {e.min_cnt}</span> : null}
         {e.tr_cnt ? <span className="badge" style={{ background: "#EEF2FF", color: "#4338CA" }}>Transcript {e.tr_cnt}</span> : null}
+        <span className="badge" style={{background:"#F4F4F6",color:"#6B7280"}}>ไฟล์แนบ {e.file_cnt??0} ไฟล์</span>
       </div>
       <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
         <a href={gcalUrl(e)} target="_blank" className="btn-ghost" style={{ padding: "5px 10px", fontSize: 12, textDecoration: "none", display: "inline-flex", gap: 5, alignItems: "center" }}><Icon name="gcal" size={14} /> Google</a>
