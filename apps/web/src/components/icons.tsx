@@ -27,6 +27,8 @@ export function Icon({ name, size = 20 }: { name: string; size?: number }) {
     case "tag": return <svg {...p}><path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="7.5" cy="7.5" r="1.4"/></svg>;
     case "custom": return <svg {...p}><path d="M6 3v6a6 6 0 0 0 12 0V3M6 21v-6a6 6 0 0 1 12 0v6"/><path d="M6 9h12M6 15h12"/></svg>;
     case "users": return <svg {...p}><circle cx="9" cy="8" r="3.2"/><path d="M2.5 21v-1.5A5 5 0 0 1 7.5 15h3A5 5 0 0 1 15.5 20V21"/><circle cx="18" cy="7" r="2.4"/><path d="M21.5 21v-1a4 4 0 0 0-3-3.8"/></svg>;
+    case "team": return <svg {...p}><circle cx="12" cy="7" r="3"/><path d="M6 21v-1a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v1"/><circle cx="5" cy="10" r="2"/><circle cx="19" cy="10" r="2"/></svg>;
+    case "usercog": return <svg {...p}><circle cx="10" cy="8" r="3.2"/><path d="M3 21v-1.5A5 5 0 0 1 8 15h2"/><circle cx="18" cy="16" r="2.6"/><path d="M18 12.6v1M18 18.4v1M21 16h-1M16 16h-1M20.1 13.9l-.7.7M16.6 17.4l-.7.7M20.1 18.1l-.7-.7M16.6 14.6l-.7-.7"/></svg>;
     case "log": return <svg {...p}><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>;
     case "settings": return <svg {...p}><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14 2h-4l-.6 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2L10 22h4l.6-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5A7 7 0 0 0 19 12z"/></svg>;
     default: return <svg {...p}><circle cx="12" cy="12" r="9"/></svg>;

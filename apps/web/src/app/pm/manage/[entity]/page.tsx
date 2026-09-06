@@ -10,8 +10,10 @@ export default async function ManagePage({ params }: { params: Promise<{ entity:
   const { entity } = await params;
   const def = entityDef(entity); if (!def) notFound();
   if (def.masterOnly && !a.admin && !a.scope.isPmo) redirect("/pm/dashboard");
+  // map entity → menu key ที่ถูก highlight
+  const activeKey = entity === "projects" ? "project" : entity;
   return (
-    <AppShell active={entity} {...shellProps(a)}>
+    <AppShell active={activeKey} {...shellProps(a)}>
       <PageHeader title={def.label} subtitle="สร้าง แก้ไข ลบ ตามสิทธิ์ของคุณ" />
       <CrudManager entity={entity} />
     </AppShell>
