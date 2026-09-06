@@ -6,7 +6,7 @@ const NAVY = "#001D58", PINK = "#EC186E";
 function LoginContent() {
   const sp = useSearchParams();
   const urlError = sp.get("error"); const detail = sp.get("detail");
-  const [tab, setTab] = useState<"google" | "local">("local");
+  const [tab, setTab] = useState<"google" | "local">("google");
   const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null); const [loading, setLoading] = useState(false);
   async function handleLocal(e: FormEvent) {

@@ -54,11 +54,20 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
   useEffect(() => {
     if (localStorage.getItem("sidebar_collapsed") === "1") setCollapsed(true);
     setReady(true);
+    // v28: preload โปรไฟล์ลง cache ตั้งแต่เข้าระบบ → เมนู logout เปิดทันที ไม่ต้องรอโหลด
+    fetch("/api/profile").then((r) => r.ok ? r.json() : null).then((d) => { if (d) { try { localStorage.setItem("pmcache:profile", JSON.stringify({ data: d, at: Date.now(), v: 1 })); } catch {} } }).catch(() => {});
     // badge คำขอผู้ใช้ (admin) — cache localStorage เพื่อไม่กระพริบ
     if (isAdmin) {
       const cached = Number(localStorage.getItem("pending_req") || 0); if (cached) setReqCount(cached);
       fetch("/api/admin/pending-count").then((r) => r.ok ? r.json() : null).then((d) => { if (d) { setReqCount(d.count); localStorage.setItem("pending_req", String(d.count)); } }).catch(() => {});
     }
+  }, [isAdmin]);
+  // v28: อัปเดต badge ทันทีเมื่อ approve/reject โดยไม่ต้องรอเปลี่ยนหน้า
+  useEffect(() => {
+    if (!isAdmin) return;
+    const onChange = (e: any) => setReqCount(Number(e.detail) || 0);
+    window.addEventListener("pending-req-changed", onChange);
+    return () => window.removeEventListener("pending-req-changed", onChange);
   }, [isAdmin]);
   useEffect(() => { if (PROJECT_VIEWS.includes(active)) setProjOpen(true); }, [active]);
   function toggle() { setCollapsed((c) => { const n = !c; localStorage.setItem("sidebar_collapsed", n ? "1" : "0"); return n; }); }

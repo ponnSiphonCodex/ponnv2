@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import { confirmDialog } from "@/lib/confirm";
 const NAVY = "#001D58";
 const REF_TYPES = ["task", "project", "feature"];
 const TYPES = ["Text", "Number", "Date", "Dropdown", "Checkbox"];
@@ -16,7 +17,7 @@ export function CustomFieldManager({ canWrite }: { canWrite: boolean }) {
     if (!r.ok) { const j = await r.json().catch(() => ({})); setErr(j.error || "เพิ่มไม่สำเร็จ"); return; }
     setName(""); setOptions(""); load();
   }
-  async function del(id: number) { if (!confirm("ลบ field นี้?")) return; await fetch(`/api/custom-fields?id=${id}`, { method: "DELETE" }); load(); }
+  async function del(id: number) { if (!(await confirmDialog({ message: "ลบ Custom Field นี้?", danger: true }))) return; await fetch(`/api/custom-fields?id=${id}`, { method: "DELETE" }); load(); }
   return (
     <div style={{ padding: 24 }}>
       {canWrite && (

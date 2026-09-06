@@ -1,6 +1,17 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { Icon } from "./icons";
+import { confirmDialog, alertDialog } from "@/lib/confirm";
+import { SkelRows } from "./skeleton";
+
+// v28: orphan reject ต้อง "จำ" ข้ามการ refresh — เก็บ localStorage (ไม่มี DB row ให้ลบเพราะ orphan ไม่ใช่ user จริง)
+const REJECTED_ORPHAN_KEY = "pm_rejected_orphans";
+function readRejectedOrphans(): string[] { try { return JSON.parse(localStorage.getItem(REJECTED_ORPHAN_KEY) || "[]"); } catch { return []; } }
+function writeRejectedOrphans(list: string[]) { try { localStorage.setItem(REJECTED_ORPHAN_KEY, JSON.stringify(list)); } catch {} }
+// v28: sidebar badge (pending_req) ต้องอัปเดตทันทีหลัง approve/reject ไม่ต้องรอ navigate ใหม่
+function bumpSidebarBadge(delta: number) {
+  try { const cur = Number(localStorage.getItem("pending_req") || 0); const next = Math.max(0, cur + delta); localStorage.setItem("pending_req", String(next)); window.dispatchEvent(new CustomEvent("pending-req-changed", { detail: next })); } catch {}
+}
 
 const NAVY = "#001D58", PINK = "#EC186E";
 const PAGE_SIZE = 10;
@@ -30,7 +41,7 @@ export function UserManager() {
     if (res.ok) { const d = await res.json(); setUsers(d.users); setOrphans(d.orphanLogins); setMeta({ sysRoles: d.sysRoles, pmRoles: d.pmRoles }); }
     setLoading(false);
   }, []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); setRejected(readRejectedOrphans()); }, [load]);
 
   // แยก guest → คำขอ, ที่เหลือ → ผู้ใช้จริง
   const realUsers = users.filter((u) => !isGuest(u));
@@ -48,20 +59,37 @@ export function UserManager() {
     return o;
   }
   async function closeUser(u: UserRow) {
-    if (!confirm(`ปิดผู้ใช้ "${u.name || u.email}" ? (จะหายจากระบบ)`)) return;
+    if (!(await confirmDialog({ title: "ปิดผู้ใช้งาน", message: `ปิดผู้ใช้ "${u.name || u.email}" ?\nผู้ใช้จะหายจากระบบ (ขอเข้าใหม่ได้)`, danger: true, confirmText: "ปิดผู้ใช้" }))) return;
+    const prev = users;
     setUsers((us) => us.filter((x) => x.id !== u.id));
-    fetch(`/api/admin/users?id=${u.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/users?id=${u.id}`, { method: "DELETE" });
+    if (!res.ok) { setUsers(prev); await alertDialog("ปิดผู้ใช้ไม่สำเร็จ — ลองใหม่อีกครั้ง"); return; }
+    load(); // v28: refetch จาก DB จริงเสมอ กันหน้าจอเพี้ยนจาก server
   }
-  // Approve guest → ให้สิทธิ์ User
+  // Approve guest → ให้สิทธิ์ User — v28: ตรวจผลจริงจาก server + refetch ให้ตรง DB เสมอ
   async function approveGuest(u: UserRow) {
-    setUsers((us) => us.map((x) => x.id === u.id ? { ...x, roles: [{ id: 2, name: "User" }] } : x));
-    await fetch("/api/admin/users", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: u.id, sysRoleId: 2 }) });
+    if (!(await confirmDialog({ title: "อนุมัติผู้ใช้", message: `อนุมัติให้ "${u.name || u.email}" ใช้งานระบบ?`, confirmText: "อนุมัติ" }))) return;
+    const res = await fetch("/api/admin/users", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: u.id, sysRoleId: 2 }) });
+    if (!res.ok) { await alertDialog("อนุมัติไม่สำเร็จ — ลองใหม่อีกครั้ง"); return; }
+    bumpSidebarBadge(-1);
     setTab("users");
+    load(); // ดึงข้อมูลจริงมาแสดง (ไม่พึ่ง optimistic เพียงอย่างเดียว)
   }
-  // Reject guest → ลบ (จะกลับมา request ใหม่ได้เมื่อ login อีก)
+  // Reject guest → ลบออกจากระบบ (จะกลับมาขอสิทธิ์ใหม่ได้เมื่อ login อีกครั้ง)
   async function rejectGuest(u: UserRow) {
+    if (!(await confirmDialog({ title: "ปฏิเสธคำขอ", message: `ปฏิเสธ "${u.name || u.email}" ?\nเขายังสามารถล็อกอินขอสิทธิ์ใหม่ได้ภายหลัง`, danger: true, confirmText: "ปฏิเสธ" }))) return;
+    const prev = users;
     setUsers((us) => us.filter((x) => x.id !== u.id));
-    fetch(`/api/admin/users?id=${u.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/users?id=${u.id}`, { method: "DELETE" });
+    if (!res.ok) { setUsers(prev); await alertDialog("ปฏิเสธไม่สำเร็จ — ลองใหม่อีกครั้ง"); return; }
+    bumpSidebarBadge(-1);
+    load(); // v28: refetch ทันที กันกรณี DELETE ไม่สำเร็จจริงแต่ UI คิดว่าสำเร็จ (root cause ของบั๊คเดิม)
+  }
+  // Reject orphan (ยังไม่มี user row จริง) → เก็บ localStorage ให้ "จำ" ข้าม refresh ได้จริง
+  async function rejectOrphan(email: string) {
+    if (!(await confirmDialog({ title: "ปฏิเสธคำขอ", message: `ปฏิเสธ "${email}" ?\nเขายังสามารถล็อกอินขอสิทธิ์ใหม่ได้ภายหลัง`, danger: true, confirmText: "ปฏิเสธ" }))) return;
+    const next = [...rejected, email];
+    setRejected(next); writeRejectedOrphans(next); bumpSidebarBadge(-1);
   }
 
   const term = q.trim().toLowerCase();
@@ -94,15 +122,14 @@ export function UserManager() {
         </div>
       </div>
 
-      {loading && <div style={{ color: "#6B7280" }}>กำลังโหลด...</div>}
-
-      {!loading && tab === "users" && (
+      {tab === "users" && (
         <>
           <div className="card" style={{ overflowX: "auto" }}>
             <table>
               <thead><tr style={{ background: "#F9FAFB", textAlign: "left" }}><th style={th}>ผู้ใช้</th><th style={th}>System Role</th><th style={th}>บทบาท PM</th><th style={th}>เข้าล่าสุด</th><th style={th}></th></tr></thead>
               <tbody>
-                {shown.length === 0 && <tr><td colSpan={5} style={{ ...td, color: "#9AA0A6" }}>ไม่พบผู้ใช้</td></tr>}
+                {loading && <SkelRows cols={5} />}
+                {!loading && shown.length === 0 && <tr><td colSpan={5} style={{ ...td, color: "#9AA0A6" }}>ไม่พบผู้ใช้</td></tr>}
                 {shown.map((u) => (
                   <>
                     <tr key={u.id} style={{ borderTop: "1px solid #F0F1F3" }}>
@@ -149,7 +176,7 @@ export function UserManager() {
               <div><div style={{ fontWeight: 600 }}>{o.email}</div><div style={{ fontSize: 12, color: "#9AA0A6" }}>ยังไม่มีบัญชี · ล่าสุด {fmtDT(o.lastLogin)} · {o.count} ครั้ง</div></div>
               <div style={{ display: "flex", gap: 6 }}>
                 <button className="icon-btn" title="อนุมัติ (สร้างผู้ใช้)" onClick={() => setAddOpen({ email: o.email })} style={{ ...iconBtn, color: "#fff", background: "#16A34A", border: "none", width: 36, height: 36 }}><Icon name="check" size={18} /></button>
-                <button className="icon-btn" title="ปฏิเสธ" onClick={() => setRejected((r) => [...r, o.email])} style={{ ...iconBtn, color: "#fff", background: "#DC2626", border: "none", width: 36, height: 36 }}><Icon name="close" size={18} /></button>
+                <button className="icon-btn" title="ปฏิเสธ" onClick={() => rejectOrphan(o.email)} style={{ ...iconBtn, color: "#fff", background: "#DC2626", border: "none", width: 36, height: 36 }}><Icon name="close" size={18} /></button>
               </div>
             </div>
           ))}

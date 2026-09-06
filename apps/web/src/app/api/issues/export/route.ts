@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const status = u.searchParams.get("status");
   const months = Number(u.searchParams.get("months") || "12");
   const since = Math.floor(Date.now() / 1000) - months * 30 * 24 * 3600;
-
+  try {
   const rows = (await c.d1.prepare(
     `SELECT i.id, i.title, i.description, i.action_plan, i.status,
        pj.name AS project_name, pd.name AS product_name,
@@ -45,4 +45,7 @@ export async function GET(req: NextRequest) {
   const csv = "\uFEFF" + lines.join("\r\n"); // BOM → Excel อ่านภาษาไทยถูก
   const fname = `issues_${new Date().toISOString().slice(0, 10)}.csv`;
   return new Response(csv, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${fname}"` } });
+  } catch (e) {
+    return new Response(e instanceof Error ? e.message : String(e), { status: 500 });
+  }
 }

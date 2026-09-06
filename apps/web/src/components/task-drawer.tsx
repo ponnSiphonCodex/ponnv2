@@ -2,6 +2,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { apiWrite } from "@/lib/offline";
 import { uploadToGoogleDrive } from "@/lib/upload";
+import { fmtDateTime } from "@/lib/fmt";
+import { confirmDialog } from "@/lib/confirm";
 
 const NAVY = "#001D58", PINK = "#EC186E";
 type Ref = { id: string | number; label: string };
@@ -94,7 +96,7 @@ export function TaskDrawer({ taskId, users, priorities, statuses, features, tags
                 </div>
               </Row>
               <CustomFields taskId={taskId} />
-              <button onClick={async () => { if (confirm("ลบงานนี้?")) { await apiWrite(`/api/tasks/${taskId}`, "DELETE", {}); onNeedsReload?.(); onClose(); } }} style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, border: "1px solid #FCA5A5", background: "#fff", color: "#DC2626", cursor: "pointer", fontWeight: 600 }}>ลบงานนี้</button>
+              <button onClick={async () => { if (await confirmDialog({ message: "ลบงานนี้?", danger: true })) { await apiWrite(`/api/tasks/${taskId}`, "DELETE", {}); onNeedsReload?.(); onClose(); } }} style={{ alignSelf: "flex-start", padding: "8px 14px", borderRadius: 8, border: "1px solid #FCA5A5", background: "#fff", color: "#DC2626", cursor: "pointer", fontWeight: 600 }}>ลบงานนี้</button>
             </div>
           )}
 
@@ -119,7 +121,7 @@ function CommentTab({ taskId, comments, onPost }: { taskId: number; comments: an
       {comments.map((c) => (
         <div key={c.id} style={{ borderLeft: `3px solid ${PINK}`, paddingLeft: 12 }}>
           <div style={{ fontSize: 13 }}>{c.content}</div>
-          <div style={{ fontSize: 11, color: "#9AA0A6" }}>{c.author ?? "—"} · {new Date(c.created_at * 1000).toLocaleString("th-TH")}</div>
+          <div style={{ fontSize: 11, color: "#9AA0A6" }}>{c.author ?? "—"} · {fmtDateTime(c.created_at)}</div>
         </div>
       ))}
     </div>
@@ -216,7 +218,7 @@ function ActivityTab({ activity }: { activity: any[] }) {
       {activity.map((a) => (
         <div key={a.id} style={{ fontSize: 12.5, display: "flex", gap: 8 }}>
           <span style={{ color: PINK }}>●</span>
-          <div><b>{a.actor ?? "—"}</b> {a.action}{a.new_value ? ` → ${a.new_value}` : ""}<div style={{ color: "#9AA0A6", fontSize: 11 }}>{new Date(a.created_at * 1000).toLocaleString("th-TH")}</div></div>
+          <div><b>{a.actor ?? "—"}</b> {a.action}{a.new_value ? ` → ${a.new_value}` : ""}<div style={{ color: "#9AA0A6", fontSize: 11 }}>{fmtDateTime(a.created_at)}</div></div>
         </div>
       ))}
     </div>

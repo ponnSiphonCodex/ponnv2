@@ -1,0 +1,3 @@
+CREATE TABLE IF NOT EXISTS team_hidden (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, viewer_id TEXT NOT NULL, target_kind TEXT NOT NULL, target_id TEXT NOT NULL
+);
