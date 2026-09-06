@@ -177,7 +177,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
   return (
     <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "22px 26px", borderBottom: "1px solid #E5E7EB", background: "#fff", gap: 16, flexWrap: "wrap" }}>
-      <div><h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: NAVY }}>{title}</h1>{subtitle && <p style={{ margin: "4px 0 0", fontSize: 13.5, color: "#6B7280" }}>{subtitle}</p>}</div>
+      <div><h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: NAVY }}>{title}</h1></div>
       {actions && <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{actions}</div>}
     </header>
   );

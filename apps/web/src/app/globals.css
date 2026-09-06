@@ -56,3 +56,6 @@ html,body{font-size:15px!important}body,input,select,textarea,button{font-size:1
 
 /* V52 typography baseline */
 html,body,button,input,select,textarea,a,span,div,p,label,td,th{font-size:15px!important}h1,.page-title{font-size:18px!important}
+
+/* V54 strict typography */
+*{font-size:15px!important}h1,h2,h3,h4,h5,h6,.page-title,.form-section-title{font-size:18px!important}
