@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { cachedFetch, TTL } from "@/lib/cache";
 import { Skel } from "./skeleton";
 import { MultiSelect } from "./multi-select";
+import { TaskDrawer } from "./task-drawer";
 
 const NAVY = "#001D58", PINK = "#EC186E";
 const DAY = 86400;
@@ -26,7 +27,8 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
   const [rangeStart,setRangeStart]=useState(""); const [rangeEnd,setRangeEnd]=useState("");
-  const [draft,setDraft]=useState<{start:number;due:number}|null>(null); const [title,setTitle]=useState("");
+  const [draft,setDraft]=useState<{start:number;due:number;projectId:number}|null>(null); const [title,setTitle]=useState("");
+  const [drawerTask,setDrawerTask]=useState<number|null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
     let max = dayFloor(Math.max(...items)) + DAY * 3;
     const days = Math.round((max - min) / DAY);
 
-    type Row = { key: string; label: string; sub?: string; kind: "group" | "task" | "ms"; task?: Task; ms?: Milestone };
+    type Row = { key: string; label: string; sub?: string; kind: "group" | "task" | "ms"; task?: Task; ms?: Milestone; projectId?: number };
     const rows: Row[] = [];
     if (mode === "project") {
       const byProduct = new Map<string, Task[]>();
@@ -55,7 +57,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
         const byProj = new Map<string, Task[]>();
         for (const t of ts) { const k = t.project_name; (byProj.get(k) ?? byProj.set(k, []).get(k)!).push(t); }
         for (const [proj, pts] of byProj) {
-          rows.push({ key: `proj:${prod}:${proj}`, label: proj, kind: "group", sub: "Project" });
+          rows.push({ key: `proj:${prod}:${proj}`, label: proj, kind: "group", sub: "Project", projectId: pts[0]?.project_id });
           for (const t of pts) rows.push({ key: `t${t.id}`, label: t.title, sub: t.assignee ?? "—", kind: "task", task: t });
         }
       }
@@ -144,7 +146,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
               ))}
             </div>
             <div ref={scrollRef} style={{ overflowX: "auto", flex: 1 }}>
-              <div onClick={(e)=>{if((e.target as HTMLElement).closest("[data-task]"))return;const rect=e.currentTarget.getBoundingClientRect();let u=model.min+Math.floor((e.clientX-rect.left)/px)*DAY;if(scale==="week"){const d=new Date(u*1000),day=d.getUTCDay()||7;u-=(day-1)*DAY}setDraft({start:u,due:u+7*DAY})}} style={{ position: "relative", width: chartW, minWidth: "100%", cursor:"crosshair" }}>
+              <div onClick={(e)=>{if((e.target as HTMLElement).closest("[data-task]"))return;const rect=e.currentTarget.getBoundingClientRect();const rowIndex=Math.floor((e.clientY-rect.top-monthBands.length*0-24-HEAD_H)/ROW_H);const row=model.rows[rowIndex];if(!row||row.sub!=="Project"||!row.projectId)return;let u=model.min+Math.floor((e.clientX-rect.left)/px)*DAY;if(scale==="week"){const d=new Date(u*1000),day=d.getUTCDay()||7;u-=(day-1)*DAY}setDraft({start:u,due:u+7*DAY,projectId:row.projectId})}} style={{ position: "relative", width: chartW, minWidth: "100%", cursor:"copy" }}>
                 <div className="month-band">{monthBands.map(b=><span key={b.key} style={{position:"absolute",left:b.left,width:b.width}}>{b.label}</span>)}</div>
                 <div style={{ height: HEAD_H, borderBottom: "1px solid #E5E7EB", position: "relative", background: "#F9FAFB" }}>
                   {ticks.map((t, i) => <div key={i} style={{ position: "absolute", left: t.x, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10.5, color: t.major ? NAVY : "#AEB4C0", fontWeight: t.major ? 700 : 400, paddingLeft: 3, whiteSpace: "nowrap" }}>{t.label}</div>)}
@@ -155,12 +157,14 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                   {todayX >= 0 && todayX <= chartW && (<><div style={{ position: "absolute", left: todayX, top: 0, bottom: 0, width: 2, background: PINK, opacity: .5 }} title="Today" /><div style={{position:"absolute",left:todayX+4,top:2,color:PINK,fontWeight:700,fontSize:12}}>TODAY</div></>)}
                   {model.rows.map((r, i) => <div key={r.key} style={{ position: "absolute", left: 0, right: 0, top: i * ROW_H, height: ROW_H, borderBottom: "1px solid #F4F4F6", background: r.kind === "group" ? (r.sub === "Product" ? "#EEF1F6" : "#F7F8FA") : "transparent" }} />)}
 
-                  {model.milestones.map((m, mi) => {
+                  {model.milestones.map((m) => {
                     const x = ((m.target - model.min) / DAY) * px;
-                    const top = 8 + (mi % 3) * 26;
-                    return <div key={`milestone-${m.id}`} title={`${m.title} · ${ds(m.target)}`} style={{ position: "absolute", left: x, top: 0, bottom: 0, width: 2, background: PINK, opacity: .78, zIndex: 5, pointerEvents: "none" }}>
-                      <span style={{ position: "absolute", left: -7, top, width: 14, height: 14, background: PINK, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 1px 3px rgba(0,0,0,.18)" }} />
-                      <span style={{ position: "absolute", left: 13, top: top - 4, padding: "3px 7px", background: "#fff", color: NAVY, border: `1px solid ${PINK}`, borderRadius: 5, fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap", boxShadow: "0 1px 3px rgba(0,0,0,.10)" }}>{m.title} · {ds(m.target)}</span>
+                    const projectRow = model.rows.findIndex((r) => r.sub === "Project" && r.projectId === m.project_id);
+                    if (projectRow < 0) return null;
+                    const y = projectRow * ROW_H + ROW_H / 2;
+                    return <div key={`milestone-${m.id}`} title={`${m.title} · ${ds(m.target)}`} style={{ position: "absolute", left: x, top: y, bottom: 0, width: 2, background: PINK, opacity: .82, zIndex: 5, pointerEvents: "none" }}>
+                      <span style={{ position: "absolute", left: -7, top: -7, width: 14, height: 14, background: PINK, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 1px 3px rgba(0,0,0,.18)" }} />
+                      <span style={{ position: "absolute", left: 13, top: -12, padding: "3px 7px", background: "#fff", color: NAVY, border: `1px solid ${PINK}`, borderRadius: 5, fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap", boxShadow: "0 1px 3px rgba(0,0,0,.10)" }}>{m.title} · {ds(m.target)}</span>
                     </div>;
                   })}
                   <svg style={{ position: "absolute", inset: 0, width: chartW, height: chartH, pointerEvents: "none" }}>
@@ -177,7 +181,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                   {model.rows.map((r, i) => {
                     if (r.kind === "task" && r.task) {
                       const pos = model.taskPos.get(r.task.id)!; const col = catColor(r.task.category);
-                      return <div key={r.key} data-task="1" title={`${r.task.title}\n${ds(r.task.start)} → ${ds(r.task.due)}`} style={{ position: "absolute", left: pos.left, top: i * ROW_H + 7, height: ROW_H - 14, width: pos.width, background: col, borderRadius: 5, boxShadow: "0 1px 2px rgba(0,0,0,.12)", display: "flex", alignItems: "center", padding: "0 6px", overflow: "hidden" }}>
+                      return <div key={r.key} data-task="1" onClick={(e)=>{e.stopPropagation();setDrawerTask(r.task!.id)}} title={`${r.task.title}\n${ds(r.task.start)} → ${ds(r.task.due)}`} style={{ position: "absolute", left: pos.left, top: i * ROW_H + 7, height: ROW_H - 14, width: pos.width, background: col, borderRadius: 5, boxShadow: "0 1px 2px rgba(0,0,0,.12)", display: "flex", alignItems: "center", padding: "0 6px", overflow: "hidden" }}>
                         <span style={{ fontSize: 10.5, color: "#fff", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.task.title}</span>
                       </div>;
                     }
@@ -193,7 +197,8 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
           </div>
         </div>
       )}
-      {draft&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",zIndex:90,display:"grid",placeItems:"center"}}><div className="card" style={{padding:22,width:"min(480px,94vw)"}}><h3 style={{marginTop:0}}>เพิ่ม Task จาก Gantt</h3><label className="field-block"><span className="field-label">ชื่อ Task</span><input autoFocus className="input" value={title} onChange={e=>setTitle(e.target.value)}/></label><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:12}}><label className="field-block"><span className="field-label">วันเริ่ม</span><input type="date" className="input" value={ds(draft.start)} onChange={e=>setDraft({...draft,start:Date.parse(e.target.value)/1000})}/></label><label className="field-block"><span className="field-label">วันสิ้นสุด</span><input type="date" className="input" value={ds(draft.due)} onChange={e=>setDraft({...draft,due:Date.parse(e.target.value)/1000})}/></label></div><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}><button className="btn-ghost" onClick={()=>setDraft(null)}>ยกเลิก</button><button className="btn-pink" onClick={async()=>{const projectId=projectIds.length===1?Number(projectIds[0]):null;if(!projectId){alert("กรุณาเลือก Project เดียวก่อนเพิ่ม Task");return;}const statusId=data?.projects?.find((x:any)=>x.id===projectId)?.first_status_id??1;const res=await fetch("/api/tasks/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title,projectId,statusId,startDate:draft.start,dueDate:draft.due})});const j=await res.json();if(res.ok){alert(`สร้าง Task สำเร็จ ID: ${j.id}`);setDraft(null);setTitle("");location.reload()}else alert(j.error) }}>สร้าง Task</button></div></div></div>}
+      {draft&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",zIndex:90,display:"grid",placeItems:"center"}}><div className="card" style={{padding:22,width:"min(480px,94vw)"}}><h3 style={{marginTop:0}}>เพิ่ม Task จาก Gantt</h3><label className="field-block"><span className="field-label">ชื่อ Task</span><input autoFocus className="input" value={title} onChange={e=>setTitle(e.target.value)}/></label><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:12}}><label className="field-block"><span className="field-label">วันเริ่ม</span><input type="date" className="input" value={ds(draft.start)} onChange={e=>setDraft({...draft,start:Date.parse(e.target.value)/1000})}/></label><label className="field-block"><span className="field-label">วันสิ้นสุด</span><input type="date" className="input" value={ds(draft.due)} onChange={e=>setDraft({...draft,due:Date.parse(e.target.value)/1000})}/></label></div><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}><button className="btn-ghost" onClick={()=>setDraft(null)}>ยกเลิก</button><button className="btn-pink" onClick={async()=>{const projectId=draft.projectId;const statusId=data?.projects?.find((x:any)=>x.id===projectId)?.first_status_id??1;const res=await fetch("/api/tasks/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title,projectId,statusId,startDate:draft.start,dueDate:draft.due})});const j=await res.json();if(res.ok){alert(`สร้าง Task สำเร็จ ID: ${j.id}`);setDraft(null);setTitle("");location.reload()}else alert(j.error) }}>สร้าง Task</button></div></div></div>}
+      {drawerTask != null && <TaskDrawer taskId={drawerTask} users={[]} priorities={[]} statuses={[]} features={[]} tags={[]} onClose={()=>setDrawerTask(null)} onChanged={()=>{}} onNeedsReload={()=>location.reload()} />}
       <div style={{ display: "flex", gap: 14, marginTop: 12, fontSize: 12, color: "#6B7280", flexWrap: "wrap" }}>
         {[["#0284C7", "To Do"], ["#D4A017", "In Progress"], ["#16A34A", "Done"], ["#DC2626", "Drop"], ["#64748B", "Backlog"]].map(([c, l]) => <span key={l} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 12, borderRadius: 3, background: c as string }} />{l}</span>)}
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 12, background: PINK, transform: "rotate(45deg)", borderRadius: 2 }} /> Milestone</span>
