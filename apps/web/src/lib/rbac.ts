@@ -1,6 +1,7 @@
-import type { Database } from "@/db";
+import type { DbClient } from "@/db";
+import type { DbClient } from "@/db";
 export type UserRole = { id: number; roleName: string; module: string };
-export async function getRolesForUser(db: Database, userId: string): Promise<UserRole[]> {
+export async function getRolesForUser(db: DbClient, userId: string): Promise<UserRole[]> {
   const r = await db.prepare(`SELECT sr.id, sr.role_name AS "roleName", sr.module FROM user_roles ur JOIN system_roles sr ON ur.role_id=sr.id WHERE ur.user_id=?`).bind(userId).all<UserRole>();
   return r.results ?? [];
 }

@@ -14,8 +14,7 @@
     "next": "^15.5.0",
     "drizzle-orm": "^0.33.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "postgres": "^3.4.7"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.0.0",
