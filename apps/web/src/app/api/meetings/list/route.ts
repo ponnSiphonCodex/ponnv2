@@ -4,7 +4,7 @@ export async function GET() {
   const c = await apiContext(); if (!c) return Response.json({ error: "unauthorized" }, { status: 401 });
   if (c.guest) return Response.json({ meetings: [] });
   const r = await c.d1.prepare(
-    `SELECT m.id, m.title, m.meeting_date, m.start_time, m.organizer,
+    `SELECT m.id, m.title, m.meeting_date, m.start_time, m.organizer, m.attendees, m.project_name,
        COALESCE((SELECT COUNT(*) FROM attachments a WHERE a.reference_type='meeting' AND a.reference_id=m.id AND a.file_type='Minute'),0) AS min_cnt,
        COALESCE((SELECT COUNT(*) FROM attachments a WHERE a.reference_type='meeting' AND a.reference_id=m.id AND a.file_type='Transcript'),0) AS tr_cnt,
        COALESCE((SELECT COUNT(*) FROM attachments a WHERE a.reference_type='meeting' AND a.reference_id=m.id),0) AS file_cnt,

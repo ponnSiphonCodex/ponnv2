@@ -1,18 +1,15 @@
 "use client";
 import { useRef, useEffect } from "react";
-const NAVY = "#001D58";
 
-/** Rich Text editor: Bold/Italic/Underline, Bullet, Numbering, Indent(Tab), Highlight, Heading, Link */
-export function RichEditor({ value, onChange, minHeight = 360 }: { value: string; onChange: (html: string) => void; minHeight?: number }) {
+/** Rich Text: Bold/Italic/Underline · Heading · Bullet · Numbering · Tab(indent) · Highlight · Link */
+export function RichEditor({ value, onChange, minHeight = 340 }: { value: string; onChange: (html: string) => void; minHeight?: number }) {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (ref.current && ref.current.innerHTML !== value) ref.current.innerHTML = value || ""; }, []);
+  useEffect(() => { if (ref.current && ref.current.innerHTML !== value) ref.current.innerHTML = value || ""; }, [value === undefined]);
   function cmd(command: string, arg?: string) { document.execCommand(command, false, arg); ref.current?.focus(); sync(); }
   function sync() { if (ref.current) onChange(ref.current.innerHTML); }
-  function onKey(e: React.KeyboardEvent) {
-    if (e.key === "Tab") { e.preventDefault(); document.execCommand(e.shiftKey ? "outdent" : "indent"); sync(); }
-  }
-  const Btn = ({ icon, on, title }: { icon: string; on: () => void; title: string }) => (
-    <button type="button" title={title} onMouseDown={(e) => { e.preventDefault(); on(); }} style={{ minWidth: 32, height: 32, border: "1px solid #E5E7EB", background: "#fff", borderRadius: 6, cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#374151" }}>{icon}</button>
+  function onKey(e: React.KeyboardEvent) { if (e.key === "Tab") { e.preventDefault(); document.execCommand(e.shiftKey ? "outdent" : "indent"); sync(); } }
+  const Btn = ({ icon, on, title, bg }: { icon: string; on: () => void; title: string; bg?: string }) => (
+    <button type="button" title={title} onMouseDown={(e) => { e.preventDefault(); on(); }} style={{ minWidth: 32, height: 32, border: "1px solid #E5E7EB", background: bg || "#fff", borderRadius: 6, cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#374151" }}>{icon}</button>
   );
   return (
     <div style={{ border: "1px solid #E5E7EB", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
@@ -30,7 +27,7 @@ export function RichEditor({ value, onChange, minHeight = 360 }: { value: string
         <Btn icon="⇥" title="เพิ่มระยะ (Tab)" on={() => cmd("indent")} />
         <Btn icon="⇤" title="ลดระยะ" on={() => cmd("outdent")} />
         <span style={sep} />
-        <button type="button" title="ไฮไลต์" onMouseDown={(e) => { e.preventDefault(); cmd("hiliteColor", "#FEF08A"); }} style={{ minWidth: 32, height: 32, border: "1px solid #E5E7EB", background: "#FEF08A", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 700 }}>H</button>
+        <Btn icon="H" title="ไฮไลต์" bg="#FEF08A" on={() => cmd("hiliteColor", "#FEF08A")} />
         <Btn icon="🔗" title="ลิงก์" on={() => { const u = prompt("URL:"); if (u) cmd("createLink", u); }} />
         <Btn icon="⨯" title="ล้างรูปแบบ" on={() => cmd("removeFormat")} />
       </div>

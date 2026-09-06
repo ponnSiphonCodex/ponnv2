@@ -34,7 +34,6 @@ export async function GET(req: NextRequest) {
   if (isNew) { const [g] = await db.select().from(systemRoles).where(eq(systemRoles.roleName, "Guest")); if (g) await db.insert(userRoles).values({ userId: user.id, roleId: g.id }).onConflictDoNothing(); }
   await db.insert(loginLogs).values({ userId: user.id, email: user.email, authProvider: "Google", deviceInfo: req.headers.get("user-agent")?.slice(0, 180) ?? null, ipAddress: req.headers.get("cf-connecting-ip") ?? null, success: 1 });
   await env.DB.prepare(`UPDATE users SET last_login_at = unixepoch() WHERE id = ?`).bind(user.id).run();
-  // แจ้ง Admin ทุกครั้งที่มีการล็อกอิน (ผู้ใช้ใหม่ = แจ้งพิเศษ)
   const when = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Bangkok" }).slice(0, 16) + " น.";
   if (isNew) await notifyAdminChat(env, `🆕 <b>ผู้ใช้ใหม่เข้าระบบ</b>\n${profile.name ?? profile.email}\n${profile.email}\nGoogle · ${when}\n→ รอเปิดสิทธิ์ที่เมนู จัดการผู้ใช้งาน`);
   else await notifyAdminChat(env, `🔑 <b>เข้าสู่ระบบ</b>\n${user.name ?? user.email} (Google)\n${when}`);

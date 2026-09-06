@@ -2,17 +2,16 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { ProfileModal } from "./profile-modal";
-import { NotificationBell } from "./notification-bell";
 import { Icon } from "./icons";
 
 const NAVY = "#001D58";
 const PINK = "#EC186E";
 
 type Child = { key: string; label: string; href: string; icon: string };
-type Item = { key: string; label: string; href: string; icon: string; adminOnly?: boolean; masterOnly?: boolean; children?: Child[] };
+type Item = { key: string; label: string; href: string; icon: string; adminOnly?: boolean; masterOnly?: boolean; children?: Child[]; badgeKey?: string };
 type Group = { title: string; items: Item[] };
 
-const PROJECT_VIEWS = ["board", "calendar", "gantt", "todos"]; // sub-view keys ของ Project
+const PROJECT_VIEWS = ["board", "calendar", "gantt", "todos"];
 
 const GROUPS: Group[] = [
   { title: "", items: [
@@ -35,7 +34,7 @@ const GROUPS: Group[] = [
   ]},
   { title: "SETTING", items: [
     { key: "settings", label: "Master Data", href: "/pm/settings", icon: "settings", masterOnly: true },
-    { key: "users", label: "จัดการผู้ใช้งาน", href: "/pm/users", icon: "usercog", adminOnly: true },
+    { key: "users", label: "จัดการผู้ใช้งาน", href: "/pm/users", icon: "usercog", adminOnly: true, badgeKey: "requests" },
     { key: "logs", label: "System Log", href: "/pm/logs", icon: "log", adminOnly: true },
   ]},
 ];
@@ -49,20 +48,48 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
   const [ready, setReady] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [projOpen, setProjOpen] = useState(PROJECT_VIEWS.includes(active));
-  useEffect(() => { if (localStorage.getItem("sidebar_collapsed") === "1") setCollapsed(true); setReady(true); }, []);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [reqCount, setReqCount] = useState(0);
+
+  useEffect(() => {
+    if (localStorage.getItem("sidebar_collapsed") === "1") setCollapsed(true);
+    setReady(true);
+    // badge คำขอผู้ใช้ (admin) — cache localStorage เพื่อไม่กระพริบ
+    if (isAdmin) {
+      const cached = Number(localStorage.getItem("pending_req") || 0); if (cached) setReqCount(cached);
+      fetch("/api/admin/pending-count").then((r) => r.ok ? r.json() : null).then((d) => { if (d) { setReqCount(d.count); localStorage.setItem("pending_req", String(d.count)); } }).catch(() => {});
+    }
+  }, [isAdmin]);
   useEffect(() => { if (PROJECT_VIEWS.includes(active)) setProjOpen(true); }, [active]);
   function toggle() { setCollapsed((c) => { const n = !c; localStorage.setItem("sidebar_collapsed", n ? "1" : "0"); return n; }); }
 
   const width = collapsed ? 66 : 250;
-  const avatar = user.avatarUrl || user.image;
+  const avatar = user.image || user.avatarUrl;
   const initial = (user.name || user.email || "?").charAt(0).toUpperCase();
   const canSee = (it: Item) => (!it.adminOnly || isAdmin) && (!it.masterOnly || canMaster);
-  const rowStyle = (a: boolean): React.CSSProperties => ({ display: "flex", alignItems: "center", gap: 11, padding: collapsed ? "10px 0" : "9px 11px", justifyContent: collapsed ? "center" : "flex-start", borderRadius: 9, textDecoration: "none", color: a ? "#fff" : "rgba(255,255,255,.72)", background: a ? PINK : "transparent", fontSize: 13.5, fontWeight: a ? 600 : 500, whiteSpace: "nowrap", marginBottom: 2, cursor: "pointer" });
+  const badgeFor = (it: Item) => (it.badgeKey === "requests" ? reqCount : 0);
+  const rowStyle = (a: boolean): React.CSSProperties => ({ display: "flex", alignItems: "center", gap: 11, padding: collapsed ? "10px 0" : "9px 11px", justifyContent: collapsed ? "center" : "flex-start", borderRadius: 9, textDecoration: "none", color: a ? "#fff" : "rgba(255,255,255,.72)", background: a ? PINK : "transparent", fontSize: 13.5, fontWeight: a ? 600 : 500, whiteSpace: "nowrap", marginBottom: 2, cursor: "pointer", position: "relative" });
+
+  const Avatar = ({ size }: { size: number }) => avatar
+    ? <img src={avatar} alt="" style={{ width: size, height: size, minWidth: size, borderRadius: "50%", objectFit: "cover" }} />
+    : <div style={{ width: size, height: size, minWidth: size, borderRadius: "50%", background: PINK, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: size * 0.42, color: "#fff" }}>{initial}</div>;
+
+  function Badge({ n }: { n: number }) { if (!n) return null; return <span style={{ position: "absolute", top: collapsed ? 4 : "50%", right: collapsed ? 10 : 10, transform: collapsed ? "none" : "translateY(-50%)", background: "#DC2626", color: "#fff", fontSize: 10.5, fontWeight: 700, minWidth: 17, height: 17, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>{n > 9 ? "9+" : n}</span>; }
 
   return (
     <div style={{ display: "flex", minHeight: "100dvh", background: "#F4F4F6" }}>
-      <aside style={{ width, minWidth: width, background: NAVY, color: "#fff", display: "flex", flexDirection: "column", transition: ready ? "width .18s ease, min-width .18s ease" : "none", position: "sticky", top: 0, height: "100dvh" }}>
-        <button onClick={toggle} aria-label="menu" style={{ display: "flex", alignItems: "center", gap: 11, padding: "15px 14px", borderBottom: "1px solid rgba(255,255,255,.1)", background: "transparent", border: "none", cursor: "pointer", width: "100%" }}>
+      {/* mobile topbar */}
+      <div className="mobile-topbar" style={{ position: "fixed", top: 0, left: 0, right: 0, height: 54, background: NAVY, zIndex: 60, alignItems: "center", justifyContent: "space-between", padding: "0 14px", gap: 10 }}>
+        <button onClick={() => setMobileOpen(true)} aria-label="menu" style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", cursor: "pointer" }}>
+          <span className="nav-logo" style={{ width: 32, height: 32, background: "#fff", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}><img src="/rocket-logo.png" alt="logo" style={{ width: "84%", height: "84%", objectFit: "contain" }} /></span>
+          <span style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>Portfolio</span>
+        </button>
+        <button onClick={() => setShowProfile(true)} aria-label="profile" style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex" }}><Avatar size={32} /></button>
+      </div>
+      <div className={`sidebar-scrim ${mobileOpen ? "show" : ""}`} onClick={() => setMobileOpen(false)} />
+
+      <aside className={`app-sidebar ${mobileOpen ? "open" : ""}`} style={{ width, minWidth: width, background: NAVY, color: "#fff", display: "flex", flexDirection: "column", transition: ready ? "width .18s ease, min-width .18s ease" : "none", position: "sticky", top: 0, height: "100dvh" }}>
+        <button onClick={() => { if (window.innerWidth <= 820) setMobileOpen(false); else toggle(); }} aria-label="menu" style={{ display: "flex", alignItems: "center", gap: 11, padding: "15px 14px", borderBottom: "1px solid rgba(255,255,255,.1)", background: "transparent", border: "none", cursor: "pointer", width: "100%" }}>
           <span className="nav-logo" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: collapsed ? 36 : 34, height: collapsed ? 36 : 34, background: "#fff", borderRadius: 9, overflow: "hidden", flexShrink: 0 }}><img src="/rocket-logo.png" alt="logo" style={{ width: "84%", height: "84%", objectFit: "contain" }} /></span>
           {!collapsed && <span style={{ fontWeight: 700, fontSize: 16, color: "#fff", whiteSpace: "nowrap" }}>Portfolio</span>}
         </button>
@@ -78,7 +105,6 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
                 {!collapsed && !g.title && gi > 0 && <div style={{ height: 1, background: "rgba(255,255,255,.08)", margin: "6px 10px 8px" }} />}
                 {items.map((m) => {
                   const a = active === m.key;
-                  // ── Expandable (Project) ──
                   if (m.children) {
                     const childActive = m.children.some((c) => c.key === active);
                     return (
@@ -102,10 +128,10 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
                       </div>
                     );
                   }
-                  // ── Normal ──
                   return (
                     <a key={m.key} href={m.href} title={collapsed ? m.label : undefined} className="nav-link" style={rowStyle(a)}>
                       <span style={{ display: "flex", alignItems: "center", opacity: a ? 1 : .85 }}><Icon name={m.icon} size={19} /></span>{!collapsed && <span>{m.label}</span>}
+                      <Badge n={badgeFor(m)} />
                     </a>
                   );
                 })}
@@ -115,18 +141,14 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
         </nav>
 
         <button onClick={() => setShowProfile(true)} title="โปรไฟล์ของฉัน" style={{ borderTop: "1px solid rgba(255,255,255,.1)", padding: 12, display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", cursor: "pointer", width: "100%", textAlign: "left" }}>
-          {avatar ? <img src={avatar} alt="" style={{ width: 34, height: 34, minWidth: 34, borderRadius: "50%", objectFit: "cover" }} /> : <div style={{ width: 34, height: 34, minWidth: 34, borderRadius: "50%", background: PINK, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, color: "#fff" }}>{initial}</div>}
+          <Avatar size={34} />
           {!collapsed && (<div style={{ overflow: "hidden", flex: 1 }}><div style={{ fontSize: 12.5, fontWeight: 600, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.name || user.email}</div><div style={{ fontSize: 11, color: "rgba(255,255,255,.6)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{roleLabel}</div></div>)}
           {!collapsed && <span style={{ color: "rgba(255,255,255,.5)", display: "flex" }}><Icon name="settings" size={16} /></span>}
         </button>
       </aside>
 
       <main style={{ flex: 1, minWidth: 0, overflowX: "auto" }}>
-        {!guest && (
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 16, padding: "8px 20px", background: "#fff", borderBottom: "1px solid #F0F1F3", position: "sticky", top: 0, zIndex: 30 }}>
-            <NotificationBell />
-          </div>
-        )}
+        <div style={{ height: 54 }} className="mobile-topbar" />{/* spacer under fixed mobile topbar */}
         {impersonating && (
           <div style={{ background: "#FEF3C7", borderBottom: "1px solid #FCD34D", color: "#92400E", padding: "8px 20px", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span>👁️ กำลังดูในมุมมองของ <b>{user.name || user.email}</b> (คุณคือ {realName}) — ทำรายการแทนได้ทุกอย่าง</span>

@@ -9,12 +9,12 @@ export async function POST(req: NextRequest) {
   if (!b.title?.trim()) return Response.json({ error: "ต้องมีหัวข้อประชุม" }, { status: 400 });
   const date = d2u(b.meetingDate);
   if (b.id) {
-    await c.d1.prepare(`UPDATE meetings SET title=?, meeting_date=?, start_time=?, organizer=?, minutes_longtext=?, internal_notes=?, updated_by=?, updated_at=unixepoch() WHERE id=?`)
-      .bind(b.title, date, b.startTime ?? null, b.organizer ?? null, b.content ?? null, b.internalNotes ?? null, c.me.sub, b.id).run();
+    await c.d1.prepare(`UPDATE meetings SET title=?, meeting_date=?, start_time=?, organizer=?, attendees=?, project_name=?, minutes_longtext=?, internal_notes=?, updated_by=?, updated_at=unixepoch() WHERE id=?`)
+      .bind(b.title, date, b.startTime ?? null, b.organizer ?? null, b.attendees ?? null, b.projectName ?? null, b.content ?? null, b.internalNotes ?? null, c.me.sub, b.id).run();
     return Response.json({ ok: true, id: b.id });
   }
-  const res = await c.d1.prepare(`INSERT INTO meetings (title, meeting_date, start_time, organizer, minutes_longtext, internal_notes, created_by, updated_by) VALUES (?,?,?,?,?,?,?,?)`)
-    .bind(b.title, date, b.startTime ?? null, b.organizer ?? null, b.content ?? null, b.internalNotes ?? null, c.me.sub, c.me.sub).run();
+  const res = await c.d1.prepare(`INSERT INTO meetings (title, meeting_date, start_time, organizer, attendees, project_name, minutes_longtext, internal_notes, created_by, updated_by) VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .bind(b.title, date, b.startTime ?? null, b.organizer ?? null, b.attendees ?? null, b.projectName ?? null, b.content ?? null, b.internalNotes ?? null, c.me.sub, c.me.sub).run();
   return Response.json({ ok: true, id: Number(res.meta?.last_row_id ?? 0) });
 }
 export async function DELETE(req: NextRequest) {

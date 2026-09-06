@@ -37,7 +37,6 @@ export function MasterDataManager({ tabs, canMaster }: { tabs: Tab[]; canMaster:
           return <button key={t.key} onClick={() => pick(t.key)} style={{ padding: "10px 16px", border: "none", background: "transparent", borderBottom: a ? `2.5px solid ${PINK}` : "2.5px solid transparent", color: a ? NAVY : "#9AA0A6", fontWeight: a ? 700 : 500, fontSize: 13.5, cursor: "pointer", whiteSpace: "nowrap" }}>{t.label}</button>;
         })}
       </div>
-      {/* cache: mount แท็บที่เคยเปิด ซ่อนด้วย display เพื่อไม่ต้องโหลดซ้ำ (UX ลื่น) */}
       {tabs.filter((t) => loaded.includes(t.key)).map((t) => (
         <div key={t.key} style={{ display: t.key === active ? "block" : "none" }}>
           {t.special === "custom-fields" ? <CustomFieldManager canWrite={canMaster} /> : <CrudManager entity={t.key} />}
