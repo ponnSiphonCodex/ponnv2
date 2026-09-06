@@ -21,7 +21,7 @@ export default async function TodosPage() {
   return (
     <AppShell active="todos" {...shellProps(a)}>
       <PageHeader title="To-Day Planning" subtitle="งานที่ต้องโฟกัสวันนี้ + รายการส่วนตัวของคุณ" />
-      <div style={{ padding: 24, width: "100%" }}>
+      <div style={{ padding: 24, width: "100%", maxWidth: "none" }}>
         <h3 style={{ fontSize: 15, color: NAVY, margin: "0 0 12px" }}>🎯 งานที่ได้รับมอบหมาย (ครบกำหนด/เลยกำหนด)</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 26 }}>
           {myTasks.length === 0 && <div className="card" style={{ padding: 16, color: "#6B7280" }}>ไม่มีงานค้างที่ครบกำหนด 🎉</div>}

@@ -12,21 +12,23 @@ type Child = { key: string; label: string; href: string; icon: string };
 type Item = { key: string; label: string; href: string; icon: string; adminOnly?: boolean; masterOnly?: boolean; children?: Child[]; badgeKey?: string };
 type Group = { title: string; items: Item[] };
 
-const PROJECT_VIEWS = ["board", "calendar", "gantt", "todos"];
+const PROJECT_VIEWS = ["task-table", "board", "calendar", "gantt"];
 
 const GROUPS: Group[] = [
   { title: "", items: [
     { key: "dashboard", label: "Dashboard", href: "/pm/dashboard", icon: "dashboard" },
+    { key: "todos", label: "To-Day Planning", href: "/pm/todos", icon: "todo" },
+    { key: "milestones", label: "Key Milestone", href: "/pm/manage/milestones", icon: "milestone" },
   ]},
   { title: "PROJECT", items: [
     { key: "product-feature", label: "Product & Feature", href: "/pm/portfolio", icon: "product" },
     { key: "project", label: "Project", href: "/pm/manage/projects", icon: "project", children: [
-      { key: "board", label: "Tasks List", href: "/pm/board?id=1", icon: "board" },
+      { key: "project-new", label: "+ สร้าง Project ใหม่", href: "/pm/projects/new", icon: "project" },
+      { key: "task-table", label: "Tasks - Table", href: "/pm/tasks", icon: "board" },
+      { key: "board", label: "Tasks - Kanban", href: "/pm/board?id=1", icon: "board" },
       { key: "calendar", label: "Calendar View", href: "/pm/calendar", icon: "calendar" },
       { key: "gantt", label: "Gantt Chart", href: "/pm/gantt?id=1", icon: "gantt" },
-      { key: "todos", label: "To-Day Planning", href: "/pm/todos", icon: "todo" },
     ]},
-    { key: "milestones", label: "Project Milestone", href: "/pm/manage/milestones", icon: "milestone" },
     { key: "team", label: "Working Team", href: "/pm/team", icon: "team" },
     { key: "issues", label: "Issues List", href: "/pm/issues", icon: "issue" },
   ]},
@@ -48,7 +50,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
   const [collapsed, setCollapsed] = useState(false);
   const [ready, setReady] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [projOpen, setProjOpen] = useState(PROJECT_VIEWS.includes(active));
+  const [projOpen, setProjOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [reqCount, setReqCount] = useState(0);
 
@@ -131,7 +133,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
                             {m.children.map((c) => {
                               const ca = active === c.key;
                               return (
-                                <a key={c.key} href={c.href} className={`nav-link nav-sub-link ${ca ? "active" : ""}`} style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 8, textDecoration: "none", color: ca ? "#fff" : "rgba(255,255,255,.72)", background: ca ? PINK : "transparent", marginLeft: -8, paddingLeft: 12, fontSize: 13, fontWeight: ca ? 600 : 500, marginBottom: 2 }}>
+                                <a key={c.key} href={c.href} className="nav-link" style={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 10px", borderRadius: 7, textDecoration: "none", color: ca ? "#fff" : "rgba(255,255,255,.6)", background: "transparent", borderLeft: ca ? `2px solid ${PINK}` : "2px solid transparent", marginLeft: -10, paddingLeft: 12, fontSize: 12.5, fontWeight: ca ? 600 : 500, marginBottom: 1 }}>
                                   <span style={{ display: "flex", opacity: ca ? 1 : .7, color: ca ? PINK : "inherit" }}><Icon name={c.icon} size={15} /></span>{c.label}
                                 </a>
                               );

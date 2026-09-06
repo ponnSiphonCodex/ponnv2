@@ -34,7 +34,7 @@ export function MeetingsView({ canWrite }: { canWrite: boolean }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
-  const [sel, setSel] = useState<string | null>(() => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" }));
+  const [sel, setSel] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [matchIds, setMatchIds] = useState<number[] | null>(null); // null = ไม่ค้น
   const timer = useRef<any>(null);

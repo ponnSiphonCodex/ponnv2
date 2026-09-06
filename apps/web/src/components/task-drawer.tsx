@@ -21,7 +21,7 @@ export function TaskDrawer({ taskId, users, priorities, statuses, features, tags
   }, [taskId]);
   useEffect(() => { load(); }, [load]);
 
-  if (!data) return <div className="motion-overlay" style={overlay} onClick={onClose}><div style={{ color: "#fff" }}>กำลังโหลด...</div></div>;
+  if (!data) return <div style={overlay} onClick={onClose}><div style={{ color: "#fff" }}>กำลังโหลด...</div></div>;
   const t = data.task;
   const u2d = (u: number | null) => u ? new Date(u * 1000).toISOString().slice(0, 10) : "";
 
@@ -51,7 +51,7 @@ export function TaskDrawer({ taskId, users, priorities, statuses, features, tags
   }
 
   return (
-    <div className="motion-overlay" style={overlay} onClick={onClose}>
+    <div style={overlay} onClick={onClose}>
       <div style={{ marginLeft: "auto", width: "min(560px,100vw)", height: "100dvh", background: "#fff", overflowY: "auto", boxShadow: "-4px 0 20px rgba(0,0,0,.15)" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ background: NAVY, color: "#fff", padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, position: "sticky", top: 0, zIndex: 2 }}>
           <div style={{ flex: 1 }}>
