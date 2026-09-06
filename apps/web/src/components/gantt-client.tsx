@@ -97,6 +97,24 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
 
   const chartW = (model?.days ?? 0) * px;
   const chartH = (model?.rows.length ?? 0) * ROW_H;
+  const monthBands = useMemo(() => {
+    if (!model?.days) return [];
+    const bands: { key: string; label: string; left: number; width: number }[] = [];
+    let start = 0;
+    let key = "";
+    for (let d = 0; d <= model.days; d++) {
+      const dt = new Date((model.min + d * DAY) * 1000);
+      const nextKey = `${dt.getUTCFullYear()}-${dt.getUTCMonth()}`;
+      if (!key) key = nextKey;
+      if (nextKey !== key || d === model.days) {
+        const end = d === model.days ? d + 1 : d;
+        const first = new Date((model.min + start * DAY) * 1000);
+        bands.push({ key, label: first.toLocaleDateString("th-TH", { month: "long", year: "numeric", timeZone: "UTC" }), left: start * px, width: Math.max(px, (end - start) * px) });
+        start = d; key = nextKey;
+      }
+    }
+    return bands;
+  }, [model, px]);
   const todayX = model ? ((dayFloor(Math.floor(Date.now() / 1000)) - model.min) / DAY) * px : 0;
 
   return (
@@ -129,7 +147,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
             </div>
             <div ref={scrollRef} style={{ overflowX: "auto", flex: 1 }}>
               <div onClick={(e)=>{if((e.target as HTMLElement).closest("[data-task]"))return;const rect=e.currentTarget.getBoundingClientRect();let u=model.min+Math.floor((e.clientX-rect.left)/px)*DAY;if(scale==="week"){const d=new Date(u*1000),day=d.getUTCDay()||7;u-=(day-1)*DAY}setDraft({start:u,due:u+7*DAY})}} style={{ position: "relative", width: chartW, minWidth: "100%", cursor:"crosshair" }}>
-                <div className="month-band">{Array.from({length:model.days+1},(_,d)=>{const t=model.min+d*DAY,dt=new Date(t*1000);if(dt.getUTCDate()!==1&&d!==0)return null;return <span key={d} style={{position:"absolute",left:d*px}}>{dt.toLocaleDateString("th-TH",{month:"long",year:"numeric",timeZone:"UTC"})}</span>})}</div>
+                <div className="month-band">{monthBands.map(b=><span key={b.key} style={{position:"absolute",left:b.left,width:b.width}}>{b.label}</span>)}</div>
                 <div style={{ height: HEAD_H, borderBottom: "1px solid #E5E7EB", position: "relative", background: "#F9FAFB" }}>
                   {ticks.map((t, i) => <div key={i} style={{ position: "absolute", left: t.x, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10.5, color: t.major ? NAVY : "#AEB4C0", fontWeight: t.major ? 700 : 400, paddingLeft: 3, whiteSpace: "nowrap" }}>{t.label}</div>)}
                 </div>
