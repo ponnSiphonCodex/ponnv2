@@ -9,8 +9,8 @@ const NAVY = "#001D58", PINK = "#EC186E";
 type Ref = { id: string | number; label: string };
 type Tag = { id: number; name: string; color: string | null };
 
-export function BoardClient({ board, projects, users, priorities, features, tags, canWrite }: {
-  board: BoardData; projects: { id: number; name: string }[]; users: Ref[]; priorities: Ref[]; features: Ref[]; tags: Tag[]; canWrite: boolean;
+export function BoardClient({ board, projects, users, priorities, features, tags, canWrite, aggregate = false }: {
+  board: BoardData; projects: { id: number; name: string }[]; users: Ref[]; priorities: Ref[]; features: Ref[]; tags: Tag[]; canWrite: boolean; aggregate?: boolean;
 }) {
   const router = useRouter();
   // ★ columns เป็น local state → drag/add แก้ทันที ไม่รอ server
@@ -59,7 +59,8 @@ export function BoardClient({ board, projects, users, priorities, features, tags
     <div style={{ padding: 20 }}>
       {flash && <div style={{ background: "#EFF6FF", color: "#1D4ED8", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{flash}</div>}
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
-        <select className="input" style={{ width: "auto", minWidth: 220 }} value={board.project.id} onChange={(e) => router.push(`/pm/board?id=${e.target.value}`)}>
+        <select className="input" style={{ width: "auto", minWidth: 220 }} value={aggregate ? "all" : board.project.id} onChange={(e) => router.push(`/pm/board?id=${e.target.value}`)}>
+          <option value="all">📊 ทุกโครงการ (รวม)</option>
           {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -75,16 +76,18 @@ export function BoardClient({ board, projects, users, priorities, features, tags
             onDragOver={(e) => { if (canWrite) { e.preventDefault(); setOverCol(col.id); } }}
             onDragLeave={() => setOverCol((c) => (c === col.id ? null : c))}
             onDrop={() => canWrite && dropTo(col.id)}
-            style={{ minWidth: 270, width: 270, background: overCol === col.id ? "#FFF5F9" : "#fff", border: overCol === col.id ? `1.5px dashed ${PINK}` : "1px solid #E5E7EB", borderRadius: 12, display: "flex", flexDirection: "column", maxHeight: "calc(100dvh - 250px)", transition: "background .1s" }}>
-            <div style={{ padding: "12px 14px", borderBottom: "1px solid #F0F1F3", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontWeight: 700, fontSize: 14, color: NAVY }}><span style={{ display: "inline-block", width: 9, height: 9, borderRadius: "50%", background: col.color || "#9AA0A6", marginRight: 7 }} />{col.name} <span style={{ color: "#9AA0A6", fontWeight: 500 }}>({col.tasks.length})</span></span>
-              {canWrite && <button onClick={() => setAddTo(col.id)} title="เพิ่มงาน" style={{ border: "none", background: "transparent", color: PINK, fontSize: 18, cursor: "pointer", lineHeight: 1 }}>+</button>}
+            style={{ minWidth: 272, width: 272, background: overCol === col.id ? "#FFF5F9" : "#fff", border: overCol === col.id ? `1.5px dashed ${PINK}` : "1px solid #E5E7EB", borderRadius: 12, display: "flex", flexDirection: "column", maxHeight: "calc(100dvh - 250px)", transition: "background .1s", overflow: "hidden" }}>
+            {/* v27: หัว column สีเต็มแถบตาม category — แยกด้วยสีชัดเจน อ่านง่าย */}
+            <div style={{ padding: "10px 14px", background: col.color || "#9AA0A6", display: "flex", justifyContent: "space-between", alignItems: "center", borderTopLeftRadius: 11, borderTopRightRadius: 11 }}>
+              <span style={{ fontWeight: 700, fontSize: 13.5, color: "#fff", display: "flex", alignItems: "center", gap: 7 }}>{col.name}<span style={{ background: "rgba(255,255,255,.28)", color: "#fff", fontSize: 11.5, fontWeight: 700, minWidth: 20, height: 20, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>{col.tasks.length}</span></span>
+              {canWrite && <button onClick={() => setAddTo(col.id)} title="เพิ่มงาน" style={{ border: "none", background: "rgba(255,255,255,.25)", color: "#fff", width: 24, height: 24, borderRadius: 6, fontSize: 17, cursor: "pointer", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>}
             </div>
             <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 9, overflowY: "auto", minHeight: 60 }}>
               {col.tasks.length === 0 && <div style={{ color: "#C7CCD4", fontSize: 13, textAlign: "center", padding: "14px 0" }}>ว่าง</div>}
               {col.tasks.map((t) => (
                 <div key={t.id} draggable={canWrite} onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setOverCol(null); }} onClick={() => t.id > 0 && setDrawerTask(t.id)}
-                  style={{ border: dragId === t.id ? `1.5px solid ${PINK}` : "1px solid #ECEEF1", borderRadius: 10, padding: 11, cursor: canWrite ? "grab" : "default", background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.03)", opacity: dragId === t.id ? 0.5 : (t.id < 0 ? 0.6 : 1) }}>
+                  style={{ border: dragId === t.id ? `1.5px solid ${PINK}` : "1px solid #ECEEF1", borderLeft: `3px solid ${col.color || "#ECEEF1"}`, borderRadius: 10, padding: 11, cursor: aggregate ? "pointer" : (canWrite ? "grab" : "default"), background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.03)", opacity: dragId === t.id ? 0.5 : (t.id < 0 ? 0.6 : 1) }}>
+                  {aggregate && (t as any).projectName && <div style={{ fontSize: 10.5, fontWeight: 700, color: NAVY, background: "#EEF1F6", display: "inline-block", padding: "1px 7px", borderRadius: 5, marginBottom: 5 }}>{(t as any).projectName}</div>}
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: "#1F2937", marginBottom: 6 }}>{t.title}</div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
                     <span style={{ fontSize: 11.5, color: "#6B7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.assignee?.name ?? "ยังไม่มอบหมาย"}</span>
@@ -138,7 +141,7 @@ function AddTaskModal({ projectId, statusId, users, priorities, onClose, onOptim
   </Modal>;
 }
 function Modal({ title, children, onClose, err }: { title: string; children: React.ReactNode; onClose: () => void; err: string | null }) {
-  return <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 16 }} onClick={onClose}><div className="card" style={{ width: "min(460px,94vw)", padding: 22 }} onClick={(e) => e.stopPropagation()}><h3 style={{ marginTop: 0, color: NAVY }}>{title}</h3>{err && <div style={{ background: "#FEF2F2", color: "#B91C1C", padding: 10, borderRadius: 8, marginBottom: 10 }}>{err}</div>}<div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{children}</div></div></div>;
+  return <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 16 }}><div className="card" style={{ width: "min(460px,94vw)", padding: 22 }} onClick={(e) => e.stopPropagation()}><h3 style={{ marginTop: 0, color: NAVY }}>{title}</h3>{err && <div style={{ background: "#FEF2F2", color: "#B91C1C", padding: 10, borderRadius: 8, marginBottom: 10 }}>{err}</div>}<div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{children}</div></div></div>;
 }
 function F({ label, children }: { label: string; children: React.ReactNode }) { return <label style={{ display: "flex", flexDirection: "column", gap: 5 }}><span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{label}</span>{children}</label>; }
 function A({ onClose, onSave, saving }: { onClose: () => void; onSave: () => void; saving: boolean }) { return <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}><button className="btn-ghost" onClick={onClose}>ยกเลิก</button><button className="btn-primary" onClick={onSave} disabled={saving}>บันทึก</button></div>; }

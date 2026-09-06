@@ -191,7 +191,7 @@ function AddUserModal({ meta, prefill, onClose, onSaved }: { meta: Meta; prefill
     onSaved();
   }
   return (
-    <div style={overlay} onClick={onClose}><div className="card" style={{ width: "min(440px,94vw)", padding: 22 }} onClick={(e) => e.stopPropagation()}>
+    <div style={overlay}><div className="card" style={{ width: "min(440px,94vw)", padding: 22 }} onClick={(e) => e.stopPropagation()}>
       <h3 style={{ marginTop: 0, color: NAVY }}>เพิ่มผู้ใช้</h3>
       {err && <div style={{ background: "#FEF2F2", color: "#B91C1C", padding: 10, borderRadius: 8, marginBottom: 10 }}>{err}</div>}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

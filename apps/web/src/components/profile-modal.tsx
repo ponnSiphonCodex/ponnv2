@@ -62,7 +62,7 @@ export function ProfileModal({ isAdmin, impersonating, onClose }: { isAdmin: boo
   ];
 
   return (
-    <div style={overlay} onClick={onClose}>
+    <div style={overlay}>
       <div className="card" style={{ width: "min(480px,96vw)", height: 600, maxHeight: "94vh", display: "flex", flexDirection: "column", padding: 0, overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
         {/* header (fixed) */}
         <div style={{ background: NAVY, color: "#fff", padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>

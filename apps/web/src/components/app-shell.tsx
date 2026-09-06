@@ -107,19 +107,24 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
                   const a = active === m.key;
                   if (m.children) {
                     const childActive = m.children.some((c) => c.key === active);
+                    // parent เมื่อมี child active: ไม่ทำ pink เต็ม แต่ใช้ตัวอักษรขาว + จุด accent (สะอาดกว่า)
+                    const parentStyle: React.CSSProperties = { display: "flex", alignItems: "center", gap: 11, padding: collapsed ? "10px 0" : "9px 11px", justifyContent: collapsed ? "center" : "flex-start", borderRadius: 9, color: (a || childActive) ? "#fff" : "rgba(255,255,255,.72)", background: a ? PINK : "transparent", fontSize: 13.5, fontWeight: (a || childActive) ? 600 : 500, whiteSpace: "nowrap", marginBottom: 2, cursor: "pointer" };
                     return (
                       <div key={m.key}>
-                        <div className="nav-link clickable" style={rowStyle(a || childActive)} onClick={() => { if (collapsed) { toggle(); setProjOpen(true); } else setProjOpen((o) => !o); }}>
-                          <span style={{ display: "flex", alignItems: "center", opacity: (a || childActive) ? 1 : .85 }}><Icon name={m.icon} size={19} /></span>
-                          {!collapsed && <><span style={{ flex: 1 }}>{m.label}</span><span style={{ transition: "transform .15s", transform: projOpen ? "rotate(90deg)" : "none", fontSize: 11 }}>▶</span></>}
+                        <div className="nav-link" style={parentStyle} onClick={() => { if (collapsed) { toggle(); setProjOpen(true); } else setProjOpen((o) => !o); }}>
+                          <span style={{ display: "flex", alignItems: "center", position: "relative", opacity: (a || childActive) ? 1 : .85 }}>
+                            <Icon name={m.icon} size={19} />
+                            {childActive && !collapsed && <span style={{ position: "absolute", right: -3, top: -1, width: 6, height: 6, borderRadius: "50%", background: PINK }} />}
+                          </span>
+                          {!collapsed && <><span style={{ flex: 1 }}>{m.label}</span><span style={{ transition: "transform .15s", transform: projOpen ? "rotate(90deg)" : "none", fontSize: 10, opacity: .7 }}>▶</span></>}
                         </div>
                         {!collapsed && projOpen && (
-                          <div style={{ marginLeft: 14, borderLeft: "1px solid rgba(255,255,255,.12)", paddingLeft: 6, marginBottom: 4 }}>
+                          <div style={{ marginLeft: 15, borderLeft: "2px solid rgba(255,255,255,.14)", paddingLeft: 8, marginTop: 2, marginBottom: 4 }}>
                             {m.children.map((c) => {
                               const ca = active === c.key;
                               return (
-                                <a key={c.key} href={c.href} className="nav-link" style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 8, textDecoration: "none", color: ca ? "#fff" : "rgba(255,255,255,.65)", background: ca ? "rgba(236,24,110,.9)" : "transparent", fontSize: 13, fontWeight: ca ? 600 : 500, marginBottom: 1 }}>
-                                  <span style={{ display: "flex", opacity: ca ? 1 : .75 }}><Icon name={c.icon} size={16} /></span>{c.label}
+                                <a key={c.key} href={c.href} className="nav-link" style={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 10px", borderRadius: 7, textDecoration: "none", color: ca ? "#fff" : "rgba(255,255,255,.6)", background: "transparent", borderLeft: ca ? `2px solid ${PINK}` : "2px solid transparent", marginLeft: -10, paddingLeft: 12, fontSize: 12.5, fontWeight: ca ? 600 : 500, marginBottom: 1 }}>
+                                  <span style={{ display: "flex", opacity: ca ? 1 : .7, color: ca ? PINK : "inherit" }}><Icon name={c.icon} size={15} /></span>{c.label}
                                 </a>
                               );
                             })}

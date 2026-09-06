@@ -1,33 +1,31 @@
-# Portfolio Workspace — PM Platform (v26)
+# Portfolio Workspace — PM Platform (v27)
 
 Next.js 15 + Cloudflare D1/Workers + Drizzle + @opennextjs/cloudflare
-(v26 = รวม v25 ทั้งหมด + งานใหม่ 7 ข้อ — สร้างต่อจาก v24 เพราะ v25 zip หาย)
+(v27 = ต่อยอดจาก v26)
 
-## v26 ใหม่
-1. **Mobile UI** — จอเล็ก (<820px) ซ่อน Nav bar เป็น default · แตะโลโก้จรวด (มุมซ้ายบน) = เปิดเมนู drawer · ไอคอนโปรไฟล์อยู่มุมขวาบน แตะเข้า User Profile
-2. **ผู้ใช้ใหม่ = คำขอทั้งหมด** — Guest ไม่ขึ้นแท็บ "ผู้ใช้งาน" หลัก แต่ไปอยู่แท็บ **ผู้ใช้ใหม่ (คำขอ)** · มี **badge ตัวเลขแดง** ทั้งบนเมนู "จัดการผู้ใช้งาน" และบนแท็บ
-3. **Login เร็วขึ้น** — ตัด redirect ซ้ำ (`/` → dashboard) ล็อกอินเสร็จเด้งตรง `/pm/dashboard` ทันที (ลด auth 2 รอบเหลือ 1)
-4. **System Log = localStorage ถาวร** — ไม่หายเมื่อ refresh · เพิ่ม **คำอธิบายการยิง + Endpoint + Request/Response JSON body** (คลิกแถวเพื่อดู) · แสดงไม่รก
-5. **เลิกยิงเอง** — System Log ไม่ ping debug/notifications ตลอดอีก (บันทึกเฉพาะ API จริงที่เกิดจากใช้งาน) · **ลบแถบ Notification (กระดิ่ง) ออกทั้งหมด** → ใช้ Telegram แจ้ง Admin แทน (ทุกล็อกอิน + ผู้ใช้ใหม่)
-6. **แท็บคำขอ** — ปุ่ม **✓ Approve** (ให้สิทธิ์ User) / **✗ Reject** (ลบ แต่ผู้ใช้ยังขอเข้าใหม่ได้เรื่อยๆ)
-7. **Calendar (Meeting)**
-   - 7.1 ค้นหา: หัวข้อ / project / product / ผู้เข้าร่วม / คำใน Meeting Minute
-   - 7.2 ปุ่ม **Sync → Google Calendar / MS Calendar** (แมนนวลรายมีตติ้ง) ชื่อขึ้นต้น `[mom] xxxxx`
-   - 7.3 แนบไฟล์แบบ **ปุ่มตรง**: Meeting Minute · Transcript · ไฟล์อื่นๆ (ไม่ต้องเลือก dropdown ก่อน)
-   - 7.4 **cache-first** — โหลดจาก localStorage ทันที refresh เบื้องหลัง ไม่โหลดใหม่ทุกครั้ง
-
-## v25 (รวมมาแล้ว)
-รูปโปรไฟล์=Google · hover เมนู+โลโก้ · ไอคอนเส้นหนา · ปุ่ม Google มีสี · Master Data=แท็บ+cache · เลือกสี 20 เฉด · ระดับ 1–10 · placeholder `Xxxxx` · Rich Text editor · เวลา `YYYY-MM-DD HH:mm น.` · pagination 10/หน้า · ลบช่องค้นหา topbar
+## v27 ใหม่ (9 ข้อ)
+1. **Hover Nav Bar** — เอา background hover ออก เหลือแค่ขยับ (translateX) สะอาดขึ้น
+2. **Issues List** — กรองได้ **By Product / Project / สถานะ / ผู้แจ้ง** + ค้นหาหัวข้อ
+   - 2.1 เพิ่ม/แก้ Issue = **เปิดหน้าใหม่เต็มจอ** (`/pm/issues/edit`) แนวเดียวกับ Meeting Minute
+   - 2.2 **Export → Excel (CSV+BOM อ่านไทยได้)** · Popup เลือก filter ก่อนโหลด (ค่าเริ่มต้น = Project, ย้อนหลัง 1 ปี) · PMO/Admin = ทั้งหมด · คนอื่น = เฉพาะที่เกี่ยวข้อง
+3. **Popup สำคัญ** — ฟอร์มกรอกข้อมูล (เพิ่ม/แก้ Master Data, เพิ่มผู้ใช้, เพิ่มงาน, โปรไฟล์) **ไม่ปิดเมื่อคลิกพื้นหลัง** แล้ว (กันปิดพลาด) — ปิดด้วยปุ่มยกเลิก/X เท่านั้น
+4. **Telegram แจ้งเตือน** — ขึ้นต้นทุกข้อความด้วย `🚀 [PM Platform · pm.ponnsth.com]` แยกจากระบบอื่นที่คุณดูแล
+5. **Working Team** — เห็นเฉพาะทีมที่เกี่ยวข้องตาม role (Product Owner เห็น layer Product+Project ที่ดูแล · PM เห็น member เฉพาะ project ตัวเอง · PMO/Admin เห็นหมด) · **เพิ่มคนเองได้** (คนไม่ login ใส่ชื่อ+ความรับผิดชอบ) · **ซ่อน/แสดงรายคน** (มีผลเฉพาะมุมมองของ user นั้น)
+6. **Milestone & ทุกตาราง** — เอา **Project ขึ้นคอลัมน์แรก** · **ค้นหา + เรียงได้ทุกคอลัมน์** (คลิกหัวตาราง ▲▼)
+7. **Master Data** — ตาราง**โชว์สีจริง** (chip สี) · แก้ overflow เกิน 100% (wrap `md-scroll`)
+8. **Nav Sub-Menu** — ปรับ UX: parent ไม่ pink เต็มแล้ว (ใช้จุด accent) · sub-item ใช้เส้น pink ซ้าย + ไอคอน pink — ดูสะอาด ไม่ตลก
+9. **Kanban** — เพิ่มตัวเลือก **"ทุกโครงการ (รวม)"** (aggregate ตาม category) · เลือกทีละ project ที่เกี่ยวข้องได้เหมือนเดิม · **หัว column สีเต็มแถบ** แยกด้วยสีชัด (Backlog เทา · To Do น้ำเงิน · In Progress เหลือง · Done เขียว · Drop แดง) + การ์ดมีเส้นสีซ้ายตาม column
 
 ## Deploy
 1. GitHub Desktop → วางไฟล์ทับ repo → Commit → Push
-2. **DB (Production ปลอดภัย):** รัน `database/migrations/v26_production_safe.sql` ใน D1 Console
-   - เพิ่มคอลัมน์ meetings: start_time, organizer, attendees, project_name
-   - ขึ้น `duplicate column` = มีแล้ว ข้ามได้ · **ห้ามรัน schema.sql บน prod** (อันนั้น DROP ทุกตาราง)
-3. Secret เดิม + `TELEGRAM_ADMIN_CHAT_ID` (สำหรับแจ้ง Admin ทุกล็อกอิน)
+2. **DB (Production ปลอดภัย):** รัน `database/migrations/v27_production_safe.sql` ใน D1 Console
+   - เพิ่มตาราง `team_roster`, `team_hidden` (สำหรับ Working Team ข้อ 5) + คอลัมน์ meetings เดิม
+   - ขึ้น `duplicate column/table exists` = มีแล้ว ข้ามได้ · **ห้ามรัน schema.sql บน prod** (DROP ทุกตาราง)
+3. Secret เดิม + `TELEGRAM_ADMIN_CHAT_ID`
 
-## หมายเหตุ Login ช้า (item 3)
-สาเหตุหลักที่เหลือคือ **Cloudflare Worker cold start** ครั้งแรก (~300–800ms) — เป็นข้อจำกัดของ serverless แก้ที่โค้ดได้แค่ลด query/redirect (ทำแล้ว). ถ้าต้องเร็วคงที่ ต้องใช้ Workers paid plan (ลด cold start) หรือ warm-up cron
+## หมายเหตุ
+- **Export เป็น CSV** (เปิดใน Excel ได้ทันที มี BOM รองรับภาษาไทย) — ไม่ใช่ .xlsx จริง เพราะ Worker สร้าง binary xlsx ไม่คุ้ม; ถ้าต้องการ .xlsx แท้บอกได้
+- Kanban "ทุกโครงการ" = อ่าน/เปิด drawer แก้ได้ แต่ **ลากข้ามคอลัมน์ไม่ได้** (เพราะแต่ละโครงการมี workflow ของตัวเอง) — ต้องเข้าโครงการนั้นเพื่อลาก
 
 ## Login ทดสอบ
 - ponnsiphon@gmail.com / pn2811qp (System Admin + PMO)

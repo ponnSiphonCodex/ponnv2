@@ -33,11 +33,13 @@ export async function notify(input: NotifyInput): Promise<void> {
   } catch { /* silent */ }
 }
 
-// แจ้ง admin chat (governance / เหตุการณ์สำคัญ)
+// ชื่อระบบ (prefix ทุกข้อความ ให้ admin ที่ดูแลหลายระบบแยกออกว่ามาจากระบบไหน)
+const SYS_TAG = "🚀 <b>[PM Platform · pm.ponnsth.com]</b>";
+// แจ้ง admin chat (governance / เหตุการณ์สำคัญ) — ใส่ tag ระบบไว้บรรทัดแรกเสมอ
 export async function notifyAdminChat(env: CloudflareEnv, message: string): Promise<void> {
   try {
     if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_ADMIN_CHAT_ID) {
-      await sendTelegram(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_ADMIN_CHAT_ID, message);
+      await sendTelegram(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_ADMIN_CHAT_ID, `${SYS_TAG}\n${message}`);
     }
   } catch { /* silent */ }
 }

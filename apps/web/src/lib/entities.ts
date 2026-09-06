@@ -42,9 +42,9 @@ export const ENTITIES: Record<string, EntityDef> = {
     { key: "project_id", label: "Project", type: "ref", refEntity: "projects", listShow: true },
     { key: "status", label: "สถานะ", type: "select", options: STATUS, listShow: true },
     { key: "description", label: "รายละเอียด", type: "textarea" } ] },
-  milestones: { table: "project_milestones", label: "Milestones", defaultOrder: "target_date ASC", fields: [
+  milestones: { table: "project_milestones", label: "Milestones", defaultOrder: "project_id ASC, target_date ASC", fields: [
+    { key: "project_id", label: "Project", type: "ref", refEntity: "projects", required: true, listShow: true },
     { key: "title", label: "หัวข้อ", type: "text", required: true, listShow: true },
-    { key: "project_id", label: "Project", type: "ref", refEntity: "projects", listShow: true },
     { key: "deliverable", label: "สิ่งที่ต้องส่งมอบ", type: "text", listShow: true },
     { key: "target_date", label: "วันที่เป้าหมาย", type: "date", listShow: true },
     { key: "status", label: "สถานะ", type: "select", options: STATUS, listShow: true } ] },

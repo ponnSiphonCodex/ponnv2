@@ -47,8 +47,28 @@ export function CrudManager({ entity }: { entity: string }) {
 
   useEffect(() => { load(); const cleanup = initOfflineSync((n) => setFlash(`ส่งข้อมูลที่ค้างไว้ ${n} รายการเรียบร้อย`)); return cleanup; }, [load]);
 
+  const [q, setQ] = useState("");
+  const [sortKey, setSortKey] = useState<string>("id");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
   function refLabel(f: Field, val: any) { if (val === null || val === undefined || val === "") return "—"; const o = (refs[f.refEntity!] || []).find((x) => String(x.id) === String(val)); return o ? o.label : `#${val}`; }
-  function cell(f: Field, r: Row) { const v = r[f.key]; if (f.type === "ref") return refLabel(f, v); if (v === null || v === undefined || v === "") return "—"; return String(v); }
+  function cellText(f: Field, r: Row): string { const v = r[f.key]; if (f.type === "ref") return refLabel(f, v); if (v === null || v === undefined || v === "") return "—"; return String(v); }
+  function cell(f: Field, r: Row) {
+    const v = r[f.key];
+    if (f.key === "color" && typeof v === "string" && v) return <span className="cell-color"><span className="sw" style={{ background: v }} />{v}</span>;
+    return cellText(f, r);
+  }
+  function sortVal(f: Field | null, r: Row): any {
+    if (!f) return r.id;
+    if (f.type === "ref") return refLabel(f, r[f.key]);
+    const v = r[f.key];
+    if (f.type === "number") return Number(v) || 0;
+    return (v ?? "").toString().toLowerCase();
+  }
+  function toggleSort(key: string) {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir("asc"); }
+  }
 
   async function remove(id: number) {
     if (!confirm("ลบรายการนี้?")) return;
@@ -58,19 +78,31 @@ export function CrudManager({ entity }: { entity: string }) {
   }
 
   const listFields = def.fields.filter((f) => f.listShow);
+  const term = q.trim().toLowerCase();
+  const filtered = term ? rows.filter((r) => listFields.some((f) => cellText(f, r).toLowerCase().includes(term)) || String(r.id).includes(term)) : rows;
+  const sortField = sortKey === "id" ? null : listFields.find((f) => f.key === sortKey) ?? null;
+  const sorted = [...filtered].sort((a, b) => { const x = sortVal(sortField, a), y = sortVal(sortField, b); const c = x < y ? -1 : x > y ? 1 : 0; return sortDir === "asc" ? c : -c; });
+  const arrow = (key: string) => <span className="arr">{sortKey === key ? (sortDir === "asc" ? "▲" : "▼") : "⇅"}</span>;
   return (
     <div style={{ padding: 24 }}>
       {flash && <div style={{ background: "#EFF6FF", color: "#1D4ED8", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{flash}</div>}
-      {canWrite && <button className="btn-pink" onClick={() => setCreating(true)} style={{ marginBottom: 16 }}>+ เพิ่ม {def.label}</button>}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        {canWrite ? <button className="btn-pink" onClick={() => setCreating(true)}>+ เพิ่ม {def.label}</button> : <span />}
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`ค้นหาใน ${def.label}...`} className="input" style={{ width: 260, maxWidth: "60vw" }} />
+      </div>
       {!canWrite && !loading && <div style={{ background: "#FFFBEB", color: "#92400E", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>คุณดูได้อย่างเดียว (ไม่มีสิทธิ์แก้ไขส่วนนี้)</div>}
       {error && <div style={{ background: "#FEF2F2", color: "#B91C1C", padding: 12, borderRadius: 8, marginBottom: 12 }}>{error}</div>}
-      <div className="card" style={{ overflowX: "auto" }}>
+      <div className="card md-scroll">
         <table>
-          <thead><tr style={{ background: "#F9FAFB", textAlign: "left" }}><th style={th}>ID</th>{listFields.map((f) => <th key={f.key} style={th}>{f.label}</th>)}{canWrite && <th style={th}></th>}</tr></thead>
+          <thead><tr style={{ background: "#F9FAFB", textAlign: "left" }}>
+            <th className={`sortable ${sortKey === "id" ? "active" : ""}`} style={th} onClick={() => toggleSort("id")}>ID {arrow("id")}</th>
+            {listFields.map((f) => <th key={f.key} className={`sortable ${sortKey === f.key ? "active" : ""}`} style={th} onClick={() => toggleSort(f.key)}>{f.label} {arrow(f.key)}</th>)}
+            {canWrite && <th style={th}></th>}
+          </tr></thead>
           <tbody>
             {loading && <tr><td colSpan={listFields.length + 2} style={{ ...td, color: "#6B7280" }}>กำลังโหลด...</td></tr>}
-            {!loading && rows.length === 0 && <tr><td colSpan={listFields.length + 2} style={{ ...td, color: "#6B7280" }}>ยังไม่มีข้อมูล</td></tr>}
-            {rows.map((r) => (
+            {!loading && sorted.length === 0 && <tr><td colSpan={listFields.length + 2} style={{ ...td, color: "#6B7280" }}>{term ? "ไม่พบรายการที่ค้นหา" : "ยังไม่มีข้อมูล"}</td></tr>}
+            {sorted.map((r) => (
               <tr key={r.id} style={{ borderTop: "1px solid #F0F1F3" }}>
                 <td style={{ ...td, color: "#9AA0A6" }}>{r.id}</td>
                 {listFields.map((f) => <td key={f.key} style={td}>{cell(f, r)}</td>)}
@@ -108,7 +140,7 @@ function EntityForm({ entity, refs, initial, onClose, onSaved }: { entity: strin
     setErr(r.error || "บันทึกไม่สำเร็จ");
   }
   return (
-    <div style={overlay} onClick={onClose}>
+    <div style={overlay}>{/* v27: ไม่ปิดเมื่อคลิกพื้นหลัง (กันปิดพลาดตอนกรอกข้อมูล) — ปิดด้วยปุ่มยกเลิกเท่านั้น */}
       <div className="card" style={{ width: "min(560px,94vw)", maxHeight: "88vh", overflowY: "auto", padding: 22 }} onClick={(e) => e.stopPropagation()}>
         <h3 style={{ marginTop: 0, color: NAVY }}>{initial ? "แก้ไข" : "เพิ่ม"} {def.label}</h3>
         {err && <div style={{ background: "#FEF2F2", color: "#B91C1C", padding: 10, borderRadius: 8, marginBottom: 10 }}>{err}</div>}

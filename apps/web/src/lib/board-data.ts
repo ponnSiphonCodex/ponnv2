@@ -1,4 +1,4 @@
-export type BoardTask = { id: number; title: string; workflowStatusId: number | null; sortOrder: number; assignee: { id: string; name: string | null } | null; priority: { name: string; color: string | null } | null; estimatedHours: number | null; actualHours: number; dueDate: number | null };
+export type BoardTask = { id: number; title: string; workflowStatusId: number | null; sortOrder: number; assignee: { id: string; name: string | null } | null; priority: { name: string; color: string | null } | null; estimatedHours: number | null; actualHours: number; dueDate: number | null; projectName?: string | null };
 export type BoardColumn = { id: number; name: string; color: string | null; category: string; tasks: BoardTask[] };
 export type Progress = { total: number; done: number; drop: number; percent: number };
 export type BoardData = { project: { id: number; name: string; status: string | null; progress: Progress }; columns: BoardColumn[] };
@@ -25,6 +25,45 @@ export async function getBoardData(db: D1Database, projectId: number): Promise<B
   const percent = denom <= 0 ? 0 : Math.round((done / denom) * 1000) / 10;
   const columns: BoardColumn[] = statuses.map((s) => ({ id: s.id, name: s.name, color: s.color, category: s.category, tasks: rows.filter((t) => t.workflow_status_id === s.id).map((t) => ({ id: t.id, title: t.title, workflowStatusId: t.workflow_status_id, sortOrder: t.sort_order, assignee: t.assignee_id ? { id: t.assignee_id, name: t.assignee_name } : null, priority: t.priority_name ? { name: t.priority_name, color: t.priority_color } : null, estimatedHours: t.estimated_hours, actualHours: Number(t.actual_hours) || 0, dueDate: t.due_date })) }));
   return { project: { id: proj.id, name: proj.name, status: proj.status, progress: { total, done, drop, percent } }, columns };
+}
+// v27: กระดานรวมทุกโครงการ — จัดกลุ่มตาม category มาตรฐาน (backlog/todo/doing/done/drop)
+// columns.id = index ของ category (ไม่ใช่ workflow_status จริง) → aggregate mode อ่านอย่างเดียว/เปิด drawer ได้
+const CANON: { key: string; name: string; color: string }[] = [
+  { key: "backlog", name: "Backlog", color: "#64748B" },
+  { key: "todo", name: "To Do", color: "#0284C7" },
+  { key: "doing", name: "In Progress", color: "#D4A017" },
+  { key: "done", name: "Done", color: "#16A34A" },
+  { key: "drop", name: "Drop", color: "#DC2626" },
+];
+export async function getAllProjectsBoard(db: D1Database, ids: number[] | null): Promise<BoardData> {
+  let where = "1=1"; const binds: any[] = [];
+  if (ids && ids.length >= 0) { if (ids.length === 0) where = "0"; else { where = `t.project_id IN (${ids.map(() => "?").join(",")})`; binds.push(...ids); } }
+  const tk = await db.prepare(
+    `SELECT t.id, t.title, t.workflow_status_id, t.estimated_hours, t.due_date, t.sort_order, t.assignee_id,
+       u.name AS assignee_name, p.name AS priority_name, p.color AS priority_color,
+       ws.category AS category, pr.name AS project_name,
+       COALESCE(wl.actual_hours, 0) AS actual_hours
+     FROM tasks t
+     LEFT JOIN users u ON t.assignee_id=u.id
+     LEFT JOIN priorities p ON t.priority_id=p.id
+     LEFT JOIN workflow_statuses ws ON t.workflow_status_id=ws.id
+     LEFT JOIN projects pr ON t.project_id=pr.id
+     LEFT JOIN (SELECT task_id, SUM(hours_spent) AS actual_hours FROM task_worklogs GROUP BY task_id) wl ON wl.task_id=t.id
+     WHERE ${where} ORDER BY t.sort_order, t.id`
+  ).bind(...binds).all();
+  const rows = (tk.results ?? []) as any[];
+  let done = 0, drop = 0;
+  const columns: BoardColumn[] = CANON.map((c, i) => ({ id: -(i + 1), name: c.name, color: c.color, category: c.key,
+    tasks: rows.filter((t) => (t.category ?? "backlog") === c.key).map((t) => {
+      if (c.key === "done") done++; if (c.key === "drop") drop++;
+      return { id: t.id, title: t.title, workflowStatusId: t.workflow_status_id, sortOrder: t.sort_order,
+        assignee: t.assignee_id ? { id: t.assignee_id, name: t.assignee_name } : null,
+        priority: t.priority_name ? { name: t.priority_name, color: t.priority_color } : null,
+        estimatedHours: t.estimated_hours, actualHours: Number(t.actual_hours) || 0, dueDate: t.due_date,
+        projectName: t.project_name ?? null } as any;
+    }) }));
+  const total = rows.length; const denom = total - drop;
+  return { project: { id: 0, name: "ทุกโครงการ", status: null, progress: { total, done, drop, percent: denom <= 0 ? 0 : Math.round((done / denom) * 1000) / 10 } }, columns };
 }
 export async function listProjects(db: D1Database, ids?: number[] | null): Promise<{ id: number; name: string; status: string | null }[]> {
   let sql = `SELECT id, name, status FROM projects`; const binds: any[] = [];

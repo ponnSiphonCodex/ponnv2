@@ -106,6 +106,10 @@ CREATE INDEX user_todos_user_idx ON user_todos(user_id);
 CREATE TABLE notifications ( id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, actor_id TEXT REFERENCES users(id) ON DELETE SET NULL, action_type TEXT, reference_type TEXT, reference_id INTEGER, message TEXT, is_read INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL DEFAULT (unixepoch()) );
 CREATE INDEX notifications_user_idx ON notifications(user_id);
 
+CREATE TABLE team_roster ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, responsibility TEXT, pm_role TEXT, project_id INTEGER, product_id INTEGER, owner_user_id TEXT, created_at INTEGER NOT NULL DEFAULT (unixepoch()), updated_at INTEGER NOT NULL DEFAULT (unixepoch()) );
+CREATE TABLE team_hidden ( id INTEGER PRIMARY KEY AUTOINCREMENT, viewer_id TEXT NOT NULL, target_kind TEXT NOT NULL, target_id TEXT NOT NULL );
+CREATE UNIQUE INDEX team_hidden_uniq ON team_hidden(viewer_id, target_kind, target_id);
+CREATE INDEX team_roster_owner_idx ON team_roster(owner_user_id);
 -- ===================== SEED =====================
 INSERT INTO priorities (id,name,level,color) VALUES (1,'Critical',1,'#EC186E'),(2,'High',2,'#D4A017'),(3,'Medium',3,'#6B7280'),(4,'Low',4,'#9AA0A6');
 INSERT INTO categories (id,name,color) VALUES (1,'Strategic','#001D58'),(2,'Operational','#6B7280'),(3,'Compliance','#D4A017');
