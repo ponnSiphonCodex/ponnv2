@@ -73,7 +73,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
   const initial = (user.name || user.email || "?").charAt(0).toUpperCase();
   const canSee = (it: Item) => (!it.adminOnly || isAdmin) && (!it.masterOnly || canMaster);
   const badgeFor = (it: Item) => (it.badgeKey === "requests" ? reqCount : 0);
-  const rowStyle = (a: boolean): React.CSSProperties => ({ display: "flex", alignItems: "center", gap: 11, padding: collapsed ? "10px 0" : "9px 11px", justifyContent: collapsed ? "center" : "flex-start", borderRadius: 9, textDecoration: "none", color: a ? "#fff" : "rgba(255,255,255,.72)", background: a ? PINK : "transparent", fontSize: 13.5, fontWeight: a ? 600 : 500, whiteSpace: "nowrap", marginBottom: 2, cursor: "pointer", position: "relative" });
+  const rowStyle = (a: boolean): React.CSSProperties => ({ display: "flex", alignItems: "center", gap: 11, padding: collapsed ? "8px 0" : "7px 11px", justifyContent: collapsed ? "center" : "flex-start", borderRadius: 9, textDecoration: "none", color: a ? "#fff" : "rgba(255,255,255,.72)", background: a ? PINK : "transparent", fontSize: 13.5, fontWeight: a ? 600 : 500, whiteSpace: "nowrap", marginBottom: 2, cursor: "pointer", position: "relative" });
 
   const Avatar = ({ size }: { size: number }) => avatar
     ? <img src={avatar} alt="" style={{ width: size, height: size, minWidth: size, borderRadius: "50%", objectFit: "cover" }} />
@@ -106,7 +106,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
           ) : GROUPS.map((g, gi) => {
             const items = g.items.filter(canSee); if (!items.length) return null;
             return (
-              <div key={gi} style={{ marginBottom: 10 }}>
+              <div key={gi} style={{ marginBottom: 6 }}>
                 {!collapsed && g.title && <div style={{ fontSize: 10.5, color: "rgba(255,255,255,.4)", padding: "8px 10px 5px", textTransform: "uppercase", letterSpacing: 1 }}>{g.title}</div>}
                 {!collapsed && !g.title && gi > 0 && <div style={{ height: 1, background: "rgba(255,255,255,.08)", margin: "6px 10px 8px" }} />}
                 {items.map((m) => {
@@ -114,7 +114,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
                   if (m.children) {
                     const childActive = m.children.some((c) => c.key === active);
                     // parent เมื่อมี child active: ไม่ทำ pink เต็ม แต่ใช้ตัวอักษรขาว + จุด accent (สะอาดกว่า)
-                    const parentStyle: React.CSSProperties = { display: "flex", alignItems: "center", gap: 11, padding: collapsed ? "10px 0" : "9px 11px", justifyContent: collapsed ? "center" : "flex-start", borderRadius: 9, color: (a || childActive) ? "#fff" : "rgba(255,255,255,.72)", background: a ? PINK : "transparent", fontSize: 13.5, fontWeight: (a || childActive) ? 600 : 500, whiteSpace: "nowrap", marginBottom: 2, cursor: "pointer" };
+                    const parentStyle: React.CSSProperties = { display: "flex", alignItems: "center", gap: 11, padding: collapsed ? "8px 0" : "7px 11px", justifyContent: collapsed ? "center" : "flex-start", borderRadius: 9, color: (a || childActive) ? "#fff" : "rgba(255,255,255,.72)", background: a ? PINK : "transparent", fontSize: 13.5, fontWeight: (a || childActive) ? 600 : 500, whiteSpace: "nowrap", marginBottom: 2, cursor: "pointer" };
                     return (
                       <div key={m.key}>
                         <div className="nav-link" style={parentStyle} onClick={() => { if (collapsed) { toggle(); setProjOpen(true); } else setProjOpen((o) => !o); }}>

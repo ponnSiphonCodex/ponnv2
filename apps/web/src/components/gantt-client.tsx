@@ -29,6 +29,8 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
   const [rangeStart,setRangeStart]=useState(""); const [rangeEnd,setRangeEnd]=useState("");
   const [draft,setDraft]=useState<{start:number;due:number;projectId:number}|null>(null); const [title,setTitle]=useState("");
   const [drawerTask,setDrawerTask]=useState<number|null>(null);
+  const [milestoneDraft,setMilestoneDraft]=useState<{projectId:number;target:number}|null>(null);
+  const [milestoneTitle,setMilestoneTitle]=useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -129,13 +131,13 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
       <div className="gantt-toolbar">
         <div className="seg-group">{(["project","workforce"] as const).map(m=><button key={m} onClick={()=>setMode(m)} style={segBtn(mode===m)}>{m==="project"?"โหมดโครงการ":"Workforce Management"}</button>)}</div>
         <div className="seg-group">{(["day","week","month"] as const).map(v=><button key={v} onClick={()=>setScale(v)} style={segBtn(scale===v)}>{v[0].toUpperCase()+v.slice(1)}</button>)}</div>
-        <button className="btn-ghost" onClick={exportCSV} style={{marginLeft:"auto"}}>Export Excel</button>
+        <button className="btn-ghost" onClick={()=>{if(projectIds.length!==1){alert("กรุณาเลือก Project 1 รายการก่อนเพิ่ม Milestone");return}setMilestoneDraft({projectId:Number(projectIds[0]),target:dayFloor(Math.floor(Date.now()/1000))});}}>◆ เพิ่ม Milestone</button><button className="btn-ghost" onClick={exportCSV} style={{marginLeft:"auto"}}>Export Excel</button>
       </div>
       {loading && <div className="card" style={{ padding: 20 }}><Skel w="100%" h={200} /></div>}
       {!loading && model && model.rows.length === 0 && <div className="card" style={{ padding: 40, color: "#6B7280" }}>ยังไม่มีงานที่กำหนดวันเริ่ม + วันส่ง</div>}
 
       {!loading && model && model.rows.length > 0 && (
-        <div className="card" style={{ overflow: "hidden" }}>
+        <div className="card" style={{ overflow: "visible", cursor: "pointer", zIndex: 7 }}>
           <div style={{ display: "flex" }}>
             <div style={{ width: LABEL_W, minWidth: LABEL_W, borderRight: "2px solid #E5E7EB", background: "#fff", zIndex: 3 }}>
               <div className="month-band" /><div style={{ height: HEAD_H, borderBottom: "1px solid #E5E7EB", display: "flex", alignItems: "center", padding: "0 14px", fontWeight: 700, fontSize: 12.5, color: NAVY, background: "#F9FAFB" }}>{mode === "project" ? "Product / Project / Task" : "ทีม / งาน"}</div>
@@ -146,7 +148,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
               ))}
             </div>
             <div ref={scrollRef} style={{ overflowX: "auto", flex: 1 }}>
-              <div onClick={(e)=>{if((e.target as HTMLElement).closest("[data-task]"))return;const rect=e.currentTarget.getBoundingClientRect();const rowIndex=Math.floor((e.clientY-rect.top-monthBands.length*0-24-HEAD_H)/ROW_H);const row=model.rows[rowIndex];if(!row||row.sub!=="Project"||!row.projectId)return;let u=model.min+Math.floor((e.clientX-rect.left)/px)*DAY;if(scale==="week"){const d=new Date(u*1000),day=d.getUTCDay()||7;u-=(day-1)*DAY}setDraft({start:u,due:u+7*DAY,projectId:row.projectId})}} style={{ position: "relative", width: chartW, minWidth: "100%", cursor:"copy" }}>
+              <div onClick={(e)=>{if((e.target as HTMLElement).closest("[data-task]"))return;const rect=e.currentTarget.getBoundingClientRect();const rowIndex=Math.floor((e.clientY-rect.top-monthBands.length*0-24-HEAD_H)/ROW_H);const row=model.rows[rowIndex];const targetProjectId=row?.projectId??row?.task?.project_id;if(!row||!targetProjectId||row.kind==="group"&&row.sub!=="Project")return;let u=model.min+Math.floor((e.clientX-rect.left)/px)*DAY;if(scale==="week"){const d=new Date(u*1000),day=d.getUTCDay()||7;u-=(day-1)*DAY}setDraft({start:u,due:u+7*DAY,projectId:targetProjectId})}} style={{ position: "relative", width: chartW, minWidth: "100%", cursor:"default" }}>
                 <div className="month-band">{monthBands.map(b=><span key={b.key} style={{position:"absolute",left:b.left,width:b.width}}>{b.label}</span>)}</div>
                 <div style={{ height: HEAD_H, borderBottom: "1px solid #E5E7EB", position: "relative", background: "#F9FAFB" }}>
                   {ticks.map((t, i) => <div key={i} style={{ position: "absolute", left: t.x, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10.5, color: t.major ? NAVY : "#AEB4C0", fontWeight: t.major ? 700 : 400, paddingLeft: 3, whiteSpace: "nowrap" }}>{t.label}</div>)}
@@ -155,14 +157,14 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                   {Array.from({length:model.days+1},(_,d)=>{const dt=new Date((model.min+d*DAY)*1000),we=dt.getUTCDay()===0||dt.getUTCDay()===6;return we?<div key={`we-${d}`} style={{position:"absolute",left:d*px,top:0,bottom:0,width:px,background:"rgba(107,114,128,.045)",pointerEvents:"none"}}/>:null})}
                   {ticks.map((t, i) => <div key={i} style={{ position: "absolute", left: t.x, top: 0, bottom: 0, width: 1, background: t.major ? "#E5E7EB" : "#F1F3F5" }} />)}
                   {todayX >= 0 && todayX <= chartW && (<><div style={{ position: "absolute", left: todayX, top: 0, bottom: 0, width: 2, background: PINK, opacity: .5 }} title="Today" /><div style={{position:"absolute",left:todayX+4,top:2,color:PINK,fontWeight:700,fontSize:12}}>TODAY</div></>)}
-                  {model.rows.map((r, i) => <div key={r.key} style={{ position: "absolute", left: 0, right: 0, top: i * ROW_H, height: ROW_H, borderBottom: "1px solid #F4F4F6", background: r.kind === "group" ? (r.sub === "Product" ? "#EEF1F6" : "#F7F8FA") : "transparent" }} />)}
+                  {model.rows.map((r, i) => <div key={r.key} style={{ position: "absolute", left: 0, right: 0, top: i * ROW_H, height: ROW_H, borderBottom: "1px solid #F4F4F6", background: r.kind === "group" ? (r.sub === "Product" ? "#EEF1F6" : "#F7F8FA") : "transparent", cursor: (r.sub === "Project" || r.kind === "task") ? "copy" : "default" }} />)}
 
                   {model.milestones.map((m) => {
                     const x = ((m.target - model.min) / DAY) * px;
                     const projectRow = model.rows.findIndex((r) => r.sub === "Project" && r.projectId === m.project_id);
                     if (projectRow < 0) return null;
                     const y = projectRow * ROW_H + ROW_H / 2;
-                    return <div key={`milestone-${m.id}`} title={`${m.title} · ${ds(m.target)}`} style={{ position: "absolute", left: x, top: y, bottom: 0, width: 2, background: PINK, opacity: .82, zIndex: 5, pointerEvents: "none" }}>
+                    return <div key={`milestone-${m.id}`} onClick={(e)=>{e.stopPropagation();location.href=`/pm/manage/milestones?edit=${m.id}`}} title={`${m.title} · ${ds(m.target)}`} style={{ position: "absolute", left: x, top: y, bottom: 0, width: 2, background: PINK, opacity: .82, zIndex: 8, pointerEvents: "auto", cursor: "pointer" }}>
                       <span style={{ position: "absolute", left: -7, top: -7, width: 14, height: 14, background: PINK, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 1px 3px rgba(0,0,0,.18)" }} />
                       <span style={{ position: "absolute", left: 13, top: -12, padding: "3px 7px", background: "#fff", color: NAVY, border: `1px solid ${PINK}`, borderRadius: 5, fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap", boxShadow: "0 1px 3px rgba(0,0,0,.10)" }}>{m.title} · {ds(m.target)}</span>
                     </div>;
@@ -182,7 +184,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                     if (r.kind === "task" && r.task) {
                       const pos = model.taskPos.get(r.task.id)!; const col = catColor(r.task.category);
                       return <div key={r.key} data-task="1" onClick={(e)=>{e.stopPropagation();setDrawerTask(r.task!.id)}} title={`${r.task.title}\n${ds(r.task.start)} → ${ds(r.task.due)}`} style={{ position: "absolute", left: pos.left, top: i * ROW_H + 7, height: ROW_H - 14, width: pos.width, background: col, borderRadius: 5, boxShadow: "0 1px 2px rgba(0,0,0,.12)", display: "flex", alignItems: "center", padding: "0 6px", overflow: "hidden" }}>
-                        <span style={{ fontSize: 10.5, color: "#fff", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.task.title}</span>
+                        <span style={{ fontSize: 10.5, color: "#fff", fontWeight: 600, whiteSpace: "nowrap", overflow: "visible", textOverflow: "clip", textShadow: "0 1px 2px rgba(0,0,0,.45)", pointerEvents: "none" }}>{r.task.title}</span>
                       </div>;
                     }
                     if (r.kind === "ms" && r.ms) {
@@ -197,6 +199,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
           </div>
         </div>
       )}
+      {milestoneDraft&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",zIndex:91,display:"grid",placeItems:"center"}}><div className="card" style={{padding:22,width:"min(480px,94vw)"}}><h3 style={{marginTop:0}}>เพิ่ม Milestone</h3><label className="field-block"><span className="field-label">ชื่อ Milestone</span><input autoFocus className="input" value={milestoneTitle} onChange={e=>setMilestoneTitle(e.target.value)}/></label><label className="field-block" style={{marginTop:12}}><span className="field-label">วันที่เป้าหมาย</span><input type="date" className="input" value={ds(milestoneDraft.target)} onChange={e=>setMilestoneDraft({...milestoneDraft,target:Date.parse(e.target.value)/1000})}/></label><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}><button className="btn-ghost" onClick={()=>setMilestoneDraft(null)}>ยกเลิก</button><button className="btn-pink" onClick={async()=>{if(!milestoneTitle.trim())return;const res=await fetch("/api/milestones/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({projectId:milestoneDraft.projectId,title:milestoneTitle.trim(),targetDate:milestoneDraft.target})});if(res.ok){setMilestoneDraft(null);setMilestoneTitle("");location.reload()}else alert((await res.json()).error||"สร้าง Milestone ไม่สำเร็จ")}}>สร้าง Milestone</button></div></div></div>}
       {draft&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",zIndex:90,display:"grid",placeItems:"center"}}><div className="card" style={{padding:22,width:"min(480px,94vw)"}}><h3 style={{marginTop:0}}>เพิ่ม Task จาก Gantt</h3><label className="field-block"><span className="field-label">ชื่อ Task</span><input autoFocus className="input" value={title} onChange={e=>setTitle(e.target.value)}/></label><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:12}}><label className="field-block"><span className="field-label">วันเริ่ม</span><input type="date" className="input" value={ds(draft.start)} onChange={e=>setDraft({...draft,start:Date.parse(e.target.value)/1000})}/></label><label className="field-block"><span className="field-label">วันสิ้นสุด</span><input type="date" className="input" value={ds(draft.due)} onChange={e=>setDraft({...draft,due:Date.parse(e.target.value)/1000})}/></label></div><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}><button className="btn-ghost" onClick={()=>setDraft(null)}>ยกเลิก</button><button className="btn-pink" onClick={async()=>{const projectId=draft.projectId;const statusId=data?.projects?.find((x:any)=>x.id===projectId)?.first_status_id??1;const res=await fetch("/api/tasks/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title,projectId,statusId,startDate:draft.start,dueDate:draft.due})});const j=await res.json();if(res.ok){alert(`สร้าง Task สำเร็จ ID: ${j.id}`);setDraft(null);setTitle("");location.reload()}else alert(j.error) }}>สร้าง Task</button></div></div></div>}
       {drawerTask != null && <TaskDrawer taskId={drawerTask} users={[]} priorities={[]} statuses={[]} features={[]} tags={[]} onClose={()=>setDrawerTask(null)} onChanged={()=>{}} onNeedsReload={()=>location.reload()} />}
       <div style={{ display: "flex", gap: 14, marginTop: 12, fontSize: 12, color: "#6B7280", flexWrap: "wrap" }}>
