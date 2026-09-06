@@ -1,7 +1,7 @@
 /** icons.tsx — Minimal line icons (stroke, currentColor) ใช้ในเมนู sidebar
  *  ทุกตัว 20x20, stroke 1.6, สืบทอดสีจาก parent (ขาวบนพื้น navy) */
 type P = { size?: number };
-const base = (size = 20) => ({ width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const });
+const base = (size = 20) => ({ width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.1, strokeLinecap: "round" as const, strokeLinejoin: "round" as const });
 
 export function Icon({ name, size = 20 }: { name: string; size?: number }) {
   const p = base(size);
@@ -30,6 +30,10 @@ export function Icon({ name, size = 20 }: { name: string; size?: number }) {
     case "team": return <svg {...p}><circle cx="12" cy="7" r="3"/><path d="M6 21v-1a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v1"/><circle cx="5" cy="10" r="2"/><circle cx="19" cy="10" r="2"/></svg>;
     case "usercog": return <svg {...p}><circle cx="10" cy="8" r="3.2"/><path d="M3 21v-1.5A5 5 0 0 1 8 15h2"/><circle cx="18" cy="16" r="2.6"/><path d="M18 12.6v1M18 18.4v1M21 16h-1M16 16h-1M20.1 13.9l-.7.7M16.6 17.4l-.7.7M20.1 18.1l-.7-.7M16.6 14.6l-.7-.7"/></svg>;
     case "log": return <svg {...p}><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>;
+    case "close": return <svg {...p}><path d="M18 6 6 18M6 6l12 12"/></svg>;
+    case "calendar-view": return <svg {...p}><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01"/></svg>;
+    case "table": return <svg {...p}><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16M15 4v16"/></svg>;
+    case "attach": return <svg {...p}><path d="M21 8.5 12.5 17a4 4 0 0 1-5.7-5.7l8-8a2.6 2.6 0 0 1 3.7 3.7l-8 8a1.2 1.2 0 0 1-1.7-1.7l7.3-7.3"/></svg>;
     case "settings": return <svg {...p}><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14 2h-4l-.6 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2L10 22h4l.6-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5A7 7 0 0 0 19 12z"/></svg>;
     default: return <svg {...p}><circle cx="12" cy="12" r="9"/></svg>;
   }

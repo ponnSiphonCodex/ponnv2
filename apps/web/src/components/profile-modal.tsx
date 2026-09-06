@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { uploadToGoogleDrive } from "@/lib/upload";
 
 const NAVY = "#001D58", PINK = "#EC186E";
 type Profile = { id: string; name: string | null; email: string; company_email: string | null; phone: string | null; telegram_user_id: string | null; telegram_notify: number; image: string | null; avatar_url: string | null; pm_role: string | null; has_password: boolean };
@@ -13,7 +12,6 @@ export function ProfileModal({ isAdmin, impersonating, onClose }: { isAdmin: boo
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [pw1, setPw1] = useState(""); const [pw2, setPw2] = useState("");
-  const [uploading, setUploading] = useState(false);
   const [users, setUsers] = useState<ImpUser[]>([]);
   const [impSel, setImpSel] = useState("");
 
@@ -27,7 +25,7 @@ export function ProfileModal({ isAdmin, impersonating, onClose }: { isAdmin: boo
 
   async function saveProfile() {
     if (!p) return; setSaving(true);
-    const res = await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: p.name, companyEmail: p.company_email, phone: p.phone, avatarUrl: p.avatar_url }) });
+    const res = await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: p.name, companyEmail: p.company_email, phone: p.phone }) });
     setSaving(false); flash(res.ok ? "ok" : "err", res.ok ? "บันทึกโปรไฟล์แล้ว" : "บันทึกไม่สำเร็จ");
   }
   async function saveNotify() {
@@ -49,21 +47,13 @@ export function ProfileModal({ isAdmin, impersonating, onClose }: { isAdmin: boo
     const j = await res.json().catch(() => ({}));
     flash(j.ok ? "ok" : "err", j.ok ? "ส่งข้อความทดสอบไป Telegram แล้ว ✓" : (j.error || "ส่งไม่สำเร็จ"));
   }
-  async function onAvatar(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]; if (!file) return;
-    setUploading(true);
-    const r = await uploadToGoogleDrive(file);
-    setUploading(false);
-    if (r.ok && r.url) { set("avatar_url", r.url); flash("ok", "อัปโหลดรูปแล้ว — กด บันทึก เพื่อยืนยัน"); }
-    else flash("err", r.error || "อัปโหลดไม่สำเร็จ");
-  }
   async function impersonate() {
     if (!impSel) return;
     await fetch("/api/admin/impersonate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: impSel }) });
     location.href = "/pm/dashboard";
   }
 
-  const avatar = p?.avatar_url || p?.image;
+  const avatar = p?.image || p?.avatar_url;
   const tabs: { key: TabKey; label: string }[] = [
     { key: "profile", label: "โปรไฟล์" },
     { key: "notify", label: "แจ้งเตือน" },
@@ -78,7 +68,7 @@ export function ProfileModal({ isAdmin, impersonating, onClose }: { isAdmin: boo
         <div style={{ background: NAVY, color: "#fff", padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
           <div style={{ position: "relative" }}>
             {avatar ? <img src={avatar} alt="" style={{ width: 58, height: 58, borderRadius: "50%", objectFit: "cover", border: "2px solid #fff" }} /> : <div style={{ width: 58, height: 58, borderRadius: "50%", background: PINK, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700 }}>{(p?.name || p?.email || "?").charAt(0).toUpperCase()}</div>}
-            <label style={{ position: "absolute", bottom: -2, right: -2, width: 22, height: 22, borderRadius: "50%", background: PINK, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 11, border: "2px solid #fff" }} title="เปลี่ยนรูป">📷<input type="file" accept="image/*" hidden onChange={onAvatar} /></label>
+
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 17, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p?.name || "—"}</div>
@@ -99,8 +89,7 @@ export function ProfileModal({ isAdmin, impersonating, onClose }: { isAdmin: boo
         {/* body (scroll) */}
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
           {msg && <div style={{ background: msg.type === "ok" ? "#ECFDF5" : "#FEF2F2", color: msg.type === "ok" ? "#047857" : "#B91C1C", padding: 10, borderRadius: 8, fontSize: 13, marginBottom: 14 }}>{msg.text}</div>}
-          {uploading && <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 10 }}>กำลังอัปโหลดรูป...</div>}
-
+        
           {p && tab === "profile" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
               <Row label="ชื่อที่แสดง (Display Name)"><input className="input" value={p.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="ตั้งชื่อที่ต้องการแสดง" /></Row>

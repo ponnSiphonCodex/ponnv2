@@ -116,18 +116,34 @@ function EntityForm({ entity, refs, initial, onClose, onSaved }: { entity: strin
           {def.fields.map((f) => (
             <label key={f.key} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{f.label}{f.required && <span style={{ color: "#EC186E" }}> *</span>}</span>
-              {f.type === "textarea" ? <textarea className="input" style={{ height: 80, padding: 10 }} value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} />
+              {f.key === "color" ? <ColorSelect value={form[f.key] ?? ""} onChange={(v) => set(f.key, v)} />
+                : f.key === "level" ? <select className="input" value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)}><option value="">— เลือก —</option>{Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}</select>
+                : f.type === "textarea" ? <textarea className="input" style={{ height: 80, padding: 10 }} placeholder="Xxxxx" value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} />
                 : f.type === "select" ? <select className="input" value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)}><option value="">— เลือก —</option>{(f.options || []).map((o) => <option key={o} value={o}>{o}</option>)}</select>
                 : f.type === "ref" ? <select className="input" value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)}><option value="">— เลือก —</option>{(refs[f.refEntity!] || []).map((o) => <option key={String(o.id)} value={String(o.id)}>{o.label}</option>)}</select>
-                : <input className="input" type={f.type === "number" ? "number" : f.type === "date" ? "date" : "text"} value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} />}
+                : <input className="input" type={f.type === "number" ? "number" : f.type === "date" ? "date" : "text"} placeholder={f.type === "text" ? "Xxxxx" : undefined} value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} />}
             </label>
           ))}
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 18 }}>
-          <span style={{ fontSize: 11, color: "#9AA0A6" }}>💾 ร่างถูกเก็บอัตโนมัติ</span>
-          <div style={{ display: "flex", gap: 8 }}><button className="btn-ghost" onClick={onClose}>ยกเลิก</button><button className="btn-primary" onClick={submit} disabled={saving}>{saving ? "กำลังบันทึก..." : "บันทึก"}</button></div>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 18, gap: 8 }}>
+          <button className="btn-ghost" onClick={onClose}>ยกเลิก</button><button className="btn-primary" onClick={submit} disabled={saving}>{saving ? "กำลังบันทึก..." : "บันทึก"}</button>
         </div>
       </div>
+    </div>
+  );
+}
+const SHADES = ["#001D58","#EC186E","#D4A017","#2E7D32","#6B7280","#9AA0A6","#1D4ED8","#0891B2","#7C3AED","#DB2777","#DC2626","#EA580C","#CA8A04","#65A30D","#059669","#0D9488","#4F46E5","#9333EA","#BE185D","#334155"];
+function ColorSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: "relative" }}>
+      <button type="button" onClick={() => setOpen((o) => !o)} className="input" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", textAlign: "left" }}>
+        <span className="color-swatch" style={{ background: value || "#fff" }} />{value || "— เลือกสี —"}
+      </button>
+      {open && (<><div style={{ position: "fixed", inset: 0, zIndex: 60 }} onClick={() => setOpen(false)} />
+        <div className="card" style={{ position: "absolute", top: 44, left: 0, zIndex: 61, padding: 10, display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 8, width: 240, boxShadow: "0 8px 24px rgba(0,0,0,.15)" }}>
+          {SHADES.map((c) => <button key={c} type="button" title={c} onClick={() => { onChange(c); setOpen(false); }} style={{ width: 36, height: 30, borderRadius: 6, border: value === c ? "2px solid #001D58" : "1px solid #E5E7EB", background: c, cursor: "pointer" }} />)}
+        </div></>)}
     </div>
   );
 }

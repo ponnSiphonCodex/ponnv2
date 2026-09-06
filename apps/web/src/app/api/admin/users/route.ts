@@ -5,7 +5,7 @@ const SYS_ROLES = [{ id: 1, name: "System Admin" }, { id: 2, name: "User" }, { i
 const PM_ROLES = ["PMO", "Product Owner", "Project Manager", "Project Co-Ordinator", "Working Team"];
 export async function GET() {
   const c = await apiContext(); if (!c || !c.admin) return Response.json({ error: "forbidden" }, { status: 403 });
-  const us = await c.d1.prepare(`SELECT id, name, email, company_email, phone, active, pm_role, last_login_at, image, avatar_url FROM users ORDER BY last_login_at DESC NULLS LAST, email`).all();
+  const us = await c.d1.prepare(`SELECT id, name, email, company_email, phone, active, pm_role, last_login_at, image, avatar_url FROM users WHERE active=1 ORDER BY last_login_at DESC NULLS LAST, email`).all();
   const users = (us.results ?? []) as any[];
   const rr = await c.d1.prepare(`SELECT ur.user_id, sr.id AS role_id, sr.role_name FROM user_roles ur JOIN system_roles sr ON ur.role_id=sr.id`).all();
   const roleMap = new Map<string, { id: number; name: string }[]>();
@@ -48,5 +48,15 @@ export async function PATCH(req: NextRequest) {
   if ("pmRole" in b) await c.d1.prepare(`UPDATE users SET pm_role=?, updated_at=unixepoch() WHERE id=?`).bind(b.pmRole || null, b.userId).run();
   if ("name" in b) await c.d1.prepare(`UPDATE users SET name=?, updated_at=unixepoch() WHERE id=?`).bind(b.name || null, b.userId).run();
   if ("sysRoleId" in b) { await c.d1.prepare(`DELETE FROM user_roles WHERE user_id=?`).bind(b.userId).run(); await c.d1.prepare(`INSERT INTO user_roles (user_id, role_id) VALUES (?,?)`).bind(b.userId, b.sysRoleId).run(); }
+  return Response.json({ ok: true });
+}
+
+export async function DELETE(req: NextRequest) {
+  const c = await apiContext(); if (!c || !c.admin) return Response.json({ error: "forbidden" }, { status: 403 });
+  const id = new URL(req.url).searchParams.get("id");
+  if (!id) return Response.json({ error: "no id" }, { status: 400 });
+  // ปิดผู้ใช้ = ลบออกจากระบบ (ค้นไม่เจออีก จนกว่าจะเพิ่มใหม่ = คนละคน)
+  await c.d1.prepare(`DELETE FROM user_roles WHERE user_id=?`).bind(id).run();
+  await c.d1.prepare(`DELETE FROM users WHERE id=?`).bind(id).run();
   return Response.json({ ok: true });
 }

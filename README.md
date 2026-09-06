@@ -1,56 +1,36 @@
-# Portfolio Workspace — PM Platform (v23)
+# Portfolio Workspace — PM Platform (v25)
 
 Next.js 15 + Cloudflare D1/Workers + Drizzle + @opennextjs/cloudflare
 
-## ใหม่ใน v23 — Information Architecture (จัดเมนูใหม่แบบ UX Designer)
-เหลือ **10 เมนูหลัก** 3 โซน — ของเดิม 20+ เมนู ยุบรวมตาม mental model
-
-### โครงเมนูใหม่
-```
-🚀 Portfolio  (คลิกโลโก้จรวด = ย่อ/ขยาย)
-  Dashboard
-── PROJECT ──────────
-  Product & Feature        (แท็บ: Products · Features · Requirements · Initiatives · Themes)
-  Project ▾                (Expand/Collapse)
-     · Tasks List          → Kanban board
-     · Calendar View
-     · Gantt Chart
-     · To-Day Planning     (งานครบกำหนดของฉัน + to-do ส่วนตัว)
-  Project Milestone
-  Working Team             (roster + workload ต่อคน)
-  Issues List              (แท็บ: Issues · Risks)
-─────────────────────
-  Meeting Records
-── SETTING ──────────
-  Master Data              (dropdown: Priorities · Categories · Tags · Sprints · Custom Fields)
-  จัดการผู้ใช้งาน           (admin)
-  System Log               (admin)
-```
-
-### เหตุผลการยุบรวม (UX rationale)
-| หลักการ | สิ่งที่ทำ |
-|---|---|
-| Progressive disclosure | Project ซ่อน 4 view ไว้ กดขยายเมื่อใช้ |
-| Chunking 7±2 | เหลือ 10 เมนู แบ่ง 3 โซน ลด cognitive load |
-| Consolidate by mental model | Theme→Product→Feature = ลำดับชั้นเดียว → หน้าเดียวแบบแท็บ · Issues+Risks = "เฝ้าระวัง" → รวมกัน |
-| Task-based navigation | lookup tables (priorities/tags/…) ย้ายไปหลังบ้าน "Master Data" |
-
-### สิ่งที่ย้าย/ยุบ
-- Products/Features/Requirements/Initiatives/Themes → **Product & Feature** (แท็บ)
-- Kanban/Calendar/Gantt/To-do → **Project** (expand)
-- Risks → รวมใน **Issues List**
-- Priorities/Categories/Tags/Sprints/Custom Fields → **Master Data** (dropdown)
-- Sprint Board → ตัดจากเมนู (ยังเข้าถึงผ่าน route `/pm/sprint-board`)
-- **ลบ System Secrets** ออกหมดตั้งแต่ v22
-
-### UI
-- ไอคอนเมนู minimal line-icon สีขาว (contrast บน navy)
-- โลโก้จรวดแทน hamburger (คลิกย่อ/ขยาย)
+## ใหม่ใน v25
+0. **ลบช่องค้นหา** ออกจาก topbar (จะเพิ่มค้นหาแยกรายฟังก์ชันภายหลัง)
+1. **🔒 Schema Production-Safe** — migration ใหม่ `database/migrations/v25_production_safe.sql` โครงสร้างล้วน **ไม่มี DROP/DELETE** รันบน production ได้ ไม่ลบข้อมูล (schema.sql เดิม = setup ครั้งแรกเท่านั้น)
+2. **รูปโปรไฟล์ = Google** — ดึงรูปจาก Google อัปเดตทุกครั้งที่ล็อกอิน เก็บลง DB อัตโนมัติ · ผู้ใช้เปลี่ยน/อัปโหลดรูปเองไม่ได้แล้ว
+3. **Hover animation** เมนู sidebar (เลื่อน+ไฮไลต์) + โลโก้ (scale/rotate/glow)
+4. **หน้าจัดการผู้ใช้** — 10 คน/หน้า (pagination) · เรียงตามล็อกอินล่าสุด · ค้นหาชื่อ/อีเมล · ปิดผู้ใช้=ลบ (หายจากระบบ ค้นไม่เจอ จนเพิ่มใหม่=คนละคน) · ปุ่ม Log/ปิด เป็นไอคอน minimal · แก้แล้วเซฟเบื้องหลัง ไม่โหลดทั้งหน้า (optimistic) · เวลาแสดง `YYYY-MM-DD HH:mm น.` ทั้งระบบ
+5. **ไอคอนเส้นหนาขึ้น** (stroke 2.1) ทั้งระบบ
+6. **ไอคอน Google** กลับมาที่ปุ่มล็อกอิน (มีสี)
+7. **แจ้ง Admin ทาง Telegram** ทุกครั้งที่มีล็อกอิน + แจ้งพิเศษเมื่อผู้ใช้ใหม่เข้าระบบ (ใช้ `TELEGRAM_ADMIN_CHAT_ID`)
+8. **Master Data = แท็บด้านบน** (จาก dropdown) + cache ตารางที่เปิดแล้ว
+   - 8.1 เลือกสี = dropdown พร้อมตัวอย่างสี 20 เฉด
+   - 8.2 ระดับ = dropdown 1–10
+   - 8.3 ตัดข้อความ "ร่างถูกเก็บอัตโนมัติ"
+9. **localStorage-first** — draft autosave + offline queue (offline.ts) ยิงเข้า DB เบื้องหลัง ผู้ใช้ไม่เห็นการโหลด
+10. **ทุก text field** ใช้ placeholder `Xxxxx` เป็นมาตรฐาน
+11. **Meeting Records = Calendar View (default)** สลับเป็นตารางได้
+   - Rich Text editor ครบ: **Bold/Italic/Underline · Bullet · Numbering · Tab(indent) · Highlight · Heading · Link**
+   - เพิ่ม/แก้ประชุม = **เปิดหน้าใหม่เต็มจอ** (`/pm/meetings/edit`) ไม่ใช่ popup กันปิดพลาด
+   - 11.1 แนบไฟล์ Transcript / Meeting Minute / อื่นๆ ได้ (เก็บบน Google Drive)
 
 ## Deploy
 1. GitHub Desktop → วางไฟล์ทับ repo → Commit → Push
-2. **ไม่ต้อง migrate DB ใหม่** (v23 ไม่แตะ schema) — ถ้ายังไม่เคยรัน ให้รัน `database/migrations/schema.sql`
+2. **DB (Production ปลอดภัย):** รัน `database/migrations/v25_production_safe.sql` ใน D1 Console
+   - ถ้าขึ้น `duplicate column name` = คอลัมน์มีแล้ว ข้ามได้ (ไม่กระทบข้อมูล)
+   - ⚠️ **อย่ารัน** `schema.sql` บน production (อันนั้น DROP ทุกตาราง — setup ครั้งแรกเท่านั้น)
 3. Secret เดิม: `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ALLOWED_DOMAINS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`, (option) `CRON_SECRET`
+
+## Telegram แจ้ง Admin
+ใช้ `TELEGRAM_ADMIN_CHAT_ID` (chat id ของ admin). Admin ต้องกด **Start** กับบอทก่อน มิฉะนั้นจะได้ `chat not found`
 
 ## Login ทดสอบ
 - ponnsiphon@gmail.com / pn2811qp (System Admin + PMO)

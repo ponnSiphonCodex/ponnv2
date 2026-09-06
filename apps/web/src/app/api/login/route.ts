@@ -4,6 +4,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDb, users, loginLogs } from "@/db";
 import { verifyPassword } from "@/lib/password";
 import { createSessionToken, buildSessionCookie } from "@/lib/session";
+import { notifyAdminChat } from "@/lib/notify";
 export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   const { env } = await getCloudflareContext({ async: true });
@@ -23,6 +24,8 @@ export async function POST(req: NextRequest) {
   if (!user.active) return Response.json({ ok: false, error: "บัญชีถูกปิดใช้งาน ติดต่อผู้ดูแล" }, { status: 403 });
   await db.insert(loginLogs).values({ userId: user.id, email, authProvider: "Local", deviceInfo: dev, ipAddress: ip, success: 1 });
   await env.DB.prepare(`UPDATE users SET last_login_at = unixepoch() WHERE id = ?`).bind(user.id).run();
+  const when = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Bangkok" }).slice(0, 16) + " น.";
+  await notifyAdminChat(env, `🔑 <b>เข้าสู่ระบบ</b>\n${user.name ?? user.email} (Local)\n${when}`);
   const token = await createSessionToken(env.AUTH_SECRET, { sub: user.id, email: user.email, name: user.name });
   const res = Response.json({ ok: true });
   res.headers.append("Set-Cookie", buildSessionCookie(token));

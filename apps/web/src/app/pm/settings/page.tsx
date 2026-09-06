@@ -9,7 +9,7 @@ export default async function MasterDataPage() {
   if (!a.scope.isPmo) redirect("/pm/dashboard");
   return (
     <AppShell active="settings" {...shellProps(a)}>
-      <PageHeader title="Master Data" subtitle="ข้อมูลตั้งค่าระบบทั้งหมด — เลือกชุดข้อมูลจาก dropdown" />
+      <PageHeader title="Master Data" subtitle="ข้อมูลตั้งค่าระบบทั้งหมด" />
       <MasterDataManager canMaster={a.scope.isPmo} tabs={[
         { key: "priorities", label: "Priorities (ระดับความสำคัญ)" },
         { key: "categories", label: "Categories (หมวดหมู่)" },

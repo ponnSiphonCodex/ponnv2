@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { ProfileModal } from "./profile-modal";
 import { NotificationBell } from "./notification-bell";
-import { GlobalSearch } from "./global-search";
 import { Icon } from "./icons";
 
 const NAVY = "#001D58";
@@ -32,7 +31,7 @@ const GROUPS: Group[] = [
     { key: "issues", label: "Issues List", href: "/pm/issues", icon: "issue" },
   ]},
   { title: "", items: [
-    { key: "meetings", label: "Meeting Records", href: "/pm/manage/meetings", icon: "meeting" },
+    { key: "meetings", label: "Meeting Records", href: "/pm/meetings", icon: "meeting" },
   ]},
   { title: "SETTING", items: [
     { key: "settings", label: "Master Data", href: "/pm/settings", icon: "settings", masterOnly: true },
@@ -64,7 +63,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
     <div style={{ display: "flex", minHeight: "100dvh", background: "#F4F4F6" }}>
       <aside style={{ width, minWidth: width, background: NAVY, color: "#fff", display: "flex", flexDirection: "column", transition: ready ? "width .18s ease, min-width .18s ease" : "none", position: "sticky", top: 0, height: "100dvh" }}>
         <button onClick={toggle} aria-label="menu" style={{ display: "flex", alignItems: "center", gap: 11, padding: "15px 14px", borderBottom: "1px solid rgba(255,255,255,.1)", background: "transparent", border: "none", cursor: "pointer", width: "100%" }}>
-          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: collapsed ? 36 : 34, height: collapsed ? 36 : 34, background: "#fff", borderRadius: 9, overflow: "hidden", flexShrink: 0 }}><img src="/rocket-logo.png" alt="logo" style={{ width: "84%", height: "84%", objectFit: "contain" }} /></span>
+          <span className="nav-logo" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: collapsed ? 36 : 34, height: collapsed ? 36 : 34, background: "#fff", borderRadius: 9, overflow: "hidden", flexShrink: 0 }}><img src="/rocket-logo.png" alt="logo" style={{ width: "84%", height: "84%", objectFit: "contain" }} /></span>
           {!collapsed && <span style={{ fontWeight: 700, fontSize: 16, color: "#fff", whiteSpace: "nowrap" }}>Portfolio</span>}
         </button>
 
@@ -84,7 +83,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
                     const childActive = m.children.some((c) => c.key === active);
                     return (
                       <div key={m.key}>
-                        <div style={rowStyle(a || childActive)} onClick={() => { if (collapsed) { toggle(); setProjOpen(true); } else setProjOpen((o) => !o); }}>
+                        <div className="nav-link clickable" style={rowStyle(a || childActive)} onClick={() => { if (collapsed) { toggle(); setProjOpen(true); } else setProjOpen((o) => !o); }}>
                           <span style={{ display: "flex", alignItems: "center", opacity: (a || childActive) ? 1 : .85 }}><Icon name={m.icon} size={19} /></span>
                           {!collapsed && <><span style={{ flex: 1 }}>{m.label}</span><span style={{ transition: "transform .15s", transform: projOpen ? "rotate(90deg)" : "none", fontSize: 11 }}>▶</span></>}
                         </div>
@@ -93,7 +92,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
                             {m.children.map((c) => {
                               const ca = active === c.key;
                               return (
-                                <a key={c.key} href={c.href} style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 8, textDecoration: "none", color: ca ? "#fff" : "rgba(255,255,255,.65)", background: ca ? "rgba(236,24,110,.9)" : "transparent", fontSize: 13, fontWeight: ca ? 600 : 500, marginBottom: 1 }}>
+                                <a key={c.key} href={c.href} className="nav-link" style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 8, textDecoration: "none", color: ca ? "#fff" : "rgba(255,255,255,.65)", background: ca ? "rgba(236,24,110,.9)" : "transparent", fontSize: 13, fontWeight: ca ? 600 : 500, marginBottom: 1 }}>
                                   <span style={{ display: "flex", opacity: ca ? 1 : .75 }}><Icon name={c.icon} size={16} /></span>{c.label}
                                 </a>
                               );
@@ -105,7 +104,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
                   }
                   // ── Normal ──
                   return (
-                    <a key={m.key} href={m.href} title={collapsed ? m.label : undefined} style={rowStyle(a)}>
+                    <a key={m.key} href={m.href} title={collapsed ? m.label : undefined} className="nav-link" style={rowStyle(a)}>
                       <span style={{ display: "flex", alignItems: "center", opacity: a ? 1 : .85 }}><Icon name={m.icon} size={19} /></span>{!collapsed && <span>{m.label}</span>}
                     </a>
                   );
@@ -124,8 +123,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
 
       <main style={{ flex: 1, minWidth: 0, overflowX: "auto" }}>
         {!guest && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, padding: "8px 20px", background: "#fff", borderBottom: "1px solid #F0F1F3", position: "sticky", top: 0, zIndex: 30 }}>
-            <GlobalSearch />
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 16, padding: "8px 20px", background: "#fff", borderBottom: "1px solid #F0F1F3", position: "sticky", top: 0, zIndex: 30 }}>
             <NotificationBell />
           </div>
         )}
