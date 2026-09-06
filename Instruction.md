@@ -132,7 +132,7 @@ pm/
 | `GOOGLE_CLIENT_ID` | `71834421978-cuhvt0kbulcki1e8q4e1d7pmt1kq8sk6.apps.googleusercontent.com` |
 | `GOOGLE_CLIENT_SECRET` | จาก Google Console (ดูข้อ 8) |
 
-D1: `database_name=ponn_platform`, `database_id=940740b8-9177-489a-9344-47b3e61302f8` (ใน wrangler.jsonc)
+Database Runtime: Supabase Data API ผ่าน HTTPS ไม่มี D1 binding
 
 **เช็คว่าครบ:** เปิด `/api/debug` ต้องได้ true ทั้ง 4 + `db.ok:true`
 
@@ -183,7 +183,7 @@ D1: `database_name=ponn_platform`, `database_id=940740b8-9177-489a-9344-47b3e613
 ## 11. คำสั่ง/ค่าที่ใช้บ่อย
 
 ```
-D1 database: ponn_platform (id: 940740b8-9177-489a-9344-47b3e61302f8)
+Database: Supabase Data API ผ่าน HTTPS
 Worker: pm-platform-web
 Domain: pm.ponnsth.com
 Repo: github.com/ponnSiphonCodex/ponnv2
