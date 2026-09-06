@@ -96,6 +96,10 @@ export function MeetingEditor({ meetingId }: { meetingId: number | null }) {
           <F label="Project / Product"><input className="input" placeholder="Xxxxx" value={project} onChange={(e) => setProject(e.target.value)} /></F>
         </div>
         <F label="ผู้เข้าร่วม (คั่นด้วย ,)"><input className="input" placeholder="Xxxxx, Xxxxx" value={attendees} onChange={(e) => setAttendees(e.target.value)} /></F>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href={`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`[mom] ${title}`)}&dates=${date.replaceAll("-", "")}T${time.replace(":", "")}00/${date.replaceAll("-", "")}T${time.replace(":", "")}00`} target="_blank" className="btn-ghost" style={{ textDecoration: "none", display: "inline-flex", gap: 6, alignItems: "center" }}><Icon name="gcal" size={15} /> Sync Google Calendar</a>
+          <a href={`https://outlook.office.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&subject=${encodeURIComponent(`[mom] ${title}`)}&startdt=${encodeURIComponent(`${date}T${time}:00`)}&enddt=${encodeURIComponent(`${date}T${time}:00`)}`} target="_blank" className="btn-ghost" style={{ textDecoration: "none", display: "inline-flex", gap: 6, alignItems: "center" }}><Icon name="calendar-view" size={15} /> Sync MS Outlook</a>
+        </div>
       </div>
 
       <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 700, color: NAVY }}>บันทึกการประชุม (Rich Text)</div>

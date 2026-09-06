@@ -2,11 +2,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cachedFetch, TTL } from "@/lib/cache";
 import { Skel } from "./skeleton";
-import { MultiSelect } from "./multi-select";
 
 const NAVY = "#001D58", PINK = "#EC186E";
 const DAY = 86400;
-type Task = { id: number; title: string; start: number; due: number; project_id: number; project_name: string; product_name: string | null; product_id: number | null; assignee_id: string | null; assignee: string | null; category: string | null; feature_id:number|null; feature_name:string|null };
+type Task = { id: number; title: string; start: number; due: number; project_id: number; project_name: string; product_name: string | null; product_id: number | null; assignee_id: string | null; assignee: string | null; category: string | null };
 type Milestone = { id: number; title: string; target: number; project_id: number; project_name: string };
 type Dep = { pre: number; suc: number; type: string };
 type Member = { id: string; name: string };
@@ -21,13 +20,10 @@ const ROW_H = 34, LABEL_W = 240, HEAD_H = 46;
 
 export function GanttClient({ projects }: { projects: { id: number; name: string }[] }) {
   const [pid, setPid] = useState("all");
-  const [productIds,setProductIds]=useState<(number|string)[]>([]); const [featureIds,setFeatureIds]=useState<(number|string)[]>([]); const [projectIds,setProjectIds]=useState<(number|string)[]>([]);
   const [mode, setMode] = useState<"project" | "workforce">("project");
   const [scale, setScale] = useState<Scale>("day");
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
-  const [rangeStart,setRangeStart]=useState(""); const [rangeEnd,setRangeEnd]=useState("");
-  const [draft,setDraft]=useState<{start:number;due:number}|null>(null); const [title,setTitle]=useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,8 +34,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
   const px = SCALE_PX[scale];
   const model = useMemo(() => {
     if (!data) return null;
-    const selectedTasks=data.tasks.filter(t=>(!productIds.length||productIds.map(String).includes(String(t.product_id)))&&(!featureIds.length||featureIds.map(String).includes(String(t.feature_id)))&&(!projectIds.length||projectIds.map(String).includes(String(t.project_id)))&&(!rangeStart||t.due>=Date.parse(rangeStart)/1000)&&(!rangeEnd||t.start<=Date.parse(rangeEnd)/1000+DAY-1));
-    const items = [...selectedTasks.map((t) => t.start), ...selectedTasks.map((t) => t.due), ...data.milestones.map((m) => m.target)];
+    const items = [...data.tasks.map((t) => t.start), ...data.tasks.map((t) => t.due), ...data.milestones.map((m) => m.target)];
     if (!items.length) return { rows: [], min: 0, max: 0, days: 0, taskPos: new Map() };
     let min = dayFloor(Math.min(...items)) - DAY * 2;
     let max = dayFloor(Math.max(...items)) + DAY * 3;
@@ -49,7 +44,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
     const rows: Row[] = [];
     if (mode === "project") {
       const byProduct = new Map<string, Task[]>();
-      for (const t of selectedTasks) { const k = t.product_name || "— ไม่มี Product —"; (byProduct.get(k) ?? byProduct.set(k, []).get(k)!).push(t); }
+      for (const t of data.tasks) { const k = t.product_name || "— ไม่มี Product —"; (byProduct.get(k) ?? byProduct.set(k, []).get(k)!).push(t); }
       for (const [prod, ts] of byProduct) {
         rows.push({ key: `prod:${prod}`, label: prod, kind: "group", sub: "Product" });
         const byProj = new Map<string, Task[]>();
@@ -72,7 +67,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
     const taskPos = new Map<number, { row: number; left: number; width: number }>();
     rows.forEach((r, i) => { if (r.kind === "task" && r.task) { const left = ((r.task.start - min) / DAY) * px; const width = Math.max(px * 0.6, ((r.task.due - r.task.start) / DAY) * px); taskPos.set(r.task.id, { row: i, left, width }); } });
     return { rows, min, max, days, taskPos };
-  }, [data, mode, px, rangeStart, rangeEnd, productIds, featureIds, projectIds]);
+  }, [data, mode, px]);
 
   const ticks = useMemo(() => {
     if (!model || !model.days) return [];
@@ -91,7 +86,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
     if (!data) return;
     const esc = (v: any) => `"${(v ?? "").toString().replace(/"/g, '""')}"`;
     const rows = [["ID", "Task", "Product", "Project", "ผู้รับผิดชอบ", "เริ่ม", "กำหนดส่ง", "สถานะ", "จำนวนวัน"].map(esc).join(",")];
-    for (const t of selectedTasks) rows.push([t.id, t.title, t.product_name, t.project_name, t.assignee, ds(t.start), ds(t.due), t.category, Math.round((t.due - t.start) / DAY)].map(esc).join(","));
+    for (const t of data.tasks) rows.push([t.id, t.title, t.product_name, t.project_name, t.assignee, ds(t.start), ds(t.due), t.category, Math.round((t.due - t.start) / DAY)].map(esc).join(","));
     const csv = "\uFEFF" + rows.join("\r\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `gantt_${ds(Math.floor(Date.now() / 1000))}.csv`; a.click();
   }
@@ -103,14 +98,17 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
   return (
     <div style={{ padding: 20 }}>
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
-        <div style={{width:220}}><span className="field-label">Product</span><MultiSelect placeholder="ทุก Product" options={Array.from(new Map((data?.tasks??[]).filter(x=>x.product_id).map(x=>[String(x.product_id),{id:x.product_id!,name:x.product_name??`Product #${x.product_id}`}])).values())} value={productIds} onChange={setProductIds}/></div><div style={{width:220}}><span className="field-label">Feature</span><MultiSelect placeholder="ทุก Feature" options={Array.from(new Map((data?.tasks??[]).filter(x=>x.feature_id).map(x=>[String(x.feature_id),{id:x.feature_id!,name:x.feature_name??`Feature #${x.feature_id}`}])).values())} value={featureIds} onChange={setFeatureIds}/></div><div style={{width:240}}><span className="field-label">Project</span><MultiSelect placeholder="ทุก Project" options={projects} value={projectIds} onChange={setProjectIds}/></div>
+        <select className="input" style={{ width: "auto", minWidth: 200 }} value={pid} onChange={(e) => setPid(e.target.value)}>
+          <option value="all">📊 ทุกโครงการ (เรียงตาม Product/Project)</option>
+          {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
         <div style={{ display: "flex", gap: 4, background: "#fff", borderRadius: 8, padding: 3, boxShadow: "0 0 0 1px #E5E7EB inset" }}>
           {(["project", "workforce"] as const).map((m) => <button key={m} onClick={() => setMode(m)} style={segBtn(mode === m)}>{m === "project" ? "โหมดโครงการ" : "Workforce Management"}</button>)}
         </div>
         <div style={{ display: "flex", gap: 4, background: "#fff", borderRadius: 8, padding: 3, boxShadow: "0 0 0 1px #E5E7EB inset" }}>
           {(["day", "week", "month"] as const).map((s) => <button key={s} onClick={() => setScale(s)} style={segBtn(scale === s)}>{s === "day" ? "Day" : s === "week" ? "Week" : "Month"}</button>)}
         </div>
-        <label className="field-block"><span className="field-label">ช่วงวันที่เริ่ม</span><input className="input" type="date" value={rangeStart} onChange={e=>setRangeStart(e.target.value)}/></label><label className="field-block"><span className="field-label">ถึงวันที่</span><input className="input" type="date" value={rangeEnd} onChange={e=>setRangeEnd(e.target.value)}/></label><button className="btn-ghost" onClick={exportCSV} style={{ marginLeft: "auto" }}>Export Excel</button>
+        <button className="btn-ghost" onClick={exportCSV} style={{ marginLeft: "auto" }}>Export Excel</button>
       </div>
 
       {loading && <div className="card" style={{ padding: 20 }}><Skel w="100%" h={200} /></div>}
@@ -128,13 +126,13 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
               ))}
             </div>
             <div ref={scrollRef} style={{ overflowX: "auto", flex: 1 }}>
-              <div onClick={(e)=>{if((e.target as HTMLElement).closest("[data-task]"))return;const rect=e.currentTarget.getBoundingClientRect();let u=model.min+Math.floor((e.clientX-rect.left)/px)*DAY;if(scale==="week"){const d=new Date(u*1000),day=d.getUTCDay()||7;u-=(day-1)*DAY}setDraft({start:u,due:u+7*DAY})}} style={{ position: "relative", width: chartW, minWidth: "100%", cursor:"crosshair" }}>
+              <div style={{ position: "relative", width: chartW, minWidth: "100%" }}>
                 <div style={{ height: HEAD_H, borderBottom: "1px solid #E5E7EB", position: "relative", background: "#F9FAFB" }}>
                   {ticks.map((t, i) => <div key={i} style={{ position: "absolute", left: t.x, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 10.5, color: t.major ? NAVY : "#AEB4C0", fontWeight: t.major ? 700 : 400, paddingLeft: 3, whiteSpace: "nowrap" }}>{t.label}</div>)}
                 </div>
                 <div style={{ position: "relative", height: chartH }}>
                   {ticks.map((t, i) => <div key={i} style={{ position: "absolute", left: t.x, top: 0, bottom: 0, width: 1, background: t.major ? "#E5E7EB" : "#F1F3F5" }} />)}
-                  {todayX >= 0 && todayX <= chartW && <div style={{ position: "absolute", left: todayX, top: 0, bottom: 0, width: 2, background: PINK, opacity: .5 }} title="Today" /><div style={{position:"absolute",left:todayX+4,top:2,color:PINK,fontWeight:700,fontSize:12}}>TODAY</div>}
+                  {todayX >= 0 && todayX <= chartW && <div style={{ position: "absolute", left: todayX, top: 0, bottom: 0, width: 2, background: PINK, opacity: .5 }} title="วันนี้" />}
                   {model.rows.map((r, i) => <div key={r.key} style={{ position: "absolute", left: 0, right: 0, top: i * ROW_H, height: ROW_H, borderBottom: "1px solid #F4F4F6", background: r.kind === "group" ? (r.sub === "Product" ? "#EEF1F6" : "#F7F8FA") : "transparent" }} />)}
 
                   <svg style={{ position: "absolute", inset: 0, width: chartW, height: chartH, pointerEvents: "none" }}>
@@ -151,7 +149,7 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
                   {model.rows.map((r, i) => {
                     if (r.kind === "task" && r.task) {
                       const pos = model.taskPos.get(r.task.id)!; const col = catColor(r.task.category);
-                      return <div key={r.key} data-task="1" title={`${r.task.title}\n${ds(r.task.start)} → ${ds(r.task.due)}`} style={{ position: "absolute", left: pos.left, top: i * ROW_H + 7, height: ROW_H - 14, width: pos.width, background: col, borderRadius: 5, boxShadow: "0 1px 2px rgba(0,0,0,.12)", display: "flex", alignItems: "center", padding: "0 6px", overflow: "hidden" }}>
+                      return <div key={r.key} title={`${r.task.title}\n${ds(r.task.start)} → ${ds(r.task.due)}`} style={{ position: "absolute", left: pos.left, top: i * ROW_H + 7, height: ROW_H - 14, width: pos.width, background: col, borderRadius: 5, boxShadow: "0 1px 2px rgba(0,0,0,.12)", display: "flex", alignItems: "center", padding: "0 6px", overflow: "hidden" }}>
                         <span style={{ fontSize: 10.5, color: "#fff", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.task.title}</span>
                       </div>;
                     }
@@ -167,7 +165,6 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
           </div>
         </div>
       )}
-      {draft&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",zIndex:90,display:"grid",placeItems:"center"}}><div className="card" style={{padding:22,width:"min(480px,94vw)"}}><h3 style={{marginTop:0}}>เพิ่ม Task จาก Gantt</h3><label className="field-block"><span className="field-label">ชื่อ Task</span><input autoFocus className="input" value={title} onChange={e=>setTitle(e.target.value)}/></label><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:12}}><label className="field-block"><span className="field-label">วันเริ่ม</span><input type="date" className="input" value={ds(draft.start)} onChange={e=>setDraft({...draft,start:Date.parse(e.target.value)/1000})}/></label><label className="field-block"><span className="field-label">วันสิ้นสุด</span><input type="date" className="input" value={ds(draft.due)} onChange={e=>setDraft({...draft,due:Date.parse(e.target.value)/1000})}/></label></div><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}><button className="btn-ghost" onClick={()=>setDraft(null)}>ยกเลิก</button><button className="btn-pink" onClick={async()=>{const projectId=projectIds.length===1?Number(projectIds[0]):pid!=="all"?Number(pid):null;if(!projectId){alert("กรุณาเลือก Project เดียวก่อนเพิ่ม Task");return;}const statusId=data?.projects?.find((x:any)=>x.id===projectId)?.first_status_id??1;const res=await fetch("/api/tasks/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title,projectId,statusId,startDate:draft.start,dueDate:draft.due})});const j=await res.json();if(res.ok){alert(`สร้าง Task สำเร็จ ID: ${j.id}`);setDraft(null);setTitle("");location.reload()}else alert(j.error) }}>สร้าง Task</button></div></div></div>}
       <div style={{ display: "flex", gap: 14, marginTop: 12, fontSize: 12, color: "#6B7280", flexWrap: "wrap" }}>
         {[["#0284C7", "To Do"], ["#D4A017", "In Progress"], ["#16A34A", "Done"], ["#DC2626", "Drop"], ["#64748B", "Backlog"]].map(([c, l]) => <span key={l} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 12, borderRadius: 3, background: c as string }} />{l}</span>)}
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 12, background: PINK, transform: "rotate(45deg)", borderRadius: 2 }} /> Milestone</span>

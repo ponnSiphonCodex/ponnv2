@@ -98,7 +98,7 @@ export function BoardClient({ board, projects, users, priorities, features, tags
               ))}
             </div>
           </div>
-        ))}
+        ); })}
       </div>
 
       {addTo != null && <AddTaskModal projectId={board.project.id} statusId={addTo} users={users} priorities={priorities}
