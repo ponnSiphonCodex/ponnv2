@@ -91,16 +91,18 @@ export function GanttClient({ projects }: { projects: { id: number; name: string
     return out;
   }, [model, px, scale]);
 
+  const visibleTasks = useMemo(() => (data?.tasks ?? []).filter(t=>(!productIds.length||productIds.map(String).includes(String(t.product_id)))&&(!featureIds.length||featureIds.map(String).includes(String(t.feature_id)))&&(!projectIds.length||projectIds.map(String).includes(String(t.project_id)))&&(!rangeStart||t.due>=Date.parse(rangeStart)/1000)&&(!rangeEnd||t.start<=Date.parse(rangeEnd)/1000+DAY-1)), [data,productIds,featureIds,projectIds,rangeStart,rangeEnd]);
+
   function exportCSV() {
     if (!data) return;
     const esc = (v: any) => `"${(v ?? "").toString().replace(/"/g, '""')}"`;
     const rows = [["ID", "Task", "Product", "Project", "ผู้รับผิดชอบ", "เริ่ม", "กำหนดส่ง", "สถานะ", "จำนวนวัน"].map(esc).join(",")];
-    for (const t of selectedTasks) rows.push([t.id, t.title, t.product_name, t.project_name, t.assignee, ds(t.start), ds(t.due), t.category, Math.round((t.due - t.start) / DAY)].map(esc).join(","));
+    for (const t of visibleTasks) rows.push([t.id, t.title, t.product_name, t.project_name, t.assignee, ds(t.start), ds(t.due), t.category, Math.round((t.due - t.start) / DAY)].map(esc).join(","));
     const csv = "\uFEFF" + rows.join("\r\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `gantt_${ds(Math.floor(Date.now() / 1000))}.csv`; a.click();
   }
 
-  const completedCount=selectedTasks.filter(t=>t.category==="done").length; const droppedCount=selectedTasks.filter(t=>t.category==="drop").length; const progressBase=Math.max(0,selectedTasks.length-droppedCount); const completedPct=progressBase?Math.round(completedCount/progressBase*100):0;
+  const completedCount=visibleTasks.filter(t=>t.category==="done").length; const droppedCount=visibleTasks.filter(t=>t.category==="drop").length; const progressBase=Math.max(0,visibleTasks.length-droppedCount); const completedPct=progressBase?Math.round(completedCount/progressBase*100):0;
   const chartW = (model?.days ?? 0) * px;
   const chartH = (model?.rows.length ?? 0) * ROW_H;
   const monthBands = useMemo(() => {
