@@ -15,27 +15,27 @@ type Group = { title: string; items: Item[] };
 const PROJECT_VIEWS = ["board", "gantt", "calendar", "task-table"];
 
 const GROUPS: Group[] = [
-  { title: "OVERVIEW", items: [
+  { title: "", items: [
     { key: "dashboard", label: "Dashboard", href: "/pm/dashboard", icon: "dashboard" },
-    { key: "todos", label: "Today Tasks", href: "/pm/todos", icon: "check" },
+    { key: "todos", label: "Today Planning", href: "/pm/todos", icon: "todo" },
     { key: "milestones", label: "Key Milestone", href: "/pm/manage/milestones", icon: "milestone" },
-    { key: "product-feature", label: "Product and Feature", href: "/pm/portfolio", icon: "product" },
   ]},
   { title: "PROJECT", items: [
-    { key: "project", label: "Project List", href: "/pm/projects", icon: "project" },
-    { key: "board", label: "Tasks - Kanban", href: "/pm/board?id=all", icon: "board" },
-    { key: "gantt", label: "Tasks - Gantt Chart", href: "/pm/gantt", icon: "gantt" },
-    { key: "calendar", label: "Task - Calendar", href: "/pm/calendar", icon: "calendar-view" },
-    { key: "task-table", label: "Tasks - Table", href: "/pm/tasks", icon: "table" },
+    { key: "product-feature", label: "Product & Feature", href: "/pm/portfolio", icon: "product" },
+    { key: "project", label: "Project", href: "/pm/projects", icon: "project", children: [
+      { key: "project-new", label: "สร้าง Project", href: "/pm/projects/new", icon: "project" },
+      { key: "board", label: "Task Kanban", href: "/pm/board?id=1", icon: "board" },
+      { key: "gantt", label: "Gantt Chart", href: "/pm/gantt?id=1", icon: "gantt" },
+      { key: "calendar", label: "Calendar", href: "/pm/calendar", icon: "calendar" },
+      { key: "task-table", label: "Task Table", href: "/pm/tasks", icon: "board" },
+    ]},
     { key: "team", label: "Working Team", href: "/pm/team", icon: "team" },
-    { key: "issues", label: "Issues & Risk", href: "/pm/issues", icon: "issue" },
+    { key: "issues", label: "Issues List", href: "/pm/issues", icon: "issue" },
   ]},
-  { title: "MOM", items: [
-    { key: "meetings", label: "Meeting Minute", href: "/pm/meetings", icon: "meeting" },
-  ]},
+  { title: "", items: [{ key: "meetings", label: "Meeting Records", href: "/pm/meetings", icon: "meeting" }]},
   { title: "SETTING", items: [
     { key: "settings", label: "Master Data", href: "/pm/settings", icon: "settings", masterOnly: true },
-    { key: "users", label: "จัดการผู้ใช้", href: "/pm/users", icon: "usercog", adminOnly: true, badgeKey: "pending" },
+    { key: "users", label: "จัดการผู้ใช้งาน", href: "/pm/users", icon: "users", adminOnly: true, badgeKey: "pending" },
     { key: "logs", label: "System Log", href: "/pm/logs", icon: "log", adminOnly: true },
   ]},
 ];
@@ -90,7 +90,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
       <div className="mobile-topbar" style={{ position: "fixed", top: 0, left: 0, right: 0, height: 54, background: NAVY, zIndex: 60, alignItems: "center", justifyContent: "space-between", padding: "0 14px", gap: 10 }}>
         <button onClick={() => setMobileOpen(true)} aria-label="menu" style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", cursor: "pointer" }}>
           <span className="nav-logo" style={{ width: 32, height: 32, background: "#fff", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}><img src="/rocket-logo.png" alt="logo" style={{ width: "84%", height: "84%", objectFit: "contain" }} /></span>
-          <span style={{display:"flex",flexDirection:"column",lineHeight:1.1,textAlign:"left"}}><span style={{color:"#fff",fontWeight:700,fontSize:15}}>Portfolio</span><span style={{color:"rgba(255,255,255,.62)",fontSize:9.5,marginTop:3}}>v31.26090621:30</span></span>
+          <span style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>Portfolio</span>
         </button>
         <button onClick={() => setShowProfile(true)} aria-label="profile" style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex" }}><Avatar size={32} /></button>
       </div>
@@ -99,7 +99,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
       <aside className={`app-sidebar ${mobileOpen ? "open" : ""}`} style={{ width, minWidth: width, background: NAVY, color: "#fff", display: "flex", flexDirection: "column", transition: ready ? "width .18s ease, min-width .18s ease" : "none", position: "sticky", top: 0, height: "100dvh" }}>
         <button onClick={() => { if (window.innerWidth <= 820) setMobileOpen(false); else toggle(); }} aria-label="menu" style={{ display: "flex", alignItems: "center", gap: 11, padding: "15px 14px", borderBottom: "1px solid rgba(255,255,255,.1)", background: "transparent", border: "none", cursor: "pointer", width: "100%" }}>
           <span className="nav-logo" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: collapsed ? 36 : 34, height: collapsed ? 36 : 34, background: "#fff", borderRadius: 9, overflow: "hidden", flexShrink: 0 }}><img src="/rocket-logo.png" alt="logo" style={{ width: "84%", height: "84%", objectFit: "contain" }} /></span>
-          {!collapsed && <span style={{display:"flex",flexDirection:"column",lineHeight:1.1,whiteSpace:"nowrap"}}><span style={{fontWeight:700,fontSize:16,color:"#fff"}}>Portfolio</span><span style={{color:"rgba(255,255,255,.6)",fontSize:9.5,marginTop:3}}>v31.26090621:30</span></span>}
+          {!collapsed && <span style={{ fontWeight: 700, fontSize: 16, color: "#fff", whiteSpace: "nowrap" }}>Portfolio</span>}
         </button>
 
         <nav style={{ flex: 1, padding: "8px 8px", overflowY: "auto" }}>
@@ -179,7 +179,7 @@ export function AppShell({ children, active, user, isAdmin, canMaster, guest, sy
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
   return (
     <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "22px 26px", borderBottom: "1px solid #E5E7EB", background: "#fff", gap: 16, flexWrap: "wrap" }}>
-      <div><h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, color: NAVY }}>{title}</h1>{subtitle && <p style={{ margin: "4px 0 0", fontSize: 13.5, color: "#6B7280" }}>{subtitle}</p>}</div>
+      <div><h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: NAVY }}>{title}</h1>{subtitle && <p style={{ margin: "4px 0 0", fontSize: 13.5, color: "#6B7280" }}>{subtitle}</p>}</div>
       {actions && <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{actions}</div>}
     </header>
   );
